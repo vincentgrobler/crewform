@@ -1,0 +1,90 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 CrewForm
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    name: Build, Lint & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: npm run test -- --run
+
+      - name: Build
+        run: npm run build
+
+  doc-guard:
+    name: Sensitive Doc Guard
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Block sensitive documents
+        run: |
+          BLOCKED_PATTERNS="ROADMAP\.md|SECURITY\.md|MONETIZATION\.md|FUNCTIONAL_REQ|THREAT_MODEL|PROJECT_SCOPE|TECHNICAL_CONSTRAINTS|DOC_SPLIT"
+          FOUND=$(find . -type f -name "*.md" | grep -iE "$BLOCKED_PATTERNS" | grep -v node_modules | grep -v CHANGELOG || true)
+          if [ -n "$FOUND" ]; then
+            echo "❌ Sensitive document(s) detected in public repo!"
+            echo ""
+            echo "These files belong in crewform-docs (private), not here:"
+            echo "$FOUND"
+            echo ""
+            echo "See internal/DOC_SPLIT_PLAN.md for details."
+            exit 1
+          fi
+          echo "✅ No sensitive docs found — all clear"
+
+  licence-check:
+    name: AGPL Licence Headers
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check AGPL headers on source files
+        run: |
+          MISSING=""
+          for f in $(find src -name "*.ts" -o -name "*.tsx" | grep -v node_modules | grep -v ".d.ts"); do
+            if ! head -1 "$f" | grep -q "SPDX-License-Identifier"; then
+              MISSING="$MISSING\n  $f"
+            fi
+          done
+          if [ -n "$MISSING" ]; then
+            echo "❌ Missing AGPL licence header in:"
+            echo -e "$MISSING"
+            echo ""
+            echo "Add to the top of each file:"
+            echo "// SPDX-License-Identifier: AGPL-3.0-or-later"
+            echo "// Copyright (C) 2026 CrewForm"
+            exit 1
+          fi
+          echo "✅ All source files have AGPL headers"
