@@ -27,7 +27,7 @@ export function useAuth(): UseAuthReturn {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    void supabase.auth.getSession().then(({ data: { session } }) => {
       setState({
         user: session?.user ?? null,
         session,

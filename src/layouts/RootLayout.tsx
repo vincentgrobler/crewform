@@ -26,13 +26,14 @@ const navItems = [
 export function RootLayout() {
   const { user, signOut } = useAuth()
 
-  const displayName = user?.user_metadata?.full_name
-    ?? user?.user_metadata?.name
+  const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>
+  const displayName = (typeof metadata.full_name === 'string' ? metadata.full_name : null)
+    ?? (typeof metadata.name === 'string' ? metadata.name : null)
     ?? user?.email
     ?? 'User'
 
   const avatarInitial = displayName.charAt(0).toUpperCase()
-  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined
+  const avatarUrl = typeof metadata.avatar_url === 'string' ? metadata.avatar_url : undefined
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-950">
@@ -90,7 +91,7 @@ export function RootLayout() {
             </div>
             <button
               type="button"
-              onClick={signOut}
+              onClick={() => void signOut()}
               title="Sign out"
               className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-800 hover:text-gray-300"
             >

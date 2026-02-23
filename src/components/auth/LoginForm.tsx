@@ -37,7 +37,7 @@ export function LoginForm({ onSignIn, onOAuth, onToggle }: LoginFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
       {error && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
           {error}
@@ -94,7 +94,7 @@ export function LoginForm({ onSignIn, onOAuth, onToggle }: LoginFormProps) {
       <div className="grid grid-cols-2 gap-3">
         <button
           type="button"
-          onClick={() => handleOAuth('google')}
+          onClick={() => void handleOAuth('google')}
           className="flex items-center justify-center gap-2 rounded-lg border border-gray-700 bg-gray-800 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-700"
         >
           <svg className="h-4 w-4" viewBox="0 0 24 24">
@@ -120,7 +120,7 @@ export function LoginForm({ onSignIn, onOAuth, onToggle }: LoginFormProps) {
 
         <button
           type="button"
-          onClick={() => handleOAuth('github')}
+          onClick={() => void handleOAuth('github')}
           className="flex items-center justify-center gap-2 rounded-lg border border-gray-700 bg-gray-800 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-700"
         >
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
