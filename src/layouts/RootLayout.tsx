@@ -9,8 +9,10 @@ import {
   ListTodo,
   Store,
   Settings,
+  LogOut,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/hooks/useAuth'
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -22,13 +24,24 @@ const navItems = [
 ] as const
 
 export function RootLayout() {
+  const { user, signOut } = useAuth()
+
+  const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>
+  const displayName = (typeof metadata.full_name === 'string' ? metadata.full_name : null)
+    ?? (typeof metadata.name === 'string' ? metadata.name : null)
+    ?? user?.email
+    ?? 'User'
+
+  const avatarInitial = displayName.charAt(0).toUpperCase()
+  const avatarUrl = typeof metadata.avatar_url === 'string' ? metadata.avatar_url : undefined
+
   return (
-    <div className="flex h-screen overflow-hidden bg-surface-primary">
+    <div className="flex h-screen overflow-hidden bg-gray-950">
       {/* Sidebar */}
-      <aside className="flex w-64 flex-col border-r border-border bg-surface-card">
+      <aside className="flex w-64 flex-col border-r border-gray-800 bg-gray-900">
         {/* Logo */}
-        <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-primary font-bold text-white">
+        <div className="flex h-16 items-center gap-2 border-b border-gray-800 px-6">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 font-bold text-white">
             C
           </div>
           <span className="text-lg font-semibold text-gray-100">CrewForm</span>
@@ -45,8 +58,8 @@ export function RootLayout() {
                 cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                   isActive
-                    ? 'border-l-2 border-brand-primary bg-surface-elevated text-gray-100'
-                    : 'text-gray-400 hover:bg-surface-overlay hover:text-gray-200',
+                    ? 'bg-gray-800 text-gray-100'
+                    : 'text-gray-400 hover:bg-gray-800/50 hover:text-gray-200',
                 )
               }
             >
@@ -56,13 +69,34 @@ export function RootLayout() {
           ))}
         </nav>
 
-        {/* User */}
-        <div className="border-t border-border p-4">
+        {/* User footer */}
+        <div className="border-t border-gray-800 p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-elevated text-sm font-medium text-gray-300">
-              U
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                className="h-8 w-8 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-800 text-sm font-medium text-gray-300">
+                {avatarInitial}
+              </div>
+            )}
+            <div className="flex-1 truncate">
+              <p className="truncate text-sm text-gray-300">{displayName}</p>
+              {user?.email && displayName !== user.email && (
+                <p className="truncate text-xs text-gray-500">{user.email}</p>
+              )}
             </div>
-            <span className="text-sm text-gray-400">User</span>
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              title="Sign out"
+              className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-800 hover:text-gray-300"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </aside>
