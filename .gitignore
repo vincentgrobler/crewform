@@ -33,3 +33,6 @@ coverage
 
 # Vite
 *.local
+
+# Docs (separate repo)
+crewform-docs/
