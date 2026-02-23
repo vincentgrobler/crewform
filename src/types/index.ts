@@ -4,7 +4,7 @@
 /**
  * Core type definitions for CrewForm.
  *
- * Matches the SQL schema in supabase/migrations/001_core_schema.sql exactly.
+ * Matches the SQL schema in supabase/migrations/ exactly.
  */
 
 // ─── Workspace ────────────────────────────────────────────────────────────────
@@ -34,6 +34,18 @@ export interface WorkspaceMember {
 
 export type WorkspaceRole = 'owner' | 'admin' | 'manager' | 'member' | 'viewer'
 
+// ─── User Profile ─────────────────────────────────────────────────────────────
+
+export interface UserProfile {
+  id: string // same as auth.users id
+  display_name: string | null
+  avatar_url: string | null
+  timezone: string
+  preferences: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
 // ─── Agent ────────────────────────────────────────────────────────────────────
 
 export interface Agent {
@@ -46,7 +58,9 @@ export interface Agent {
   system_prompt: string
   temperature: number
   tools: string[]
-  voice_profile: VoiceProfile | null
+  voice_profile: VoiceProfileInline | null
+  voice_profile_id: string | null
+  output_template_id: string | null
   status: AgentStatus
   config: Record<string, unknown>
   created_at: string
@@ -55,10 +69,43 @@ export interface Agent {
 
 export type AgentStatus = 'idle' | 'busy' | 'offline'
 
-export interface VoiceProfile {
-  tone?: 'formal' | 'casual' | 'technical' | 'creative' | 'empathetic' | 'custom'
+/** Inline voice profile stored as JSONB on the agent (legacy/simple usage) */
+export interface VoiceProfileInline {
+  tone?: VoiceProfileTone
   custom_instructions?: string
   output_format_hints?: string
+}
+
+// ─── Voice Profile (standalone) ───────────────────────────────────────────────
+
+export type VoiceProfileTone = 'formal' | 'casual' | 'technical' | 'creative' | 'empathetic' | 'custom'
+
+export interface VoiceProfile {
+  id: string
+  workspace_id: string
+  name: string
+  tone: VoiceProfileTone
+  custom_instructions: string | null
+  output_format_hints: string | null
+  is_template: boolean
+  created_at: string
+  updated_at: string
+}
+
+// ─── Output Template ──────────────────────────────────────────────────────────
+
+export type OutputTemplateType = 'markdown' | 'json' | 'html' | 'csv' | 'custom'
+
+export interface OutputTemplate {
+  id: string
+  workspace_id: string
+  name: string
+  template_type: OutputTemplateType
+  body: string
+  variables: Record<string, unknown>[]
+  is_builtin: boolean
+  created_at: string
+  updated_at: string
 }
 
 // ─── Team ─────────────────────────────────────────────────────────────────────
@@ -147,6 +194,101 @@ export interface Task {
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
 
+// ─── Agent Task (execution record) ───────────────────────────────────────────
+
+export interface AgentTask {
+  id: string
+  task_id: string
+  agent_id: string
+  workspace_id: string
+  status: TaskStatus
+  session_key: string | null
+  result: Record<string, unknown> | null
+  error_message: string | null
+  tokens_used: number
+  cost_estimate_usd: number
+  model_used: string | null
+  started_at: string | null
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+// ─── Team Run ─────────────────────────────────────────────────────────────────
+
+export type TeamRunStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled'
+
+export interface TeamRun {
+  id: string
+  team_id: string
+  workspace_id: string
+  status: TeamRunStatus
+  input_task: string
+  output: string | null
+  current_step_idx: number | null
+  tokens_total: number
+  cost_estimate_usd: number
+  started_at: string | null
+  completed_at: string | null
+  error_message: string | null
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+// ─── Team Message ─────────────────────────────────────────────────────────────
+
+export type TeamMessageType =
+  | 'delegation'
+  | 'handoff'
+  | 'broadcast'
+  | 'tool_call'
+  | 'result'
+  | 'system'
+  | 'rejection'
+  | 'revision_request'
+
+export interface TeamMessage {
+  id: string
+  run_id: string
+  sender_agent_id: string | null
+  receiver_agent_id: string | null
+  message_type: TeamMessageType
+  content: string
+  metadata: Record<string, unknown>
+  step_idx: number | null
+  tokens_used: number
+  created_at: string
+}
+
+// ─── Team Handoff ─────────────────────────────────────────────────────────────
+
+export type HandoffDirection = 'forward' | 'backward'
+
+export interface TeamHandoff {
+  id: string
+  run_id: string
+  from_agent_id: string | null
+  to_agent_id: string
+  direction: HandoffDirection
+  context: Record<string, unknown>
+  feedback_reason: string | null
+  step_idx: number | null
+  created_at: string
+}
+
+// ─── Team Memory (Phase 3 stub) ──────────────────────────────────────────────
+
+export interface TeamMemory {
+  id: string
+  team_id: string
+  run_id: string | null
+  content: string
+  embedding: number[] | null // pgvector
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
 // ─── API Key ──────────────────────────────────────────────────────────────────
 
 export interface ApiKey {
@@ -160,6 +302,38 @@ export interface ApiKey {
   updated_at: string
 }
 
+// ─── Usage Record ─────────────────────────────────────────────────────────────
+
+export type UsageEventType = 'task_execution' | 'team_run' | 'api_call' | 'storage' | 'marketplace_install'
+
+export interface UsageRecord {
+  id: string
+  workspace_id: string
+  event_type: UsageEventType
+  tokens_used: number
+  cost_usd: number
+  agent_id: string | null
+  task_id: string | null
+  team_run_id: string | null
+  metadata: Record<string, unknown>
+  recorded_at: string
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
+export interface AuditLog {
+  id: string
+  workspace_id: string
+  actor_id: string | null
+  action: string
+  resource_type: string
+  resource_id: string | null
+  details: Record<string, unknown>
+  ip_address: string | null
+  user_agent: string | null
+  created_at: string
+}
+
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export type ProviderBillingModel = 'per-token' | 'subscription-quota' | 'unknown'
@@ -168,8 +342,18 @@ export type ProviderBillingModel = 'per-token' | 'subscription-quota' | 'unknown
 
 export type WorkspaceRow = Workspace
 export type WorkspaceMemberRow = WorkspaceMember
+export type UserProfileRow = UserProfile
 export type AgentRow = Agent
 export type TeamRow = Team
 export type TeamMemberRow = TeamMember
 export type TaskRow = Task
+export type AgentTaskRow = AgentTask
+export type TeamRunRow = TeamRun
+export type TeamMessageRow = TeamMessage
+export type TeamHandoffRow = TeamHandoff
+export type TeamMemoryRow = TeamMemory
 export type ApiKeyRow = ApiKey
+export type VoiceProfileRow = VoiceProfile
+export type OutputTemplateRow = OutputTemplate
+export type UsageRecordRow = UsageRecord
+export type AuditLogRow = AuditLog
