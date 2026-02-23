@@ -3,6 +3,7 @@
 
 import { Routes, Route } from 'react-router-dom'
 import { RootLayout } from '@/layouts/RootLayout'
+import { AuthGuard } from '@/components/auth/AuthGuard'
 import { Dashboard } from '@/pages/Dashboard'
 import { Agents } from '@/pages/Agents'
 import { Teams } from '@/pages/Teams'
@@ -15,7 +16,13 @@ export function App() {
   return (
     <Routes>
       <Route path="/auth" element={<Auth />} />
-      <Route element={<RootLayout />}>
+      <Route
+        element={
+          <AuthGuard>
+            <RootLayout />
+          </AuthGuard>
+        }
+      >
         <Route path="/" element={<Dashboard />} />
         <Route path="/agents" element={<Agents />} />
         <Route path="/teams" element={<Teams />} />

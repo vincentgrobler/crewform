@@ -4,96 +4,77 @@
 /**
  * Core type definitions for CrewForm.
  *
- * Based on FUNCTIONAL_REQUIREMENTS.md data models.
+ * Matches the SQL schema in supabase/migrations/001_core_schema.sql exactly.
  */
+
+// ─── Workspace ────────────────────────────────────────────────────────────────
+
+export interface Workspace {
+  id: string
+  name: string
+  slug: string
+  owner_id: string
+  plan: WorkspacePlan
+  settings: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
+export type WorkspacePlan = 'free' | 'pro' | 'team' | 'enterprise'
+
+// ─── Workspace Member ─────────────────────────────────────────────────────────
+
+export interface WorkspaceMember {
+  id: string
+  workspace_id: string
+  user_id: string
+  role: WorkspaceRole
+  joined_at: string
+}
+
+export type WorkspaceRole = 'owner' | 'admin' | 'manager' | 'member' | 'viewer'
 
 // ─── Agent ────────────────────────────────────────────────────────────────────
 
 export interface Agent {
   id: string
+  workspace_id: string
   name: string
   description: string
-  prompt: string
-  model: string
-  provider: string
   avatar_url: string | null
-  tools: string[]
+  model: string
+  system_prompt: string
   temperature: number
-  max_tokens: number
-  visibility: AgentVisibility
-  team_id: string | null
-  organisation_id: string | null
-  created_by: string
+  tools: string[]
+  voice_profile: VoiceProfile | null
+  status: AgentStatus
+  config: Record<string, unknown>
   created_at: string
   updated_at: string
-  // Computed / joined
-  task_count?: number
-  last_active?: string
-  status?: AgentStatus
 }
 
-export type AgentVisibility = 'private' | 'team' | 'organisation'
 export type AgentStatus = 'idle' | 'busy' | 'offline'
 
-// ─── Task ─────────────────────────────────────────────────────────────────────
-
-export interface Task {
-  id: string
-  title: string
-  description: string
-  status: TaskStatus
-  priority: TaskPriority
-  assigned_agent_id: string | null
-  team_id: string
-  organisation_id: string
-  created_by: string
-  started_at: string | null
-  completed_at: string | null
-  result: Record<string, unknown> | null
-  tags: string[]
-  metadata: Record<string, unknown>
-  created_at: string
-  updated_at: string
-}
-
-export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
-export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
-
-// ─── Agent Task (execution record) ───────────────────────────────────────────
-
-export interface AgentTask {
-  id: string
-  agent_id: string
-  task_id: string
-  status: 'pending' | 'running' | 'completed' | 'failed'
-  session_key: string | null
-  started_at: string | null
-  completed_at: string | null
-  result: Record<string, unknown> | null
-  error_message: string | null
-  tokens_used: number
-  cost_estimate: number
-  model_used: string
-  created_at: string
+export interface VoiceProfile {
+  tone?: 'formal' | 'casual' | 'technical' | 'creative' | 'empathetic' | 'custom'
+  custom_instructions?: string
+  output_format_hints?: string
 }
 
 // ─── Team ─────────────────────────────────────────────────────────────────────
-
-export type TeamMode = 'orchestrator' | 'pipeline' | 'collaboration'
-export type TeamStatus = 'idle' | 'running' | 'paused' | 'completed' | 'error'
 
 export interface Team {
   id: string
   workspace_id: string
   name: string
-  description?: string
+  description: string
   mode: TeamMode
-  status: TeamStatus
   config: PipelineConfig | OrchestratorConfig | CollaborationConfig
-  created_by?: string
   created_at: string
   updated_at: string
 }
+
+export type TeamMode = 'pipeline' | 'orchestrator' | 'collaboration'
 
 export interface PipelineConfig {
   steps: PipelineStep[]
@@ -131,27 +112,50 @@ export interface CollaborationConfig {
   facilitator_agent_id?: string
 }
 
-// ─── User ─────────────────────────────────────────────────────────────────────
+// ─── Team Member ──────────────────────────────────────────────────────────────
 
-export interface User {
+export interface TeamMember {
   id: string
-  email: string
-  display_name: string
-  avatar_url: string | null
-  timezone: string
+  team_id: string
+  agent_id: string
+  role: TeamMemberRole
+  position: number
+  config: Record<string, unknown>
+}
+
+export type TeamMemberRole = 'orchestrator' | 'worker' | 'reviewer'
+
+// ─── Task ─────────────────────────────────────────────────────────────────────
+
+export interface Task {
+  id: string
+  workspace_id: string
+  title: string
+  description: string
+  status: TaskStatus
+  priority: TaskPriority
+  assigned_agent_id: string | null
+  assigned_team_id: string | null
+  result: Record<string, unknown> | null
+  error: string | null
+  metadata: Record<string, unknown>
+  created_by: string
   created_at: string
   updated_at: string
 }
 
-// ─── Workspace ────────────────────────────────────────────────────────────────
+export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
 
-export interface Workspace {
+// ─── API Key ──────────────────────────────────────────────────────────────────
+
+export interface ApiKey {
   id: string
-  name: string
-  slug: string
-  organisation_id: string
-  timezone: string
-  created_by: string
+  workspace_id: string
+  provider: string
+  encrypted_key: string
+  key_hint: string
+  is_valid: boolean
   created_at: string
   updated_at: string
 }
@@ -160,4 +164,12 @@ export interface Workspace {
 
 export type ProviderBillingModel = 'per-token' | 'subscription-quota' | 'unknown'
 
-export type UserRole = 'owner' | 'admin' | 'manager' | 'operator' | 'viewer'
+// ─── Database row types (for Supabase typed client) ──────────────────────────
+
+export type WorkspaceRow = Workspace
+export type WorkspaceMemberRow = WorkspaceMember
+export type AgentRow = Agent
+export type TeamRow = Team
+export type TeamMemberRow = TeamMember
+export type TaskRow = Task
+export type ApiKeyRow = ApiKey
