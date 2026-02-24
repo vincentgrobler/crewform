@@ -13,9 +13,11 @@ interface AuthState {
 
 interface UseAuthReturn extends AuthState {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
-  signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>
+  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: AuthError | null }>
   signOut: () => Promise<void>
   signInWithOAuth: (provider: Provider) => Promise<{ error: AuthError | null }>
+  resetPassword: (email: string) => Promise<{ error: AuthError | null }>
+  updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>
 }
 
 export function useAuth(): UseAuthReturn {
@@ -56,8 +58,15 @@ export function useAuth(): UseAuthReturn {
     return { error }
   }, [])
 
-  const signUp = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password })
+  const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: fullName ? { full_name: fullName } : undefined,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
     return { error }
   }, [])
 
@@ -69,9 +78,21 @@ export function useAuth(): UseAuthReturn {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     })
+    return { error }
+  }, [])
+
+  const resetPassword = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    })
+    return { error }
+  }, [])
+
+  const updatePassword = useCallback(async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
     return { error }
   }, [])
 
@@ -81,5 +102,7 @@ export function useAuth(): UseAuthReturn {
     signUp,
     signOut,
     signInWithOAuth,
+    resetPassword,
+    updatePassword,
   }
 }
