@@ -45,6 +45,7 @@ export function ProviderKeyCard({
     const isConfigured = !!existingKey
 
     function validatePrefix(key: string): boolean {
+        if (!provider.prefix) return key.length >= 8
         return key.startsWith(provider.prefix)
     }
 
@@ -53,7 +54,7 @@ export function ProviderKeyCard({
 
         if (!validatePrefix(keyInput)) {
             setTestResult('error')
-            setTestError(`Key must start with "${provider.prefix}"`)
+            setTestError(provider.prefix ? `Key must start with "${provider.prefix}"` : 'Key must be at least 8 characters')
             return
         }
 
@@ -83,7 +84,7 @@ export function ProviderKeyCard({
 
     // Masked key display
     const maskedKey = existingKey
-        ? `${provider.prefix}••••••••${existingKey.key_hint}`
+        ? `${provider.prefix ? provider.prefix : ''}••••••••${existingKey.key_hint}`
         : ''
 
     return (
@@ -155,7 +156,7 @@ export function ProviderKeyCard({
                                 setTestResult('idle')
                                 setTestError('')
                             }}
-                            placeholder={`Paste your ${provider.name} API key (${provider.prefix}...)`}
+                            placeholder={`Paste your ${provider.name} API key${provider.prefix ? ` (${provider.prefix}...)` : ''}`}
                             className="w-full rounded-lg border border-border bg-surface-primary px-4 py-2.5 font-mono text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
                             autoFocus
                         />

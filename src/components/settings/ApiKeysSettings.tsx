@@ -35,11 +35,43 @@ const PROVIDERS: ProviderConfig[] = [
         bgColor: 'bg-blue-500/10',
         borderColor: 'border-border',
     },
+    {
+        id: 'openrouter',
+        name: 'OpenRouter',
+        prefix: 'sk-or-',
+        color: 'text-purple-400',
+        bgColor: 'bg-purple-500/10',
+        borderColor: 'border-border',
+    },
+    {
+        id: 'mistral',
+        name: 'Mistral',
+        prefix: '',
+        color: 'text-amber-400',
+        bgColor: 'bg-amber-500/10',
+        borderColor: 'border-border',
+    },
+    {
+        id: 'groq',
+        name: 'Groq',
+        prefix: 'gsk_',
+        color: 'text-cyan-400',
+        bgColor: 'bg-cyan-500/10',
+        borderColor: 'border-border',
+    },
+    {
+        id: 'cohere',
+        name: 'Cohere',
+        prefix: '',
+        color: 'text-rose-400',
+        bgColor: 'bg-rose-500/10',
+        borderColor: 'border-border',
+    },
 ]
 
 /**
  * API Keys settings section.
- * Shows provider cards for Anthropic, OpenAI, and Google.
+ * Shows provider cards for all supported LLM providers.
  */
 export function ApiKeysSettings() {
     const { workspaceId } = useWorkspace()
