@@ -8,9 +8,10 @@ interface LoginFormProps {
   onSignIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
   onOAuth: (provider: Provider) => Promise<{ error: AuthError | null }>
   onToggle: () => void
+  onForgotPassword: () => void
 }
 
-export function LoginForm({ onSignIn, onOAuth, onToggle }: LoginFormProps) {
+export function LoginForm({ onSignIn, onOAuth, onToggle, onForgotPassword }: LoginFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -60,9 +61,18 @@ export function LoginForm({ onSignIn, onOAuth, onToggle }: LoginFormProps) {
       </div>
 
       <div>
-        <label htmlFor="login-password" className="mb-1.5 block text-sm font-medium text-gray-300">
-          Password
-        </label>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label htmlFor="login-password" className="block text-sm font-medium text-gray-300">
+            Password
+          </label>
+          <button
+            type="button"
+            onClick={onForgotPassword}
+            className="text-xs text-blue-400 hover:text-blue-300"
+          >
+            Forgot password?
+          </button>
+        </div>
         <input
           id="login-password"
           type="password"

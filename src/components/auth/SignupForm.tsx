@@ -5,11 +5,12 @@ import { useState, type FormEvent } from 'react'
 import type { AuthError } from '@supabase/supabase-js'
 
 interface SignupFormProps {
-  onSignUp: (email: string, password: string) => Promise<{ error: AuthError | null }>
+  onSignUp: (email: string, password: string, fullName?: string) => Promise<{ error: AuthError | null }>
   onToggle: () => void
 }
 
 export function SignupForm({ onSignUp, onToggle }: SignupFormProps) {
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -32,7 +33,11 @@ export function SignupForm({ onSignUp, onToggle }: SignupFormProps) {
     }
 
     setLoading(true)
-    const { error: authError } = await onSignUp(email, password)
+    const { error: authError } = await onSignUp(
+      email,
+      password,
+      fullName.trim() || undefined,
+    )
     if (authError) {
       setError(authError.message)
     } else {
@@ -69,6 +74,21 @@ export function SignupForm({ onSignUp, onToggle }: SignupFormProps) {
           {error}
         </div>
       )}
+
+      <div>
+        <label htmlFor="signup-name" className="mb-1.5 block text-sm font-medium text-gray-300">
+          Full Name
+        </label>
+        <input
+          id="signup-name"
+          type="text"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          placeholder="John Doe"
+          className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2.5 text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          autoFocus
+        />
+      </div>
 
       <div>
         <label htmlFor="signup-email" className="mb-1.5 block text-sm font-medium text-gray-300">

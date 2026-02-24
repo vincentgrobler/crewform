@@ -2,21 +2,43 @@
 // Copyright (C) 2026 CrewForm
 
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { LoginForm } from '@/components/auth/LoginForm'
 import { SignupForm } from '@/components/auth/SignupForm'
+import { ForgotPasswordForm } from '@/components/auth/ForgotPasswordForm'
+import { ResetPasswordForm } from '@/components/auth/ResetPasswordForm'
+
+type AuthMode = 'login' | 'signup' | 'forgot-password' | 'reset-password'
 
 export function Auth() {
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
-  const { user, loading, signIn, signUp, signInWithOAuth } = useAuth()
+  const location = useLocation()
   const navigate = useNavigate()
 
+  // Determine initial mode from path
+  function getInitialMode(): AuthMode {
+    if (location.pathname === '/auth/reset-password') return 'reset-password'
+    if (location.pathname === '/auth/forgot-password') return 'forgot-password'
+    if (location.pathname === '/auth/signup') return 'signup'
+    return 'login'
+  }
+
+  const [mode, setMode] = useState<AuthMode>(getInitialMode)
+  const {
+    user,
+    loading,
+    signIn,
+    signUp,
+    signInWithOAuth,
+    resetPassword,
+    updatePassword,
+  } = useAuth()
+
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && user && mode !== 'reset-password') {
       navigate('/', { replace: true })
     }
-  }, [user, loading, navigate])
+  }, [user, loading, navigate, mode])
 
   if (loading) {
     return (
@@ -24,6 +46,19 @@ export function Auth() {
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
       </div>
     )
+  }
+
+  function getTitle(): string {
+    switch (mode) {
+      case 'signup':
+        return 'Create your account'
+      case 'forgot-password':
+        return 'Reset your password'
+      case 'reset-password':
+        return 'Set new password'
+      default:
+        return 'Sign in to your account'
+    }
   }
 
   return (
@@ -35,21 +70,35 @@ export function Auth() {
             C
           </div>
           <h1 className="text-2xl font-semibold text-gray-100">CrewForm</h1>
-          <p className="mt-2 text-sm text-gray-400">
-            {mode === 'login' ? 'Sign in to your account' : 'Create your account'}
-          </p>
+          <p className="mt-2 text-sm text-gray-400">{getTitle()}</p>
         </div>
 
-        {mode === 'login' ? (
+        {mode === 'login' && (
           <LoginForm
             onSignIn={signIn}
             onOAuth={signInWithOAuth}
             onToggle={() => setMode('signup')}
+            onForgotPassword={() => setMode('forgot-password')}
           />
-        ) : (
+        )}
+
+        {mode === 'signup' && (
           <SignupForm
             onSignUp={signUp}
             onToggle={() => setMode('login')}
+          />
+        )}
+
+        {mode === 'forgot-password' && (
+          <ForgotPasswordForm
+            onResetPassword={resetPassword}
+            onBackToLogin={() => setMode('login')}
+          />
+        )}
+
+        {mode === 'reset-password' && (
+          <ResetPasswordForm
+            onUpdatePassword={updatePassword}
           />
         )}
       </div>
