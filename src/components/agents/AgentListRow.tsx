@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 CrewForm
 
+import { Link } from 'react-router-dom'
 import { StatusIndicator } from '@/components/ui/StatusIndicator'
 import type { Agent } from '@/types'
 
@@ -11,6 +12,7 @@ interface AgentListRowProps {
 /**
  * Compact list row for agents (table/list view).
  * Shows: avatar · name · status · model · description · created date
+ * Clickable — navigates to detail.
  */
 export function AgentListRow({ agent }: AgentListRowProps) {
     const initials = agent.name
@@ -23,7 +25,7 @@ export function AgentListRow({ agent }: AgentListRowProps) {
     const modelShort = agent.model.split('/').pop() ?? agent.model
 
     return (
-        <div className="flex items-center gap-4 rounded-lg border border-border bg-surface-card px-4 py-3 transition-colors hover:border-gray-600">
+        <Link to={`/agents/${agent.id}`} className="flex items-center gap-4 rounded-lg border border-border bg-surface-card px-4 py-3 transition-colors hover:border-gray-600">
             {/* Avatar */}
             {agent.avatar_url ? (
                 <img
@@ -57,6 +59,6 @@ export function AgentListRow({ agent }: AgentListRowProps) {
             <span className="ml-auto shrink-0 text-xs text-gray-600">
                 {new Date(agent.created_at).toLocaleDateString()}
             </span>
-        </div>
+        </Link>
     )
 }

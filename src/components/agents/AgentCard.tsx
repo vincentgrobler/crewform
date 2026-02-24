@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 CrewForm
 
+import { Link } from 'react-router-dom'
 import { StatusIndicator } from '@/components/ui/StatusIndicator'
 import type { Agent } from '@/types'
 
@@ -11,7 +12,7 @@ interface AgentCardProps {
 /**
  * Agent card for grid view.
  * Shows avatar (image or initials), status dot, name, description,
- * model badge, and creation date.
+ * model badge, and creation date. Clickable — navigates to detail.
  */
 export function AgentCard({ agent }: AgentCardProps) {
     const initials = agent.name
@@ -24,7 +25,7 @@ export function AgentCard({ agent }: AgentCardProps) {
     const modelShort = agent.model.split('/').pop() ?? agent.model
 
     return (
-        <div className="group relative rounded-lg border border-border bg-surface-card p-5 transition-colors hover:border-gray-600">
+        <Link to={`/agents/${agent.id}`} className="group relative block rounded-lg border border-border bg-surface-card p-5 transition-colors hover:border-gray-600">
             {/* Header: avatar + status */}
             <div className="mb-4 flex items-start gap-3">
                 {agent.avatar_url ? (
@@ -61,7 +62,7 @@ export function AgentCard({ agent }: AgentCardProps) {
                 </span>
                 <StatusLabel status={agent.status} />
             </div>
-        </div>
+        </Link>
     )
 }
 

@@ -58,3 +58,28 @@ export async function createAgent(input: CreateAgentInput): Promise<Agent> {
     if (result.error) throw result.error
     return result.data as Agent
 }
+
+/** Update an existing agent */
+export type UpdateAgentInput = Partial<Omit<CreateAgentInput, 'workspace_id'>>
+
+export async function updateAgent(id: string, input: UpdateAgentInput): Promise<Agent> {
+    const result = await supabase
+        .from('agents')
+        .update(input)
+        .eq('id', id)
+        .select()
+        .single()
+
+    if (result.error) throw result.error
+    return result.data as Agent
+}
+
+/** Delete an agent */
+export async function deleteAgent(id: string): Promise<void> {
+    const result = await supabase
+        .from('agents')
+        .delete()
+        .eq('id', id)
+
+    if (result.error) throw result.error
+}

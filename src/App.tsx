@@ -13,6 +13,7 @@ import { Settings } from '@/pages/Settings'
 import { Auth } from '@/pages/Auth'
 import { AuthCallback } from '@/pages/AuthCallback'
 import { CreateAgent } from '@/pages/CreateAgent'
+import { AgentDetail } from '@/pages/AgentDetail'
 
 export function App() {
   return (
@@ -35,6 +36,7 @@ export function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/agents" element={<Agents />} />
         <Route path="/agents/new" element={<CreateAgent />} />
+        <Route path="/agents/:id" element={<AgentDetail />} />
         <Route path="/teams" element={<Teams />} />
         <Route path="/tasks" element={<Tasks />} />
         <Route path="/marketplace" element={<Marketplace />} />
