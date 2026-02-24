@@ -35,3 +35,26 @@ export async function fetchAgentById(id: string): Promise<Agent | null> {
     }
     return result.data as Agent
 }
+
+/** Create a new agent */
+export interface CreateAgentInput {
+    workspace_id: string
+    name: string
+    description: string
+    model: string
+    system_prompt: string
+    temperature: number
+    tools: string[]
+    avatar_url?: string | null
+}
+
+export async function createAgent(input: CreateAgentInput): Promise<Agent> {
+    const result = await supabase
+        .from('agents')
+        .insert(input)
+        .select()
+        .single()
+
+    if (result.error) throw result.error
+    return result.data as Agent
+}

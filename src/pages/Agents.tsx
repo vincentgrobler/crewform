@@ -2,6 +2,7 @@
 // Copyright (C) 2026 CrewForm
 
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Bot, LayoutGrid, List, Search, AlertCircle, RefreshCw } from 'lucide-react'
 import { useAgents } from '@/hooks/useAgents'
 import { useWorkspace } from '@/hooks/useWorkspace'
@@ -15,6 +16,7 @@ type ViewMode = 'grid' | 'list'
 type SortField = 'name' | 'status' | 'model' | 'created'
 
 export function Agents() {
+  const navigate = useNavigate()
   const { workspaceId } = useWorkspace()
   const { agents, isLoading, error, refetch } = useAgents(workspaceId)
 
@@ -72,6 +74,7 @@ export function Agents() {
         </div>
         <button
           type="button"
+          onClick={() => navigate('/agents/new')}
           className="rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-hover"
         >
           + New Agent
@@ -112,8 +115,8 @@ export function Agents() {
                 type="button"
                 onClick={() => setViewMode('grid')}
                 className={`rounded-l-lg p-2 transition-colors ${viewMode === 'grid'
-                    ? 'bg-surface-elevated text-gray-200'
-                    : 'text-gray-500 hover:text-gray-300'
+                  ? 'bg-surface-elevated text-gray-200'
+                  : 'text-gray-500 hover:text-gray-300'
                   }`}
                 aria-label="Grid view"
               >
@@ -123,8 +126,8 @@ export function Agents() {
                 type="button"
                 onClick={() => setViewMode('list')}
                 className={`rounded-r-lg p-2 transition-colors ${viewMode === 'list'
-                    ? 'bg-surface-elevated text-gray-200'
-                    : 'text-gray-500 hover:text-gray-300'
+                  ? 'bg-surface-elevated text-gray-200'
+                  : 'text-gray-500 hover:text-gray-300'
                   }`}
                 aria-label="List view"
               >
@@ -183,6 +186,7 @@ export function Agents() {
           </p>
           <button
             type="button"
+            onClick={() => navigate('/agents/new')}
             className="rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-hover"
           >
             + Create Agent
