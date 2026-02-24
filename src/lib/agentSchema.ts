@@ -83,4 +83,36 @@ export const MODEL_OPTIONS = [
             { value: 'gemini-2.5-pro-preview-05-06', label: 'Gemini 2.5 Pro' },
         ],
     },
+    {
+        provider: 'OpenRouter',
+        models: [
+            { value: 'openrouter/meta-llama/llama-3.1-405b', label: 'Llama 3.1 405B' },
+            { value: 'openrouter/meta-llama/llama-3.1-70b', label: 'Llama 3.1 70B' },
+            { value: 'openrouter/deepseek/deepseek-v3', label: 'DeepSeek V3' },
+            { value: 'openrouter/mistralai/mistral-large', label: 'Mistral Large (via OR)' },
+        ],
+    },
+    {
+        provider: 'Mistral',
+        models: [
+            { value: 'mistral-large-latest', label: 'Mistral Large' },
+            { value: 'codestral-latest', label: 'Codestral' },
+            { value: 'mistral-small-latest', label: 'Mistral Small' },
+        ],
+    },
+    {
+        provider: 'Groq',
+        models: [
+            { value: 'groq/llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
+            { value: 'groq/llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant' },
+            { value: 'groq/mixtral-8x7b-32768', label: 'Mixtral 8x7B' },
+        ],
+    },
+    {
+        provider: 'Cohere',
+        models: [
+            { value: 'command-r-plus', label: 'Command R+' },
+            { value: 'command-r', label: 'Command R' },
+        ],
+    },
 ] as const
