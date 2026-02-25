@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { processTask } from './executor';
-import type { Task } from './types';
+import { processPipelineRun } from './pipelineExecutor';
+import type { Task, TeamRun } from './types';
 
 const POLL_INTERVAL_MS = 5000;
 let isPolling = false;
@@ -10,7 +11,7 @@ async function poll() {
     isPolling = true;
 
     try {
-        // Call the RPC to atomically claim ONE pending task
+        // ─── 1. Check for pending tasks ──────────────────────────────────────
         const rpcResponse = await supabase.rpc('claim_next_task');
         const data = rpcResponse.data as Task[] | null;
         const error = rpcResponse.error;
@@ -19,14 +20,29 @@ async function poll() {
             console.error('[TaskRunner] RPC Error claiming task:', error.message);
         } else if (data && data.length > 0) {
             const claimedTask = data[0];
-            // Note: We don't await processTask here! 
-            // We fire and forget so the polling loop can continue to pick up other tasks
-            // up to any concurrency limits we might set.
             processTask(claimedTask).catch((err: unknown) => {
                 console.error(`[TaskRunner] Unhandled outer error processing task ${claimedTask.id}:`, err);
             });
 
-            // If we found a task, poll again immediately without waiting
+            // If we found a task, poll again immediately
+            isPolling = false;
+            return await poll();
+        }
+
+        // ─── 2. Check for pending team runs ──────────────────────────────────
+        const teamRunResponse = await supabase.rpc('claim_next_team_run');
+        const teamRunData = teamRunResponse.data as TeamRun[] | null;
+        const teamRunError = teamRunResponse.error;
+
+        if (teamRunError) {
+            console.error('[TaskRunner] RPC Error claiming team run:', teamRunError.message);
+        } else if (teamRunData && teamRunData.length > 0) {
+            const claimedRun = teamRunData[0];
+            processPipelineRun(claimedRun).catch((err: unknown) => {
+                console.error(`[TaskRunner] Unhandled outer error processing team run ${claimedRun.id}:`, err);
+            });
+
+            // If we found a run, poll again immediately
             isPolling = false;
             return await poll();
         }
@@ -39,7 +55,7 @@ async function poll() {
 }
 
 console.log('[TaskRunner] Starting the Task Runner polling daemon...');
-console.log(`[TaskRunner] Polling every ${POLL_INTERVAL_MS}ms for new tasks.`);
+console.log(`[TaskRunner] Polling every ${POLL_INTERVAL_MS}ms for tasks and team runs.`);
 
 // Start the polling interval
 setInterval(() => { void poll(); }, POLL_INTERVAL_MS);

@@ -12,15 +12,20 @@ import {
     Pencil,
     Check,
     X,
+    Play,
 } from 'lucide-react'
 import { useTeam } from '@/hooks/useTeam'
 import { useAgents } from '@/hooks/useAgents'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useUpdateTeam } from '@/hooks/useUpdateTeam'
 import { useDeleteTeam } from '@/hooks/useDeleteTeam'
+import { useTeamRuns } from '@/hooks/useTeamRuns'
 import { PipelineConfigPanel } from '@/components/teams/PipelineConfigPanel'
+import { RunTeamModal } from '@/components/teams/RunTeamModal'
+import { TeamRunCard } from '@/components/teams/TeamRunCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import type { PipelineConfig } from '@/types'
 
 const MODE_BADGE: Record<string, { label: string; className: string }> = {
     pipeline: { label: 'Pipeline', className: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
@@ -47,6 +52,11 @@ export function TeamDetail() {
     const [isEditingDesc, setIsEditingDesc] = useState(false)
     const [editDesc, setEditDesc] = useState('')
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+    const [showRunModal, setShowRunModal] = useState(false)
+
+    const { runs, isLoading: isLoadingRuns } = useTeamRuns(id ?? null)
+    const pipelineConfig = team?.config as PipelineConfig | undefined
+    const stepCount = pipelineConfig?.steps.length ?? 0
 
     function startEditName() {
         if (!team) return
@@ -169,36 +179,50 @@ export function TeamDetail() {
                                 </div>
                             </div>
 
-                            {/* Delete button */}
-                            <div className="relative">
-                                {showDeleteConfirm ? (
-                                    <div className="flex items-center gap-2 rounded-lg border border-red-600/30 bg-red-600/5 px-3 py-2">
-                                        <span className="text-xs text-red-400">Delete this team?</span>
+                            {/* Action buttons */}
+                            <div className="flex items-center gap-2">
+                                {/* Run Team button */}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowRunModal(true)}
+                                    disabled={stepCount === 0}
+                                    className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <Play className="h-4 w-4" />
+                                    Run Team
+                                </button>
+
+                                {/* Delete button */}
+                                <div className="relative">
+                                    {showDeleteConfirm ? (
+                                        <div className="flex items-center gap-2 rounded-lg border border-red-600/30 bg-red-600/5 px-3 py-2">
+                                            <span className="text-xs text-red-400">Delete this team?</span>
+                                            <button
+                                                type="button"
+                                                onClick={handleDelete}
+                                                disabled={deleteMutation.isPending}
+                                                className="rounded-md bg-red-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                                            >
+                                                {deleteMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Yes, delete'}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowDeleteConfirm(false)}
+                                                className="text-xs text-gray-500 hover:text-gray-300"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    ) : (
                                         <button
                                             type="button"
-                                            onClick={handleDelete}
-                                            disabled={deleteMutation.isPending}
-                                            className="rounded-md bg-red-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                                            onClick={() => setShowDeleteConfirm(true)}
+                                            className="rounded-lg border border-red-600/20 p-2 text-gray-600 transition-colors hover:border-red-600/40 hover:text-red-400"
                                         >
-                                            {deleteMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Yes, delete'}
+                                            <Trash2 className="h-4 w-4" />
                                         </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowDeleteConfirm(false)}
-                                            className="text-xs text-gray-500 hover:text-gray-300"
-                                        >
-                                            Cancel
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowDeleteConfirm(true)}
-                                        className="rounded-lg border border-red-600/20 p-2 text-gray-600 transition-colors hover:border-red-600/40 hover:text-red-400"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         </div>
 
@@ -242,6 +266,39 @@ export function TeamDetail() {
                         <div className="rounded-xl border border-border bg-surface-card p-6">
                             <PipelineConfigPanel team={team} agents={agents} />
                         </div>
+                    )}
+
+                    {/* Recent Runs */}
+                    <div className="mt-8">
+                        <h2 className="mb-4 text-lg font-semibold text-gray-200">Recent Runs</h2>
+                        {isLoadingRuns ? (
+                            <div className="space-y-2">
+                                <Skeleton className="h-14 w-full rounded-lg" />
+                                <Skeleton className="h-14 w-full rounded-lg" />
+                            </div>
+                        ) : runs.length > 0 ? (
+                            <div className="space-y-2">
+                                {runs.map((run) => (
+                                    <TeamRunCard key={run.id} run={run} teamId={team.id} stepCount={stepCount} />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="rounded-lg border border-dashed border-border py-8 text-center">
+                                <Play className="mx-auto mb-2 h-6 w-6 text-gray-600" />
+                                <p className="text-sm text-gray-500">No runs yet</p>
+                                <p className="text-xs text-gray-600 mt-1">Click "Run Team" to start your first pipeline run.</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Run Team Modal */}
+                    {showRunModal && (
+                        <RunTeamModal
+                            teamId={team.id}
+                            teamName={team.name}
+                            onClose={() => setShowRunModal(false)}
+                            onCreated={(runId) => navigate(`/teams/${team.id}/runs/${runId}`)}
+                        />
                     )}
                 </>
             )}

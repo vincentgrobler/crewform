@@ -16,6 +16,7 @@ import { CreateAgent } from '@/pages/CreateAgent'
 import { AgentDetail } from '@/pages/AgentDetail'
 import { TaskDetail } from '@/pages/TaskDetail'
 import { TeamDetail } from '@/pages/TeamDetail'
+import { TeamRunDetail } from '@/pages/TeamRunDetail'
 
 export function App() {
   return (
@@ -41,6 +42,7 @@ export function App() {
         <Route path="/agents/:id" element={<AgentDetail />} />
         <Route path="/teams" element={<Teams />} />
         <Route path="/teams/:id" element={<TeamDetail />} />
+        <Route path="/teams/:teamId/runs/:runId" element={<TeamRunDetail />} />
         <Route path="/tasks" element={<Tasks />} />
         <Route path="/tasks/:id" element={<TaskDetail />} />
         <Route path="/marketplace" element={<Marketplace />} />
