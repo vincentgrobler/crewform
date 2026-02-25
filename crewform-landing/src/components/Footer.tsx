@@ -29,7 +29,7 @@ export function Footer() {
                     {/* Brand */}
                     <div className="footer-brand">
                         <div className="footer-logo">
-                            <span style={{ fontSize: '1.5rem' }}>⚡</span>
+                            <img src="/crewform-icon.png" alt="CrewForm" style={{ width: '28px', height: '28px' }} />
                             <span style={{ fontWeight: 800, fontSize: '1.25rem' }}>CrewForm</span>
                         </div>
                         <p className="footer-tagline">

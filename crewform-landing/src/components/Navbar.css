@@ -24,8 +24,10 @@
     font-size: 1.25rem;
 }
 
-.logo-icon {
-    font-size: 1.5rem;
+.logo-img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
 }
 
 .navbar-links {

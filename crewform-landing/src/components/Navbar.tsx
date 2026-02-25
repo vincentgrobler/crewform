@@ -5,7 +5,7 @@ export function Navbar() {
         <nav className="navbar">
             <div className="container navbar-inner">
                 <a href="/" className="navbar-logo">
-                    <span className="logo-icon">⚡</span>
+                    <img src="/crewform-icon.png" alt="CrewForm" className="logo-img" />
                     <span className="logo-text">CrewForm</span>
                 </a>
 
