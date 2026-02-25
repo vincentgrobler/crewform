@@ -1,0 +1,61 @@
+.steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 2rem;
+    position: relative;
+}
+
+.step-card {
+    position: relative;
+    text-align: center;
+}
+
+.step-number {
+    font-size: 3rem;
+    font-weight: 900;
+    opacity: 0.3;
+    margin-bottom: 0.5rem;
+}
+
+.step-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+
+.step-description {
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.step-connector {
+    display: none;
+}
+
+.architecture-card {
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.architecture-diagram {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre;
+}
+
+@media (min-width: 768px) {
+    .step-connector {
+        display: block;
+        position: absolute;
+        top: 1.5rem;
+        right: -1rem;
+        width: 2rem;
+        height: 2px;
+        background: linear-gradient(90deg, var(--border), transparent);
+    }
+}

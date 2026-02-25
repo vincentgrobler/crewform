@@ -1,0 +1,116 @@
+.hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding-top: 6rem;
+    overflow: hidden;
+}
+
+.hero-glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+}
+
+.hero-glow-1 {
+    width: 600px;
+    height: 600px;
+    background: rgba(108, 92, 231, 0.15);
+    top: -200px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.hero-glow-2 {
+    width: 400px;
+    height: 400px;
+    background: rgba(34, 211, 238, 0.08);
+    bottom: -100px;
+    right: -100px;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.hero-title {
+    font-size: clamp(3rem, 7vw, 5rem);
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    line-height: 1.1;
+}
+
+.hero-subtitle {
+    font-size: clamp(1rem, 2vw, 1.25rem);
+    color: var(--text-secondary);
+    max-width: 640px;
+    line-height: 1.7;
+}
+
+.hero-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.hero-stats {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    margin-top: 2rem;
+    padding: 1.25rem 2rem;
+    border-radius: 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.hero-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.hero-stat-value {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.hero-stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+.hero-stat-divider {
+    width: 1px;
+    height: 2.5rem;
+    background: var(--border);
+}
+
+@media (max-width: 640px) {
+    .hero-stats {
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .hero-stat-divider {
+        display: none;
+    }
+}
