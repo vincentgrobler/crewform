@@ -1,0 +1,86 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CrewForm — Docker Compose (Self-Hosting)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Usage:
+#   cp .env.example .env   # edit with your values
+#   docker compose up -d
+#
+# Services:
+#   postgres    — PostgreSQL 15 with persistent volume
+#   migrate     — Runs all SQL migrations, then exits
+#   frontend    — Vite build served via nginx (port 3000)
+#   task-runner — Node.js polling service
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-crewform}
+      POSTGRES_USER: ${POSTGRES_USER:-crewform}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crewform}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Migrations ──────────────────────────────────────────────────────────
+  migrate:
+    image: postgres:15-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:-crewform}
+      PGUSER: ${POSTGRES_USER:-crewform}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - ./supabase/migrations:/migrations:ro
+      - ./docker/migrate.sh:/migrate.sh:ro
+    entrypoint: [ "sh", "/migrate.sh" ]
+
+  # ── Frontend ────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-http://localhost:8000}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
+        VITE_APP_URL: ${VITE_APP_URL:-http://localhost:3000}
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # ── Task Runner ─────────────────────────────────────────────────────────
+  task-runner:
+    build:
+      context: ./task-runner
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-http://localhost:8000}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
