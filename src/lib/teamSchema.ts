@@ -26,8 +26,18 @@ export const teamSchema = z.object({
         .string()
         .max(1000, 'Description must be 1,000 characters or less')
         .default(''),
-    mode: z.enum(['pipeline']).default('pipeline'), // Only pipeline for MVP
+    mode: z.enum(['pipeline', 'orchestrator']).default('pipeline'),
+})
+
+export const orchestratorConfigSchema = z.object({
+    brain_agent_id: z.string().min(1, 'Select a brain agent'),
+    worker_agent_ids: z.array(z.string()).min(1, 'Add at least one worker agent'),
+    quality_threshold: z.number().min(0).max(1).default(0.7),
+    routing_strategy: z.string().default('auto'),
+    planner_enabled: z.boolean().default(false),
+    max_delegation_depth: z.number().int().min(1).max(10).default(3),
 })
 
 export type TeamFormData = z.infer<typeof teamSchema>
 export type PipelineStepFormData = z.infer<typeof pipelineStepSchema>
+export type OrchestratorConfigFormData = z.infer<typeof orchestratorConfigSchema>

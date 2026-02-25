@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { processTask } from './executor';
 import { processPipelineRun } from './pipelineExecutor';
+import { processOrchestratorRun } from './orchestratorExecutor';
 import type { Task, TeamRun } from './types';
 
 const POLL_INTERVAL_MS = 5000;
@@ -38,9 +39,25 @@ async function poll() {
             console.error('[TaskRunner] RPC Error claiming team run:', teamRunError.message);
         } else if (teamRunData && teamRunData.length > 0) {
             const claimedRun = teamRunData[0];
-            processPipelineRun(claimedRun).catch((err: unknown) => {
-                console.error(`[TaskRunner] Unhandled outer error processing team run ${claimedRun.id}:`, err);
-            });
+
+            // Determine team mode to route to correct executor
+            const teamResponse = await supabase
+                .from('teams')
+                .select('mode')
+                .eq('id', claimedRun.team_id)
+                .single();
+
+            const teamMode = (teamResponse.data as { mode: string } | null)?.mode ?? 'pipeline';
+
+            if (teamMode === 'orchestrator') {
+                processOrchestratorRun(claimedRun).catch((err: unknown) => {
+                    console.error(`[TaskRunner] Unhandled outer error processing orchestrator run ${claimedRun.id}:`, err);
+                });
+            } else {
+                processPipelineRun(claimedRun).catch((err: unknown) => {
+                    console.error(`[TaskRunner] Unhandled outer error processing team run ${claimedRun.id}:`, err);
+                });
+            }
 
             // If we found a run, poll again immediately
             isPolling = false;
