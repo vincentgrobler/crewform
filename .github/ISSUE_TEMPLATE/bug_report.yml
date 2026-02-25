@@ -1,0 +1,85 @@
+name: 🐛 Bug Report
+description: Report a bug or unexpected behaviour in CrewForm
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the sections below so we can reproduce and fix the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Bug
+      description: A clear and concise description of what the bug is.
+      placeholder: When I click the "Dispatch Task" button, the task doesn't start…
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Step-by-step instructions to reproduce the behaviour.
+      placeholder: |
+        1. Navigate to the Agents page
+        2. Create a new agent with…
+        3. Click "Dispatch Task"
+        4. See error in…
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behaviour
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behaviour
+      description: What actually happened? Include error messages, console logs, or screenshots if possible.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: CrewForm Version
+      description: Which version of CrewForm are you using?
+      placeholder: e.g. 0.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment Type
+      description: How are you running CrewForm?
+      options:
+        - Local development (npm run dev)
+        - Self-hosted (Docker)
+        - Hosted (crewform.tech)
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser & OS
+      description: Which browser and operating system are you using?
+      placeholder: e.g. Chrome 120 on macOS 14.2
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any other context, screenshots, or logs that might help.
+    validations:
+      required: false

@@ -1,0 +1,61 @@
+name: 💡 Feature Request
+description: Suggest a new feature or enhancement for CrewForm
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! We'd love to hear your ideas for making CrewForm better.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Motivation
+      description: What problem does this feature solve? What's the motivation behind it?
+      placeholder: I'm frustrated when I can't…
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the feature or change you'd like to see.
+      placeholder: It would be great if CrewForm could…
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered any alternative solutions or workarounds?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Feature Area
+      description: Which part of CrewForm does this relate to?
+      options:
+        - Agent Management
+        - Task Execution
+        - Team Modes (Pipeline/Orchestrator/Collaboration)
+        - Marketplace
+        - UI/UX
+        - API/Task Runner
+        - Self-Hosting/Deployment
+        - Authentication/Security
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any mockups, screenshots, links, or other context that would help.
+    validations:
+      required: false

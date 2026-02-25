@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discord
+    url: https://discord.gg/crewform
+    about: Join our Discord for general questions, help, and community discussion.
+  - name: 🗣️ GitHub Discussions
+    url: https://github.com/vincentgrobler/crewform/discussions
+    about: Use Discussions for ideas, Q&A, and show-and-tell.
+  - name: 🔒 Security Vulnerability
+    url: https://github.com/vincentgrobler/crewform/security/policy
+    about: Report security vulnerabilities privately — do not use GitHub issues.
