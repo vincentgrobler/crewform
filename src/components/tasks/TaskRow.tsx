@@ -7,19 +7,23 @@ import type { Task, Agent } from '@/types'
 interface TaskRowProps {
     task: Task
     agents: Agent[]
+    onClick?: () => void
 }
 
 /**
  * Table row for the task list.
  * Status · Title · Agent · Priority · Created · Elapsed
  */
-export function TaskRow({ task, agents }: TaskRowProps) {
+export function TaskRow({ task, agents, onClick }: TaskRowProps) {
     const agent = agents.find((a) => a.id === task.assigned_agent_id)
 
     const elapsed = getElapsedText(task)
 
     return (
-        <tr className="border-b border-border-muted transition-colors hover:bg-surface-elevated/50">
+        <tr
+            className="border-b border-border-muted transition-colors hover:bg-surface-elevated/50 cursor-pointer"
+            onClick={onClick}
+        >
             {/* Status */}
             <td className="px-4 py-3">
                 <TaskStatusBadge status={task.status} />
