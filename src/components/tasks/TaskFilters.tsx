@@ -7,6 +7,7 @@ import type { TaskStatus, TaskPriority } from '@/types'
 
 const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
     { value: 'pending', label: 'Pending' },
+    { value: 'dispatched', label: 'Dispatched' },
     { value: 'running', label: 'Running' },
     { value: 'completed', label: 'Completed' },
     { value: 'failed', label: 'Failed' },
@@ -95,8 +96,8 @@ export function TaskFilters({
                         type="button"
                         onClick={() => toggleStatus(value)}
                         className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${statusFilter.includes(value)
-                                ? 'border-brand-primary bg-brand-muted text-brand-primary'
-                                : 'border-border text-gray-500 hover:text-gray-300'
+                            ? 'border-brand-primary bg-brand-muted text-brand-primary'
+                            : 'border-border text-gray-500 hover:text-gray-300'
                             }`}
                     >
                         {label}
@@ -113,8 +114,8 @@ export function TaskFilters({
                         type="button"
                         onClick={() => togglePriority(value)}
                         className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${priorityFilter.includes(value)
-                                ? 'border-brand-primary bg-brand-muted text-brand-primary'
-                                : 'border-border text-gray-500 hover:text-gray-300'
+                            ? 'border-brand-primary bg-brand-muted text-brand-primary'
+                            : 'border-border text-gray-500 hover:text-gray-300'
                             }`}
                     >
                         {label}
