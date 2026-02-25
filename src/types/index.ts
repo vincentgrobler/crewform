@@ -55,6 +55,7 @@ export interface Agent {
   description: string
   avatar_url: string | null
   model: string
+  provider: string | null
   system_prompt: string
   temperature: number
   tools: string[]
@@ -63,6 +64,11 @@ export interface Agent {
   output_template_id: string | null
   status: AgentStatus
   config: Record<string, unknown>
+  // Marketplace fields
+  is_published: boolean
+  marketplace_tags: string[]
+  install_count: number
+  rating_avg: number
   created_at: string
   updated_at: string
 }
@@ -338,7 +344,32 @@ export interface AuditLog {
 
 export type ProviderBillingModel = 'per-token' | 'subscription-quota' | 'unknown'
 
-// ─── Database row types (for Supabase typed client) ──────────────────────────
+// ─── Agent Install ───────────────────────────────────────────────────────────────────
+
+export interface AgentInstall {
+  id: string
+  agent_id: string
+  workspace_id: string
+  installed_by: string | null
+  source_workspace_id: string | null
+  cloned_agent_id: string | null
+  installed_at: string
+}
+
+// ─── Agent Review ────────────────────────────────────────────────────────────────────
+
+export interface AgentReview {
+  id: string
+  agent_id: string
+  workspace_id: string
+  user_id: string
+  rating: number
+  review_text: string
+  created_at: string
+  updated_at: string
+}
+
+// ─── Database row types (for Supabase typed client) ──────────────────────
 
 export type WorkspaceRow = Workspace
 export type WorkspaceMemberRow = WorkspaceMember
@@ -357,3 +388,5 @@ export type VoiceProfileRow = VoiceProfile
 export type OutputTemplateRow = OutputTemplate
 export type UsageRecordRow = UsageRecord
 export type AuditLogRow = AuditLog
+export type AgentInstallRow = AgentInstall
+export type AgentReviewRow = AgentReview
