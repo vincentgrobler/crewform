@@ -17,6 +17,7 @@ import { AgentDetail } from '@/pages/AgentDetail'
 import { TaskDetail } from '@/pages/TaskDetail'
 import { TeamDetail } from '@/pages/TeamDetail'
 import { TeamRunDetail } from '@/pages/TeamRunDetail'
+import { Analytics } from '@/pages/Analytics'
 
 export function App() {
   return (
@@ -46,6 +47,7 @@ export function App() {
         <Route path="/tasks" element={<Tasks />} />
         <Route path="/tasks/:id" element={<TaskDetail />} />
         <Route path="/marketplace" element={<Marketplace />} />
+        <Route path="/analytics" element={<Analytics />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
     </Routes>
