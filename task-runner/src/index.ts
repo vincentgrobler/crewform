@@ -18,17 +18,17 @@ async function poll() {
         if (error) {
             console.error('[TaskRunner] RPC Error claiming task:', error.message);
         } else if (data && data.length > 0) {
-            const claimedTask = data[0] as Task;
+            const claimedTask = data[0];
             // Note: We don't await processTask here! 
             // We fire and forget so the polling loop can continue to pick up other tasks
             // up to any concurrency limits we might set.
-            processTask(claimedTask).catch(err => {
+            processTask(claimedTask).catch((err: unknown) => {
                 console.error(`[TaskRunner] Unhandled outer error processing task ${claimedTask.id}:`, err);
             });
 
             // If we found a task, poll again immediately without waiting
             isPolling = false;
-            return poll();
+            return await poll();
         }
     } catch (err: unknown) {
         const errMsg = err instanceof Error ? err.message : String(err);
@@ -42,10 +42,10 @@ console.log('[TaskRunner] Starting the Task Runner polling daemon...');
 console.log(`[TaskRunner] Polling every ${POLL_INTERVAL_MS}ms for new tasks.`);
 
 // Start the polling interval
-setInterval(poll, POLL_INTERVAL_MS);
+setInterval(() => { void poll(); }, POLL_INTERVAL_MS);
 
 // Initial poll
-poll();
+void poll();
 
 // Keep process alive
 process.on('SIGINT', () => {

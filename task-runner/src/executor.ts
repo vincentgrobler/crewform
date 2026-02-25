@@ -34,20 +34,20 @@ export async function processTask(task: Task) {
             .from('api_keys')
             .select('*')
             .eq('workspace_id', task.workspace_id)
-            .eq('provider', (agent as Agent).provider)
+            .eq('provider', agent.provider)
             .single();
 
         const apiKeyData = apiKeyResponse.data as ApiKey | null;
         const keyError = apiKeyResponse.error;
 
         if (keyError || !apiKeyData) {
-            throw new Error(`Failed to load API key for provider ${(agent as Agent).provider}. Please configure it in Settings.`);
+            throw new Error(`Failed to load API key for provider ${agent.provider}. Please configure it in Settings.`);
         }
 
-        const rawKey = decryptApiKey((apiKeyData as ApiKey).encrypted_key);
+        const rawKey = decryptApiKey(apiKeyData.encrypted_key);
 
         // 3. Prepare Prompt
-        const systemPrompt = (agent as Agent).system_prompt || 'You are a helpful AI assistant.';
+        const systemPrompt = agent.system_prompt || 'You are a helpful AI assistant.';
         const userPrompt = `Task Title: ${task.title}\n\nTask Description:\n${task.description}`;
 
         // Throttle DB updates to avoid rate limits (every ~500ms at most)
@@ -65,14 +65,14 @@ export async function processTask(task: Task) {
 
         // 4. Execute LLM
         let executionResult;
-        const provider = (agent as Agent).provider.toLowerCase();
+        const provider = agent.provider.toLowerCase();
 
         if (provider === 'anthropic') {
-            executionResult = await executeAnthropic(rawKey, (agent as Agent).model, systemPrompt, userPrompt, updateResultStream);
+            executionResult = await executeAnthropic(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream);
         } else if (provider === 'openai') {
-            executionResult = await executeOpenAI(rawKey, (agent as Agent).model, systemPrompt, userPrompt, updateResultStream);
+            executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream);
         } else if (provider === 'google') {
-            executionResult = await executeGoogle(rawKey, (agent as Agent).model, systemPrompt, userPrompt, updateResultStream);
+            executionResult = await executeGoogle(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream);
         } else {
             throw new Error(`Execution for provider ${provider} is not yet supported in the standalone runner.`);
         }

@@ -27,7 +27,7 @@ export async function executeAnthropic(
         } else if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
             fullText += chunk.delta.text;
             await onChunk(fullText);
-        } else if (chunk.type === 'message_delta' && chunk.usage) {
+        } else if (chunk.type === 'message_delta') {
             completionTokens = chunk.usage.output_tokens;
         }
     }
