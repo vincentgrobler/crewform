@@ -15,7 +15,7 @@ on:
 jobs:
   # ── Frontend: Build, Lint, Test ─────────────────────────────────────────
   build-and-test:
-    name: Frontend — Build, Lint & Test
+    name: Build, Lint & Test
     runs-on: ubuntu-latest
 
     steps:
