@@ -20,5 +20,17 @@ export default defineConfig({
   build: {
     sourcemap: true,
     target: 'es2022',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Heavy charting library — only loaded on Analytics/Dashboard
+          recharts: ['recharts'],
+          // React core — stable, cached long-term
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          // Supabase client
+          supabase: ['@supabase/supabase-js'],
+        },
+      },
+    },
   },
 })
