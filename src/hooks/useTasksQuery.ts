@@ -14,6 +14,7 @@ export function useTasksQuery(workspaceId: string | null, filters?: TaskFilters)
         data: tasks,
         isLoading,
         error,
+        refetch,
     } = useQuery<Task[]>({
         queryKey: ['tasks', workspaceId, filters],
         queryFn: () => fetchTasks(workspaceId ?? '', filters),
@@ -21,5 +22,5 @@ export function useTasksQuery(workspaceId: string | null, filters?: TaskFilters)
         staleTime: 15 * 1000, // 15 seconds — tasks change frequently
     })
 
-    return { tasks: tasks ?? [], isLoading, error }
+    return { tasks: tasks ?? [], isLoading, error, refetch }
 }

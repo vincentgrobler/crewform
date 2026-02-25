@@ -10,6 +10,7 @@ import { useInstallAgent } from '@/hooks/useInstallAgent'
 import { MarketplaceFilters } from '@/components/marketplace/MarketplaceFilters'
 import { AgentCard } from '@/components/marketplace/AgentCard'
 import { AgentDetailModal } from '@/components/marketplace/AgentDetailModal'
+import { ErrorState } from '@/components/shared/ErrorState'
 import type { MarketplaceSortOption } from '@/db/marketplace'
 import type { Agent } from '@/types'
 
@@ -27,7 +28,7 @@ export function Marketplace() {
   // ─── Data ────────────────────────────────────────────────────────────────
   const { workspaceId } = useWorkspace()
   const { user } = useAuth()
-  const { agents, isLoading } = useMarketplaceAgents({
+  const { agents, isLoading, error, refetch } = useMarketplaceAgents({
     search: deferredSearch,
     tags: selectedTags.length > 0 ? selectedTags : undefined,
     sort,
@@ -88,7 +89,12 @@ export function Marketplace() {
       </div>
 
       {/* Agent Grid */}
-      {isLoading ? (
+      {error ? (
+        <ErrorState
+          message={error instanceof Error ? error.message : 'Failed to load marketplace'}
+          onRetry={() => void refetch()}
+        />
+      ) : isLoading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
         </div>
@@ -130,8 +136,8 @@ export function Marketplace() {
       {/* Toast notification */}
       {toast && (
         <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium shadow-lg transition-all ${toast.type === 'success'
-            ? 'bg-green-500/10 border border-green-500/30 text-green-400'
-            : 'bg-red-500/10 border border-red-500/30 text-red-400'
+          ? 'bg-green-500/10 border border-green-500/30 text-green-400'
+          : 'bg-red-500/10 border border-red-500/30 text-red-400'
           }`}>
           {toast.type === 'success'
             ? <CheckCircle2 className="h-4 w-4" />

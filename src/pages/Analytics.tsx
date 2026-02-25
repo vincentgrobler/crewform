@@ -18,6 +18,7 @@ import { StatusDonutChart } from '@/components/analytics/StatusDonutChart'
 import { TopModelsChart } from '@/components/analytics/TopModelsChart'
 import { UsageSummaryCards } from '@/components/analytics/UsageSummaryCards'
 import { useUsageSummary } from '@/hooks/useUsage'
+import { ErrorState } from '@/components/shared/ErrorState'
 
 /**
  * Analytics page — 4 Recharts visualizations with date range picker.
@@ -26,7 +27,7 @@ export function Analytics() {
     const { workspaceId } = useWorkspace()
     const [range, setRange] = useState<DateRange>(DATE_PRESETS[1]) // Default: Last 30 days
 
-    const { data: completionData, isLoading: isLoadingCompletion } = useCompletionOverTime(
+    const { data: completionData, isLoading: isLoadingCompletion, error: completionError } = useCompletionOverTime(
         workspaceId, range.startDate, range.endDate,
     )
     const { data: costData, isLoading: isLoadingCost } = useCostByAgent(
@@ -42,6 +43,8 @@ export function Analytics() {
         workspaceId, range.startDate, range.endDate,
     )
 
+    const anyError = completionError
+
     return (
         <div className="p-6 lg:p-8">
             {/* Header */}
@@ -52,6 +55,15 @@ export function Analytics() {
                 </div>
                 <DateRangePicker activeLabel={range.label} onChange={setRange} />
             </div>
+
+            {/* Error state */}
+            {anyError && (
+                <div className="mb-6">
+                    <ErrorState
+                        message={anyError instanceof Error ? anyError.message : 'Failed to load analytics data'}
+                    />
+                </div>
+            )}
 
             {/* Usage Summary Cards */}
             <div className="mb-6">

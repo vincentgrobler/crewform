@@ -8,10 +8,11 @@ import { useTeams } from '@/hooks/useTeams'
 import { TeamCard } from '@/components/teams/TeamCard'
 import { CreateTeamModal } from '@/components/teams/CreateTeamModal'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ErrorState } from '@/components/shared/ErrorState'
 
 export function Teams() {
   const { workspaceId } = useWorkspace()
-  const { teams, isLoading } = useTeams(workspaceId)
+  const { teams, isLoading, error, refetch } = useTeams(workspaceId)
   const [showCreateModal, setShowCreateModal] = useState(false)
 
   return (
@@ -47,7 +48,14 @@ export function Teams() {
       )}
 
       {/* Team grid */}
-      {!isLoading && teams.length > 0 && (
+      {!isLoading && error && (
+        <ErrorState
+          message={error instanceof Error ? error.message : 'Failed to load teams'}
+          onRetry={() => void refetch()}
+        />
+      )}
+
+      {!isLoading && !error && teams.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {teams.map((team) => (
             <TeamCard key={team.id} team={team} />
