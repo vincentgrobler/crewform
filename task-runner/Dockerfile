@@ -1,18 +1,21 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CrewForm Task Runner — Dockerfile
+# ─────────────────────────────────────────────────────────────────────────────
+
 FROM node:20-alpine
 
 WORKDIR /usr/src/app
 
-# Copy package files
+# Copy package files and install dependencies
 COPY package*.json ./
-
-# Install dependencies (including devDependencies for tsx)
-RUN npm install
+RUN npm ci --include=dev
 
 # Copy source code
 COPY tsconfig.json .
 COPY src ./src
 
-# The Task Runner does not require a build step because we run it directly with tsx
-# (Alternative: compile using tsc and run node dist/index.js)
+# Health check — verify the process is running
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD pgrep -f "tsx" > /dev/null || exit 1
 
 CMD ["npx", "tsx", "src/index.ts"]
