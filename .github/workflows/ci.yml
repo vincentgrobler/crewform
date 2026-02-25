@@ -51,7 +51,7 @@ jobs:
 
       - name: Block sensitive documents
         run: |
-          BLOCKED_PATTERNS="ROADMAP\.md|SECURITY\.md|MONETIZATION\.md|FUNCTIONAL_REQ|THREAT_MODEL|PROJECT_SCOPE|TECHNICAL_CONSTRAINTS|DOC_SPLIT"
+          BLOCKED_PATTERNS="ROADMAP\.md|MONETIZATION\.md|FUNCTIONAL_REQ|THREAT_MODEL|PROJECT_SCOPE|TECHNICAL_CONSTRAINTS|DOC_SPLIT"
           FOUND=$(find . -type f -name "*.md" | grep -iE "$BLOCKED_PATTERNS" | grep -v node_modules | grep -v CHANGELOG || true)
           if [ -n "$FOUND" ]; then
             echo "❌ Sensitive document(s) detected in public repo!"
