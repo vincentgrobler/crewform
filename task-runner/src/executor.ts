@@ -14,23 +14,31 @@ export async function processTask(task: Task) {
         }
 
         // 1. Fetch Agent
-        const { data: agent, error: agentError } = await supabase
+        // 1. Fetch Agent
+        const agentResponse = await supabase
             .from('agents')
             .select('*')
             .eq('id', task.assigned_agent_id)
             .single();
+
+        const agent = agentResponse.data as Agent | null;
+        const agentError = agentResponse.error;
 
         if (agentError || !agent) {
             throw new Error(`Failed to load agent: ${agentError?.message}`);
         }
 
         // 2. Fetch API Key for Agent's provider
-        const { data: apiKeyData, error: keyError } = await supabase
+        // 2. Fetch API Key for Agent's provider
+        const apiKeyResponse = await supabase
             .from('api_keys')
             .select('*')
             .eq('workspace_id', task.workspace_id)
             .eq('provider', (agent as Agent).provider)
             .single();
+
+        const apiKeyData = apiKeyResponse.data as ApiKey | null;
+        const keyError = apiKeyResponse.error;
 
         if (keyError || !apiKeyData) {
             throw new Error(`Failed to load API key for provider ${(agent as Agent).provider}. Please configure it in Settings.`);

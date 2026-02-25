@@ -11,7 +11,9 @@ async function poll() {
 
     try {
         // Call the RPC to atomically claim ONE pending task
-        const { data, error } = await supabase.rpc('claim_next_task');
+        const rpcResponse = await supabase.rpc('claim_next_task');
+        const data = rpcResponse.data as Task[] | null;
+        const error = rpcResponse.error;
 
         if (error) {
             console.error('[TaskRunner] RPC Error claiming task:', error.message);
