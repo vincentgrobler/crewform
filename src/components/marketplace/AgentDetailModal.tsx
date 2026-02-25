@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 CrewForm
 
-import { X, Star, Download, Bot, Cpu, Tag, FileText } from 'lucide-react'
+import { X, Star, Download, Bot, Cpu, Tag, FileText, Lock } from 'lucide-react'
 import type { Agent } from '@/types'
 
 interface AgentDetailModalProps {
@@ -80,9 +80,19 @@ export function AgentDetailModal({ agent, onClose, onInstall, isInstalling }: Ag
                             <Bot className="h-4 w-4" />
                             System Prompt
                         </h3>
-                        <div className="rounded-lg bg-surface-overlay p-4 text-sm leading-relaxed text-gray-300 font-mono">
-                            {agent.system_prompt}
-                        </div>
+                        {agent.price_cents && agent.price_cents > 0 ? (
+                            <div className="rounded-lg border border-dashed border-surface-border bg-surface-overlay p-6 text-center">
+                                <Lock className="mx-auto mb-2 h-6 w-6 text-gray-500" />
+                                <p className="text-sm font-medium text-gray-300">Prompt Hidden</p>
+                                <p className="mt-1 text-xs text-gray-500">
+                                    Purchase this agent to view its system prompt
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="rounded-lg bg-surface-overlay p-4 text-sm leading-relaxed text-gray-300 font-mono">
+                                {agent.system_prompt}
+                            </div>
+                        )}
                     </section>
 
                     {/* Tags */}

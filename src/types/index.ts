@@ -69,6 +69,7 @@ export interface Agent {
   marketplace_tags: string[]
   install_count: number
   rating_avg: number
+  price_cents: number | null // null or 0 = free, >0 = paid (USD cents)
   created_at: string
   updated_at: string
 }
