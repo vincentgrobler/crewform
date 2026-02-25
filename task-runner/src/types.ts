@@ -59,6 +59,7 @@ export interface TeamRun {
     started_at: string | null;
     completed_at: string | null;
     error_message: string | null;
+    delegation_depth: number;
     created_by: string;
     created_at: string;
     updated_at: string;
@@ -78,9 +79,18 @@ export interface PipelineConfig {
     auto_handoff: boolean;
 }
 
+export interface OrchestratorConfig {
+    brain_agent_id: string;
+    worker_agent_ids: string[];
+    quality_threshold: number;
+    routing_strategy: string;
+    planner_enabled: boolean;
+    max_delegation_depth: number;
+}
+
 export interface TeamConfig {
     mode: 'pipeline' | 'orchestrator' | 'collaboration';
-    config: PipelineConfig;
+    config: PipelineConfig | OrchestratorConfig;
 }
 
 export interface TeamHandoffContext {
@@ -89,4 +99,28 @@ export interface TeamHandoffContext {
     step_index: number;
     step_name: string;
     accumulated_outputs: string[];
+}
+
+// ─── Orchestrator Types ──────────────────────────────────────────────────────
+
+export type DelegationStatus = 'pending' | 'running' | 'completed' | 'revision_requested' | 'failed';
+
+export interface Delegation {
+    id: string;
+    team_run_id: string;
+    worker_agent_id: string;
+    instruction: string;
+    worker_output: string | null;
+    status: DelegationStatus;
+    revision_count: number;
+    revision_feedback: string | null;
+    quality_score: number | null;
+    parent_delegation_id: string | null;
+    created_at: string;
+    completed_at: string | null;
+}
+
+export interface OrchestratorToolCall {
+    name: 'delegate_to_worker' | 'request_revision' | 'accept_result' | 'final_answer';
+    arguments: Record<string, unknown>;
 }
