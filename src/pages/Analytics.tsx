@@ -16,6 +16,8 @@ import { CompletionChart } from '@/components/analytics/CompletionChart'
 import { CostByAgentChart } from '@/components/analytics/CostByAgentChart'
 import { StatusDonutChart } from '@/components/analytics/StatusDonutChart'
 import { TopModelsChart } from '@/components/analytics/TopModelsChart'
+import { UsageSummaryCards } from '@/components/analytics/UsageSummaryCards'
+import { useUsageSummary } from '@/hooks/useUsage'
 
 /**
  * Analytics page — 4 Recharts visualizations with date range picker.
@@ -36,6 +38,9 @@ export function Analytics() {
     const { data: modelData, isLoading: isLoadingModels } = useTopModels(
         workspaceId, range.startDate, range.endDate,
     )
+    const { summary, isLoading: isLoadingUsage } = useUsageSummary(
+        workspaceId, range.startDate, range.endDate,
+    )
 
     return (
         <div className="p-6 lg:p-8">
@@ -46,6 +51,14 @@ export function Analytics() {
                     <h1 className="text-2xl font-semibold text-gray-100">Analytics</h1>
                 </div>
                 <DateRangePicker activeLabel={range.label} onChange={setRange} />
+            </div>
+
+            {/* Usage Summary Cards */}
+            <div className="mb-6">
+                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
+                    Usage Summary
+                </h2>
+                <UsageSummaryCards summary={summary} isLoading={isLoadingUsage} />
             </div>
 
             {/* Charts grid — 2×2 */}

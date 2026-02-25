@@ -3,6 +3,7 @@ import { executeAnthropic } from './providers/anthropic';
 import { executeOpenAI } from './providers/openai';
 import { executeGoogle } from './providers/google';
 import { decryptApiKey } from './crypto';
+import { writeTeamRunUsageRecord } from './usageWriter';
 import type { TeamRun, Agent, ApiKey, PipelineConfig, PipelineStep, TeamHandoffContext, TokenUsage } from './types';
 
 /**
@@ -67,6 +68,19 @@ export async function processPipelineRun(run: TeamRun): Promise<void> {
                 previousOutput = stepOutput.output;
                 totalTokens += stepOutput.usage.totalTokens;
                 totalCost += stepOutput.usage.costEstimateUSD;
+
+                // Write usage record for this step
+                await writeTeamRunUsageRecord({
+                    workspaceId: run.workspace_id,
+                    teamRunId: run.id,
+                    agentId: step.agent_id,
+                    provider: stepOutput.agentProvider,
+                    model: stepOutput.agentModel,
+                    stepIndex: i,
+                    stepName: step.step_name,
+                    tokensUsed: stepOutput.usage.totalTokens,
+                    costEstimateUsd: stepOutput.usage.costEstimateUSD,
+                });
             }
 
             // Update run totals progressively
@@ -127,6 +141,8 @@ interface StepInput {
 interface StepResult {
     output: string;
     usage: TokenUsage;
+    agentProvider: string;
+    agentModel: string;
 }
 
 async function executeStep(input: StepInput): Promise<StepResult | null> {
@@ -243,6 +259,8 @@ async function executeStep(input: StepInput): Promise<StepResult | null> {
             return {
                 output: executionResult.result,
                 usage: executionResult.usage,
+                agentProvider: agent.provider,
+                agentModel: agent.model,
             };
 
         } catch (error: unknown) {

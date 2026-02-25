@@ -3,6 +3,7 @@ import { executeAnthropic } from './providers/anthropic';
 import { executeOpenAI } from './providers/openai';
 import { executeGoogle } from './providers/google';
 import { decryptApiKey } from './crypto';
+import { writeTaskUsageRecord } from './usageWriter';
 import type { Task, Agent, ApiKey } from './types';
 
 interface AgentTaskRecord {
@@ -127,6 +128,17 @@ export async function processTask(task: Task) {
                 })
                 .eq('id', agentTaskId);
         }
+
+        // 7. Write usage record
+        await writeTaskUsageRecord({
+            workspaceId: task.workspace_id,
+            taskId: task.id,
+            agentId: agent.id,
+            provider: agent.provider,
+            model: agent.model,
+            tokensUsed: executionResult.usage.totalTokens,
+            costEstimateUsd: executionResult.usage.costEstimateUSD,
+        });
 
         console.log(`[TaskRunner] Completed task ${task.id} successfully.`);
 
