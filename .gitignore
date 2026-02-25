@@ -10,6 +10,13 @@ dist-ssr
 # Environment
 .env
 .env.local
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+e2e/.auth/
 .env.development.local
 .env.test.local
 .env.production.local
