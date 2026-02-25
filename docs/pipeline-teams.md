@@ -1,0 +1,114 @@
+# Pipeline Teams Guide
+
+Pipeline teams let you chain multiple agents together, where each agent's output feeds into the next. This is ideal for multi-step workflows like research → analysis → report generation.
+
+## How Pipelines Work
+
+```
+Input → Agent A → Agent B → Agent C → Final Output
+         (step 1)   (step 2)   (step 3)
+```
+
+Each step receives:
+- The **original task input**
+- The **previous step's output** (if not the first step)
+- Its own **step instructions** and **expected output format**
+
+## Creating a Pipeline Team
+
+1. Navigate to **Teams → New Team**
+2. Give it a name and description
+3. Select **Pipeline** as the team mode
+4. Add steps in order — each step maps to an agent
+
+### Step Configuration
+
+| Field | Description |
+|-------|-------------|
+| **Agent** | Which agent executes this step |
+| **Step Name** | Label for this step (e.g., "Research") |
+| **Instructions** | What this specific step should do |
+| **Expected Output** | Format the agent should respond in |
+| **On Failure** | `retry` (up to max), `stop` (halt pipeline), or `skip` |
+| **Max Retries** | How many times to retry on failure (0–5) |
+
+## Example: Content Pipeline
+
+A three-step pipeline for generating blog posts:
+
+### Step 1: Research Agent
+- **Agent**: Research Specialist (Claude Sonnet)
+- **Instructions**: "Research the given topic. Find 5 key facts, statistics, and expert quotes."
+- **Expected Output**: "Bullet-point list of findings with sources"
+- **On Failure**: retry (max 2)
+
+### Step 2: Writer Agent
+- **Agent**: Content Writer (GPT-4o)
+- **Instructions**: "Using the research provided, write a 1000-word blog post. Use an engaging, professional tone."
+- **Expected Output**: "Markdown-formatted blog post with headers"
+- **On Failure**: retry (max 1)
+
+### Step 3: Editor Agent
+- **Agent**: Copy Editor (Claude Haiku)
+- **Instructions**: "Review and polish the blog post. Fix grammar, improve flow, ensure factual accuracy against the research."
+- **Expected Output**: "Final polished blog post in Markdown"
+- **On Failure**: stop
+
+## Running a Pipeline
+
+1. Go to the team detail page
+2. Click **Run Pipeline**
+3. Enter the task input (e.g., "Write a blog post about AI in healthcare")
+4. Watch each step execute in real-time
+
+The run detail page shows:
+- Overall pipeline status
+- Per-step status and output
+- Token usage per step
+- Total execution time
+
+## Pipeline Context
+
+Each step automatically receives context about its position:
+
+```
+## Task
+[Original input from the user]
+
+## Previous Step Output
+[Output from the previous step]
+
+## Your Instructions
+[Step-specific instructions]
+
+## Expected Output Format
+[What format to respond in]
+
+## Pipeline Context
+This is step 3 in a multi-step pipeline. 2 previous steps have completed.
+```
+
+## Failure Handling
+
+| Strategy | Behavior |
+|----------|----------|
+| **Retry** | Re-runs the step (up to max retries). Useful for transient API errors. |
+| **Stop** | Halts the entire pipeline. The run is marked as failed. |
+| **Skip** | Marks the step as skipped and continues to the next step. The next step won't receive output from the skipped step. |
+
+## Best Practices
+
+1. **Start simple** — Begin with 2-3 steps and add complexity gradually
+2. **Specialized agents** — Each agent should do one thing well
+3. **Clear handoffs** — Define expected output format so the next step knows what to expect
+4. **Use retry for API steps** — LLM APIs can have transient failures
+5. **Use stop for critical steps** — If step 1 fails, there's no point running step 2
+6. **Monitor costs** — Each step uses tokens; longer pipelines cost more
+
+## Monitoring
+
+View pipeline metrics on the **Analytics** page:
+- Total tasks completed per team
+- Average execution time
+- Token usage breakdown by step
+- Cost per pipeline run
