@@ -5,7 +5,15 @@ import { executeGoogle } from './providers/google';
 import { decryptApiKey } from './crypto';
 import type { Task, Agent, ApiKey } from './types';
 
+interface AgentTaskRecord {
+    id: string;
+    status: string;
+}
+
 export async function processTask(task: Task) {
+    // Find the auto-created agent_tasks record (created by DB trigger on dispatch)
+    let agentTaskId: string | null = null;
+
     try {
         console.log(`[TaskRunner] Claimed task ${task.id} (Agent: ${task.assigned_agent_id})`);
 
@@ -13,7 +21,26 @@ export async function processTask(task: Task) {
             throw new Error('Task has no assigned agent.');
         }
 
-        // 1. Fetch Agent
+        // 0. Fetch the auto-dispatched agent_tasks record
+        const agentTaskResponse = await supabase
+            .from('agent_tasks')
+            .select('id, status')
+            .eq('task_id', task.id)
+            .eq('agent_id', task.assigned_agent_id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        const agentTask = agentTaskResponse.data as AgentTaskRecord | null;
+        if (agentTask) {
+            agentTaskId = agentTask.id;
+            // Mark agent_task as running
+            await supabase
+                .from('agent_tasks')
+                .update({ status: 'running', started_at: new Date().toISOString() })
+                .eq('id', agentTaskId);
+        }
+
         // 1. Fetch Agent
         const agentResponse = await supabase
             .from('agents')
@@ -28,7 +55,6 @@ export async function processTask(task: Task) {
             throw new Error(`Failed to load agent: ${agentError?.message}`);
         }
 
-        // 2. Fetch API Key for Agent's provider
         // 2. Fetch API Key for Agent's provider
         const apiKeyResponse = await supabase
             .from('api_keys')
@@ -87,6 +113,21 @@ export async function processTask(task: Task) {
             })
             .eq('id', task.id);
 
+        // 6. Finalize agent_task success
+        if (agentTaskId) {
+            await supabase
+                .from('agent_tasks')
+                .update({
+                    status: 'completed',
+                    result: { output: executionResult.result },
+                    model_used: agent.model,
+                    tokens_used: executionResult.usage.totalTokens,
+                    cost_estimate_usd: executionResult.usage.costEstimateUSD,
+                    completed_at: new Date().toISOString(),
+                })
+                .eq('id', agentTaskId);
+        }
+
         console.log(`[TaskRunner] Completed task ${task.id} successfully.`);
 
     } catch (error: unknown) {
@@ -101,5 +142,17 @@ export async function processTask(task: Task) {
                 error: errMsg,
             })
             .eq('id', task.id);
+
+        // Finalize agent_task failure
+        if (agentTaskId) {
+            await supabase
+                .from('agent_tasks')
+                .update({
+                    status: 'failed',
+                    error_message: errMsg,
+                    completed_at: new Date().toISOString(),
+                })
+                .eq('id', agentTaskId);
+        }
     }
 }

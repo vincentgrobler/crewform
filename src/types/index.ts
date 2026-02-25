@@ -191,7 +191,7 @@ export interface Task {
   updated_at: string
 }
 
-export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+export type TaskStatus = 'pending' | 'dispatched' | 'running' | 'completed' | 'failed' | 'cancelled'
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
 
 // ─── Agent Task (execution record) ───────────────────────────────────────────
