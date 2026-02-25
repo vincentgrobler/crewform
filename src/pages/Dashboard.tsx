@@ -15,6 +15,7 @@ import { StatCard } from '@/components/dashboard/StatCard'
 import { AgentPerformanceGrid } from '@/components/dashboard/AgentPerformanceGrid'
 import { ActivityTimeline } from '@/components/dashboard/ActivityTimeline'
 import { QuickActions } from '@/components/dashboard/QuickActions'
+import { ErrorState } from '@/components/shared/ErrorState'
 
 /**
  * Dashboard page — stat cards, agent performance grid, activity timeline, quick actions.
@@ -22,7 +23,7 @@ import { QuickActions } from '@/components/dashboard/QuickActions'
  */
 export function Dashboard() {
   const { workspaceId } = useWorkspace()
-  const { stats, isLoading: isLoadingStats } = useDashboardStats(workspaceId)
+  const { stats, isLoading: isLoadingStats, error: statsError } = useDashboardStats(workspaceId)
   const { agents, isLoading: isLoadingAgents } = useAgentPerformance(workspaceId)
   const { activity, isLoading: isLoadingActivity } = useRecentActivity(workspaceId)
 
@@ -42,6 +43,15 @@ export function Dashboard() {
         </div>
         <p className="text-sm text-gray-500">{today}</p>
       </div>
+
+      {/* Error state */}
+      {statsError && (
+        <div className="mb-8">
+          <ErrorState
+            message={statsError instanceof Error ? statsError.message : 'Failed to load dashboard data'}
+          />
+        </div>
+      )}
 
       {/* Stat cards */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

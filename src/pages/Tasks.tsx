@@ -11,6 +11,7 @@ import { TaskFilters } from '@/components/tasks/TaskFilters'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ErrorState } from '@/components/shared/ErrorState'
 import type { TaskStatus, TaskPriority } from '@/types'
 
 export function Tasks() {
@@ -32,7 +33,7 @@ export function Tasks() {
     search: search || undefined,
   }
 
-  const { tasks, isLoading } = useTasksQuery(workspaceId, filters)
+  const { tasks, isLoading, error, refetch } = useTasksQuery(workspaceId, filters)
 
   const hasFilters = search || statusFilter.length > 0 || priorityFilter.length > 0 || agentFilter
 
@@ -74,15 +75,22 @@ export function Tasks() {
 
       {/* Loading */}
       {isLoading && (
-        <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-14 w-full rounded-lg" />
+        <div className="space-y-3">
+          {[...Array(5) as undefined[]].map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full rounded-lg" />
           ))}
         </div>
       )}
 
+      {!isLoading && error && (
+        <ErrorState
+          message={error instanceof Error ? error.message : 'Failed to load tasks'}
+          onRetry={() => void refetch()}
+        />
+      )}
+
       {/* Table */}
-      {!isLoading && tasks.length > 0 && (
+      {!isLoading && !error && tasks.length > 0 && (
         <div className="overflow-x-auto rounded-lg border border-border bg-surface-card">
           <table className="w-full">
             <thead>
