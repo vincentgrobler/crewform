@@ -21,6 +21,7 @@
 - [Why CrewForm?](#why-crewform)
 - [Key Features](#key-features)
 - [Quick Start](#quick-start)
+- [Documentation](#documentation)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
 - [How CrewForm Compares](#how-crewform-compares)
@@ -71,7 +72,17 @@ cp .env.example .env.local
 npm run dev
 ```
 
-> **Self-hosting?** See our [Docker deployment guide](https://docs.crewform.tech/self-hosting) for production setup.
+> **Self-hosting?** See the [Docker deployment guide](docs/self-hosting.md) for production setup.
+
+## Documentation
+
+| Guide | Description |
+|-------|-------------|
+| [Quick Start](docs/quickstart.md) | Get running in under 5 minutes |
+| [Agents Guide](docs/agents.md) | Models, system prompts, and agent lifecycle |
+| [Pipeline Teams](docs/pipeline-teams.md) | Multi-agent workflows and handoffs |
+| [API Reference](docs/api-reference.md) | REST API endpoints and authentication |
+| [Self-Hosting](docs/self-hosting.md) | Docker Compose production deployment |
 
 ## Architecture
 
