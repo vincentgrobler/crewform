@@ -9,6 +9,7 @@ import {
   Users,
   ListTodo,
   Store,
+  BarChart3,
   Settings,
   LogOut,
   X,
@@ -26,6 +27,7 @@ const navItems = [
   { to: '/teams', icon: Users, label: 'Teams' },
   { to: '/tasks', icon: ListTodo, label: 'Tasks' },
   { to: '/marketplace', icon: Store, label: 'Marketplace' },
+  { to: '/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ] as const
 
