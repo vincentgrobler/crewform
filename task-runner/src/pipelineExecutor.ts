@@ -1,0 +1,325 @@
+import { supabase } from './supabase';
+import { executeAnthropic } from './providers/anthropic';
+import { executeOpenAI } from './providers/openai';
+import { executeGoogle } from './providers/google';
+import { decryptApiKey } from './crypto';
+import type { TeamRun, Agent, ApiKey, PipelineConfig, PipelineStep, TeamHandoffContext, TokenUsage } from './types';
+
+/**
+ * PipelineExecutor — processes a team run by executing pipeline steps sequentially.
+ *
+ * For each step:
+ * 1. Update current_step_idx on the run
+ * 2. Build handoff context from previous output
+ * 3. Record handoff + delegation message
+ * 4. Execute LLM call
+ * 5. Record result message
+ * 6. Handle failures (retry / stop / skip)
+ */
+export async function processPipelineRun(run: TeamRun): Promise<void> {
+    let totalTokens = 0;
+    let totalCost = 0;
+
+    try {
+        console.log(`[PipelineExecutor] Starting run ${run.id} for team ${run.team_id}`);
+
+        // 1. Fetch team config
+        const teamResponse = await supabase
+            .from('teams')
+            .select('mode, config')
+            .eq('id', run.team_id)
+            .single();
+
+        if (teamResponse.error) {
+            throw new Error(`Failed to load team: ${teamResponse.error.message}`);
+        }
+
+        const teamData = teamResponse.data as { mode: string; config: PipelineConfig };
+
+        if (teamData.mode !== 'pipeline') {
+            throw new Error(`Team mode "${teamData.mode}" is not yet supported. Only "pipeline" is available.`);
+        }
+
+        const config = teamData.config;
+        const steps = config.steps;
+
+        if (steps.length === 0) {
+            throw new Error('Pipeline has no steps configured.');
+        }
+
+        // 2. Execute each step sequentially
+        const accumulatedOutputs: string[] = [];
+        let previousOutput: string | null = null;
+
+        for (let i = 0; i < steps.length; i++) {
+            const step = steps[i];
+            const stepOutput = await executeStep({
+                run,
+                step,
+                stepIndex: i,
+                inputTask: run.input_task,
+                previousOutput,
+                accumulatedOutputs,
+            });
+
+            if (stepOutput !== null) {
+                accumulatedOutputs.push(stepOutput.output);
+                previousOutput = stepOutput.output;
+                totalTokens += stepOutput.usage.totalTokens;
+                totalCost += stepOutput.usage.costEstimateUSD;
+            }
+
+            // Update run totals progressively
+            await supabase
+                .from('team_runs')
+                .update({
+                    tokens_total: totalTokens,
+                    cost_estimate_usd: totalCost,
+                })
+                .eq('id', run.id);
+        }
+
+        // 3. Finalize run as completed
+        const finalOutput = previousOutput ?? '';
+
+        await supabase
+            .from('team_runs')
+            .update({
+                status: 'completed',
+                output: finalOutput,
+                current_step_idx: steps.length - 1,
+                tokens_total: totalTokens,
+                cost_estimate_usd: totalCost,
+                completed_at: new Date().toISOString(),
+            })
+            .eq('id', run.id);
+
+        console.log(`[PipelineExecutor] Run ${run.id} completed (${steps.length} steps, ${totalTokens} tokens, $${totalCost.toFixed(4)})`);
+
+    } catch (error: unknown) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[PipelineExecutor] Run ${run.id} failed:`, errMsg);
+
+        await supabase
+            .from('team_runs')
+            .update({
+                status: 'failed',
+                error_message: errMsg,
+                tokens_total: totalTokens,
+                cost_estimate_usd: totalCost,
+                completed_at: new Date().toISOString(),
+            })
+            .eq('id', run.id);
+    }
+}
+
+// ─── Step Execution ──────────────────────────────────────────────────────────
+
+interface StepInput {
+    run: TeamRun;
+    step: PipelineStep;
+    stepIndex: number;
+    inputTask: string;
+    previousOutput: string | null;
+    accumulatedOutputs: string[];
+}
+
+interface StepResult {
+    output: string;
+    usage: TokenUsage;
+}
+
+async function executeStep(input: StepInput): Promise<StepResult | null> {
+    const { run, step, stepIndex, inputTask, previousOutput, accumulatedOutputs } = input;
+    let attempts = 0;
+    const maxAttempts = step.on_failure === 'retry' ? step.max_retries + 1 : 1;
+
+    // Update current step on the run (real-time progress)
+    await supabase
+        .from('team_runs')
+        .update({ current_step_idx: stepIndex })
+        .eq('id', run.id);
+
+    while (attempts < maxAttempts) {
+        attempts++;
+
+        try {
+            console.log(`[PipelineExecutor] Step ${stepIndex + 1}/${step.step_name} (attempt ${attempts}/${maxAttempts})`);
+
+            // Build handoff context
+            const handoffContext: TeamHandoffContext = {
+                input: inputTask,
+                previous_output: previousOutput,
+                step_index: stepIndex,
+                step_name: step.step_name,
+                accumulated_outputs: accumulatedOutputs,
+            };
+
+            // Record handoff
+            await supabase.from('team_handoffs').insert({
+                run_id: run.id,
+                from_agent_id: stepIndex > 0 ? getPreviousAgentId() : null,
+                to_agent_id: step.agent_id,
+                direction: 'forward',
+                context: handoffContext,
+                step_idx: stepIndex,
+            });
+
+            // Record delegation message
+            await supabase.from('team_messages').insert({
+                run_id: run.id,
+                sender_agent_id: null, // system
+                receiver_agent_id: step.agent_id,
+                message_type: 'delegation',
+                content: step.instructions || `Execute step: ${step.step_name}`,
+                metadata: { step_index: stepIndex, attempt: attempts },
+                step_idx: stepIndex,
+                tokens_used: 0,
+            });
+
+            // Fetch agent
+            const agentResponse = await supabase
+                .from('agents')
+                .select('*')
+                .eq('id', step.agent_id)
+                .single();
+
+            const agent = agentResponse.data as Agent | null;
+            if (!agent) {
+                throw new Error(`Agent not found for step "${step.step_name}"`);
+            }
+
+            // Fetch API key
+            const keyResponse = await supabase
+                .from('api_keys')
+                .select('*')
+                .eq('workspace_id', run.workspace_id)
+                .eq('provider', agent.provider)
+                .single();
+
+            const apiKeyData = keyResponse.data as ApiKey | null;
+            if (!apiKeyData) {
+                throw new Error(`No API key configured for provider ${agent.provider}`);
+            }
+
+            const rawKey = decryptApiKey(apiKeyData.encrypted_key);
+
+            // Build prompt with handoff context
+            const systemPrompt = agent.system_prompt || 'You are a helpful AI assistant.';
+            const userPrompt = buildStepPrompt(step, handoffContext);
+
+            // Execute LLM — no streaming for pipeline steps (results captured atomically)
+            const noopStream = async () => { /* no streaming for pipeline steps */ };
+            let executionResult;
+            const provider = agent.provider.toLowerCase();
+
+            if (provider === 'anthropic') {
+                executionResult = await executeAnthropic(rawKey, agent.model, systemPrompt, userPrompt, noopStream);
+            } else if (provider === 'openai') {
+                executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, noopStream);
+            } else if (provider === 'google') {
+                executionResult = await executeGoogle(rawKey, agent.model, systemPrompt, userPrompt, noopStream);
+            } else {
+                throw new Error(`Provider "${provider}" is not supported.`);
+            }
+
+            // Record result message
+            await supabase.from('team_messages').insert({
+                run_id: run.id,
+                sender_agent_id: step.agent_id,
+                receiver_agent_id: null, // broadcast
+                message_type: 'result',
+                content: executionResult.result,
+                metadata: {
+                    step_index: stepIndex,
+                    model: agent.model,
+                    tokens: executionResult.usage.totalTokens,
+                    cost: executionResult.usage.costEstimateUSD,
+                },
+                step_idx: stepIndex,
+                tokens_used: executionResult.usage.totalTokens,
+            });
+
+            return {
+                output: executionResult.result,
+                usage: executionResult.usage,
+            };
+
+        } catch (error: unknown) {
+            const errMsg = error instanceof Error ? error.message : String(error);
+            console.error(`[PipelineExecutor] Step ${stepIndex + 1} failed (attempt ${attempts}):`, errMsg);
+
+            // Record failure message
+            await supabase.from('team_messages').insert({
+                run_id: run.id,
+                sender_agent_id: step.agent_id,
+                receiver_agent_id: null,
+                message_type: 'system',
+                content: `Step "${step.step_name}" failed (attempt ${attempts}/${maxAttempts}): ${errMsg}`,
+                metadata: { step_index: stepIndex, attempt: attempts, error: errMsg },
+                step_idx: stepIndex,
+                tokens_used: 0,
+            });
+
+            if (attempts >= maxAttempts) {
+                // All retries exhausted
+                if (step.on_failure === 'skip') {
+                    console.log(`[PipelineExecutor] Skipping step ${stepIndex + 1} after failure.`);
+                    await supabase.from('team_messages').insert({
+                        run_id: run.id,
+                        sender_agent_id: null,
+                        receiver_agent_id: null,
+                        message_type: 'system',
+                        content: `Skipped step "${step.step_name}" due to failure.`,
+                        metadata: { step_index: stepIndex, skipped: true },
+                        step_idx: stepIndex,
+                        tokens_used: 0,
+                    });
+                    return null; // Skip — continue pipeline with no output from this step
+                }
+
+                // on_failure === 'stop' or 'retry' exhausted
+                throw new Error(`Step "${step.step_name}" failed after ${attempts} attempt(s): ${errMsg}`);
+            }
+
+            // Will retry on next loop iteration
+            console.log(`[PipelineExecutor] Retrying step ${stepIndex + 1}...`);
+        }
+    }
+
+    // Should never reach here
+    return null;
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getPreviousAgentId(): string | null {
+    // This is a simplified lookup — in a real implementation we'd track this
+    // For now, we don't have the previous step's agent_id in scope
+    // The handoff record will have from_agent_id = null for step 0
+    return null;
+}
+
+function buildStepPrompt(step: PipelineStep, context: TeamHandoffContext): string {
+    const parts: string[] = [];
+
+    parts.push(`## Task\n${context.input}`);
+
+    if (context.previous_output) {
+        parts.push(`## Previous Step Output\nThe previous step in this pipeline produced the following output:\n\n${context.previous_output}`);
+    }
+
+    if (step.instructions) {
+        parts.push(`## Your Instructions\n${step.instructions}`);
+    }
+
+    if (step.expected_output) {
+        parts.push(`## Expected Output Format\n${step.expected_output}`);
+    }
+
+    if (context.accumulated_outputs.length > 1) {
+        parts.push(`## Pipeline Context\nThis is step ${context.step_index + 1} in a multi-step pipeline. ${context.accumulated_outputs.length} previous steps have completed.`);
+    }
+
+    return parts.join('\n\n');
+}

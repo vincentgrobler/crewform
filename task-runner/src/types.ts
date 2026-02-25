@@ -41,3 +41,52 @@ export interface TokenUsage {
     totalTokens: number;
     costEstimateUSD: number;
 }
+
+// ─── Team Run Types ──────────────────────────────────────────────────────────
+
+export type TeamRunStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled';
+
+export interface TeamRun {
+    id: string;
+    team_id: string;
+    workspace_id: string;
+    status: TeamRunStatus;
+    input_task: string;
+    output: string | null;
+    current_step_idx: number | null;
+    tokens_total: number;
+    cost_estimate_usd: number;
+    started_at: string | null;
+    completed_at: string | null;
+    error_message: string | null;
+    created_by: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface PipelineStep {
+    agent_id: string;
+    step_name: string;
+    instructions: string;
+    expected_output: string;
+    on_failure: 'retry' | 'stop' | 'skip';
+    max_retries: number;
+}
+
+export interface PipelineConfig {
+    steps: PipelineStep[];
+    auto_handoff: boolean;
+}
+
+export interface TeamConfig {
+    mode: 'pipeline' | 'orchestrator' | 'collaboration';
+    config: PipelineConfig;
+}
+
+export interface TeamHandoffContext {
+    input: string;
+    previous_output: string | null;
+    step_index: number;
+    step_name: string;
+    accumulated_outputs: string[];
+}
