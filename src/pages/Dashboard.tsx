@@ -1,38 +1,120 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 CrewForm
 
-import { LayoutDashboard } from 'lucide-react'
+import {
+  LayoutDashboard,
+  ListTodo,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Coins,
+} from 'lucide-react'
+import { useWorkspace } from '@/hooks/useWorkspace'
+import { useDashboardStats, useAgentPerformance, useRecentActivity } from '@/hooks/useDashboard'
+import { StatCard } from '@/components/dashboard/StatCard'
+import { AgentPerformanceGrid } from '@/components/dashboard/AgentPerformanceGrid'
+import { ActivityTimeline } from '@/components/dashboard/ActivityTimeline'
+import { QuickActions } from '@/components/dashboard/QuickActions'
 
+/**
+ * Dashboard page — stat cards, agent performance grid, activity timeline, quick actions.
+ * Data auto-refreshes every 30 seconds.
+ */
 export function Dashboard() {
+  const { workspaceId } = useWorkspace()
+  const { stats, isLoading: isLoadingStats } = useDashboardStats(workspaceId)
+  const { agents, isLoading: isLoadingAgents } = useAgentPerformance(workspaceId)
+  const { activity, isLoading: isLoadingActivity } = useRecentActivity(workspaceId)
+
+  const today = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  })
+
   return (
-    <div className="p-8">
-      <div className="mb-8 flex items-center gap-3">
-        <LayoutDashboard className="h-6 w-6 text-brand-primary" />
-        <h1 className="text-2xl font-semibold text-gray-100">Dashboard</h1>
+    <div className="p-6 lg:p-8">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-1">
+          <LayoutDashboard className="h-6 w-6 text-brand-primary" />
+          <h1 className="text-2xl font-semibold text-gray-100">Dashboard</h1>
+        </div>
+        <p className="text-sm text-gray-500">{today}</p>
       </div>
 
-      {/* Stats bar placeholder */}
+      {/* Stat cards */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {['Tasks This Month', 'Tasks Running', 'Completed Today', 'Est. Cost'].map((label) => (
-          <div
-            key={label}
-            className="rounded-lg border border-border bg-surface-card p-6"
-          >
-            <p className="text-sm text-gray-400">{label}</p>
-            <p className="mt-2 text-3xl font-semibold text-gray-100">—</p>
-          </div>
-        ))}
+        <StatCard
+          label="Tasks This Month"
+          value={stats?.tasksThisMonth ?? 0}
+          icon={ListTodo}
+          accentColor="border-l-brand-primary"
+          isLoading={isLoadingStats}
+        />
+        <StatCard
+          label="Running"
+          value={stats?.tasksRunning ?? 0}
+          icon={Loader2}
+          accentColor="border-l-blue-500"
+          isLoading={isLoadingStats}
+        />
+        <StatCard
+          label="Completed"
+          value={stats?.tasksCompleted ?? 0}
+          icon={CheckCircle2}
+          accentColor="border-l-green-500"
+          isLoading={isLoadingStats}
+        />
+        <StatCard
+          label="Failed"
+          value={stats?.tasksFailed ?? 0}
+          icon={XCircle}
+          accentColor="border-l-red-500"
+          isLoading={isLoadingStats}
+        />
       </div>
 
-      {/* Empty state */}
-      <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-surface-card py-16">
-        <LayoutDashboard className="mb-4 h-12 w-12 text-gray-600" />
-        <h2 className="mb-2 text-lg font-medium text-gray-300">
-          Welcome to CrewForm
+      {/* Cost card */}
+      {stats && stats.estimatedCostUsd > 0 && (
+        <div className="mb-8 rounded-lg border border-border border-l-4 border-l-amber-500 bg-surface-card p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-400">Estimated Cost This Month</p>
+              <p className="mt-1 text-2xl font-bold text-gray-100">
+                ${stats.estimatedCostUsd.toFixed(4)}
+              </p>
+            </div>
+            <Coins className="h-6 w-6 text-amber-500" />
+          </div>
+        </div>
+      )}
+
+      {/* Two-column: Agent Performance + Activity Timeline */}
+      <div className="mb-8 grid gap-6 lg:grid-cols-[1fr_380px]">
+        {/* Agent Performance */}
+        <div className="rounded-xl border border-border bg-surface-card p-5">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">
+            Agent Performance
+          </h2>
+          <AgentPerformanceGrid agents={agents} isLoading={isLoadingAgents} />
+        </div>
+
+        {/* Activity Timeline */}
+        <div className="rounded-xl border border-border bg-surface-card p-5">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">
+            Recent Activity
+          </h2>
+          <ActivityTimeline activity={activity} isLoading={isLoadingActivity} />
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
+          Quick Actions
         </h2>
-        <p className="text-sm text-gray-500">
-          Form your crew. Get started by creating your first agent.
-        </p>
+        <QuickActions />
       </div>
     </div>
   )
