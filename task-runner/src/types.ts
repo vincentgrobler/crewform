@@ -1,5 +1,3 @@
-import { z } from 'zod';
-
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
@@ -12,9 +10,9 @@ export interface Task {
     priority: TaskPriority;
     assigned_agent_id: string | null;
     assigned_team_id: string | null;
-    result: any;
+    result: string | null;
     error: string | null;
-    metadata: any;
+    metadata: Record<string, unknown> | null;
     created_by: string;
     created_at: string;
     updated_at: string;

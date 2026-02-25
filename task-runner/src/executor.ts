@@ -81,15 +81,16 @@ export async function processTask(task: Task) {
 
         console.log(`[TaskRunner] Completed task ${task.id} successfully.`);
 
-    } catch (error: any) {
-        console.error(`[TaskRunner] Failed task ${task.id}:`, error.message);
+    } catch (error: unknown) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[TaskRunner] Failed task ${task.id}:`, errMsg);
 
         // Finalize Task failure
         await supabase
             .from('tasks')
             .update({
                 status: 'failed',
-                error: error.message,
+                error: errMsg,
             })
             .eq('id', task.id);
     }

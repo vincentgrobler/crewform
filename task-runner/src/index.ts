@@ -28,8 +28,9 @@ async function poll() {
             isPolling = false;
             return poll();
         }
-    } catch (err: any) {
-        console.error('[TaskRunner] Unexpected error in polling loop:', err.message);
+    } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error('[TaskRunner] Unexpected error in polling loop:', errMsg);
     }
 
     isPolling = false;
