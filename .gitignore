@@ -43,3 +43,6 @@ coverage
 
 # Docs (separate repo)
 crewform-docs/
+
+# Landing page (private, separate repo)
+crewform-landing/
