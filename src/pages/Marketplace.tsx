@@ -2,8 +2,11 @@
 // Copyright (C) 2026 CrewForm
 
 import { useState, useDeferredValue } from 'react'
-import { Store, Loader2 } from 'lucide-react'
+import { Store, Loader2, CheckCircle2, XCircle } from 'lucide-react'
+import { useWorkspace } from '@/hooks/useWorkspace'
+import { useAuth } from '@/hooks/useAuth'
 import { useMarketplaceAgents, useMarketplaceTags } from '@/hooks/useMarketplace'
+import { useInstallAgent } from '@/hooks/useInstallAgent'
 import { MarketplaceFilters } from '@/components/marketplace/MarketplaceFilters'
 import { AgentCard } from '@/components/marketplace/AgentCard'
 import { AgentDetailModal } from '@/components/marketplace/AgentDetailModal'
@@ -16,17 +19,21 @@ export function Marketplace() {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [sort, setSort] = useState<MarketplaceSortOption>('installs')
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   // Debounce search for smoother UX
   const deferredSearch = useDeferredValue(search)
 
   // ─── Data ────────────────────────────────────────────────────────────────
+  const { workspaceId } = useWorkspace()
+  const { user } = useAuth()
   const { agents, isLoading } = useMarketplaceAgents({
     search: deferredSearch,
     tags: selectedTags.length > 0 ? selectedTags : undefined,
     sort,
   })
   const { tags: availableTags } = useMarketplaceTags()
+  const installMutation = useInstallAgent()
 
   // ─── Handlers ────────────────────────────────────────────────────────────
   const handleTagToggle = (tag: string) => {
@@ -36,9 +43,22 @@ export function Marketplace() {
   }
 
   const handleInstall = (agent: Agent) => {
-    // Will be implemented in Ticket 5.3
-    console.log('[Marketplace] Install agent:', agent.id, agent.name)
-    setSelectedAgent(null)
+    if (!workspaceId || !user) return
+
+    installMutation.mutate(
+      { agentId: agent.id, workspaceId, userId: user.id },
+      {
+        onSuccess: (result) => {
+          setToast({ type: 'success', message: `"${result.clonedAgent.name}" installed to your workspace!` })
+          setSelectedAgent(null)
+          setTimeout(() => setToast(null), 4000)
+        },
+        onError: (err) => {
+          setToast({ type: 'error', message: err.message })
+          setTimeout(() => setToast(null), 4000)
+        },
+      },
+    )
   }
 
   return (
@@ -104,7 +124,22 @@ export function Marketplace() {
         agent={selectedAgent}
         onClose={() => setSelectedAgent(null)}
         onInstall={handleInstall}
+        isInstalling={installMutation.isPending}
       />
+
+      {/* Toast notification */}
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium shadow-lg transition-all ${toast.type === 'success'
+            ? 'bg-green-500/10 border border-green-500/30 text-green-400'
+            : 'bg-red-500/10 border border-red-500/30 text-red-400'
+          }`}>
+          {toast.type === 'success'
+            ? <CheckCircle2 className="h-4 w-4" />
+            : <XCircle className="h-4 w-4" />
+          }
+          {toast.message}
+        </div>
+      )}
     </div>
   )
 }

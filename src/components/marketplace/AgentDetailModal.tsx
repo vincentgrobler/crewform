@@ -8,9 +8,10 @@ interface AgentDetailModalProps {
     agent: Agent | null
     onClose: () => void
     onInstall?: (agent: Agent) => void
+    isInstalling?: boolean
 }
 
-export function AgentDetailModal({ agent, onClose, onInstall }: AgentDetailModalProps) {
+export function AgentDetailModal({ agent, onClose, onInstall, isInstalling }: AgentDetailModalProps) {
     if (!agent) return null
 
     return (
@@ -137,10 +138,11 @@ export function AgentDetailModal({ agent, onClose, onInstall }: AgentDetailModal
                     <button
                         type="button"
                         onClick={() => onInstall?.(agent)}
-                        className="w-full rounded-lg bg-brand-primary px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-primary/90 disabled:opacity-50"
+                        disabled={isInstalling}
+                        className="w-full rounded-lg bg-brand-primary px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <Download className="mr-2 inline h-4 w-4" />
-                        Install Agent
+                        {isInstalling ? 'Installing...' : 'Install Agent'}
                     </button>
                 </div>
             </div>
