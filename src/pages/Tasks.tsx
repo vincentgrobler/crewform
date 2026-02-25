@@ -9,6 +9,7 @@ import { useTasksQuery } from '@/hooks/useTasksQuery'
 import { TaskRow } from '@/components/tasks/TaskRow'
 import { TaskFilters } from '@/components/tasks/TaskFilters'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
+import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { TaskStatus, TaskPriority } from '@/types'
 
@@ -22,6 +23,7 @@ export function Tasks() {
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority[]>([])
   const [agentFilter, setAgentFilter] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
 
   const filters = {
     status: statusFilter.length > 0 ? statusFilter : undefined,
@@ -95,7 +97,7 @@ export function Tasks() {
             </thead>
             <tbody>
               {tasks.map((task) => (
-                <TaskRow key={task.id} task={task} agents={agents} />
+                <TaskRow key={task.id} task={task} agents={agents} onClick={() => setSelectedTaskId(task.id)} />
               ))}
             </tbody>
           </table>
@@ -135,6 +137,15 @@ export function Tasks() {
       {/* Create modal */}
       {showCreateModal && (
         <CreateTaskModal onClose={() => setShowCreateModal(false)} />
+      )}
+
+      {/* Detail panel */}
+      {selectedTaskId && (
+        <TaskDetailPanel
+          taskId={selectedTaskId}
+          agents={agents}
+          onClose={() => setSelectedTaskId(null)}
+        />
       )}
     </div>
   )
