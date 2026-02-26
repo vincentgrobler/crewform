@@ -3,6 +3,7 @@ import { processTask } from './executor';
 import { processPipelineRun } from './pipelineExecutor';
 import { processOrchestratorRun } from './orchestratorExecutor';
 import { registerRunner, deregisterRunner, getRunnerId, getInstanceName, runRecoverySweep, RECOVERY_INTERVAL_MS } from './runnerRegistry';
+import { evaluateTriggers, TRIGGER_EVAL_INTERVAL_MS } from './triggerScheduler';
 import type { Task, TeamRun } from './types';
 
 const POLL_INTERVAL_MS = 5000;
@@ -102,12 +103,16 @@ async function start() {
         log(`Registered with ID ${id}`);
         log(`Polling every ${POLL_INTERVAL_MS}ms for tasks and team runs.`);
         log(`Recovery sweep every ${RECOVERY_INTERVAL_MS}ms for stale runners.`);
+        log(`Trigger evaluation every ${TRIGGER_EVAL_INTERVAL_MS}ms.`);
 
         // Start the polling interval
         setInterval(() => { void poll(); }, POLL_INTERVAL_MS);
 
         // Start the recovery sweep interval
         setInterval(() => { void runRecoverySweep(); }, RECOVERY_INTERVAL_MS);
+
+        // Start the trigger evaluation interval
+        setInterval(() => { void evaluateTriggers(); }, TRIGGER_EVAL_INTERVAL_MS);
 
         // Initial poll
         void poll();
