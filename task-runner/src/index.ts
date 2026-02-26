@@ -2,27 +2,47 @@ import { supabase } from './supabase';
 import { processTask } from './executor';
 import { processPipelineRun } from './pipelineExecutor';
 import { processOrchestratorRun } from './orchestratorExecutor';
+import { registerRunner, deregisterRunner, getRunnerId, getInstanceName } from './runnerRegistry';
 import type { Task, TeamRun } from './types';
 
 const POLL_INTERVAL_MS = 5000;
 let isPolling = false;
 
+function log(msg: string) {
+    const name = getInstanceName();
+    console.log(`[Runner ${name}] ${msg}`);
+}
+
+function logError(msg: string, err?: unknown) {
+    const name = getInstanceName();
+    if (err) {
+        console.error(`[Runner ${name}] ${msg}`, err);
+    } else {
+        console.error(`[Runner ${name}] ${msg}`);
+    }
+}
+
 async function poll() {
     if (isPolling) return;
     isPolling = true;
 
+    const runnerId = getRunnerId();
+
     try {
         // ─── 1. Check for pending tasks ──────────────────────────────────────
-        const rpcResponse = await supabase.rpc('claim_next_task');
+        const rpcResponse = await supabase.rpc('claim_next_task', {
+            p_runner_id: runnerId,
+        });
         const data = rpcResponse.data as Task[] | null;
         const error = rpcResponse.error;
 
         if (error) {
-            console.error('[TaskRunner] RPC Error claiming task:', error.message);
+            logError(`RPC Error claiming task: ${error.message}`);
         } else if (data && data.length > 0) {
             const claimedTask = data[0];
+            log(`Claimed task ${claimedTask.id}`);
             processTask(claimedTask).catch((err: unknown) => {
-                console.error(`[TaskRunner] Unhandled outer error processing task ${claimedTask.id}:`, err);
+                logError(`Unhandled outer error processing task ${claimedTask.id}:`, err);
             });
 
             // If we found a task, poll again immediately
@@ -31,14 +51,17 @@ async function poll() {
         }
 
         // ─── 2. Check for pending team runs ──────────────────────────────────
-        const teamRunResponse = await supabase.rpc('claim_next_team_run');
+        const teamRunResponse = await supabase.rpc('claim_next_team_run', {
+            p_runner_id: runnerId,
+        });
         const teamRunData = teamRunResponse.data as TeamRun[] | null;
         const teamRunError = teamRunResponse.error;
 
         if (teamRunError) {
-            console.error('[TaskRunner] RPC Error claiming team run:', teamRunError.message);
+            logError(`RPC Error claiming team run: ${teamRunError.message}`);
         } else if (teamRunData && teamRunData.length > 0) {
             const claimedRun = teamRunData[0];
+            log(`Claimed team run ${claimedRun.id}`);
 
             // Determine team mode to route to correct executor
             const teamResponse = await supabase
@@ -51,11 +74,11 @@ async function poll() {
 
             if (teamMode === 'orchestrator') {
                 processOrchestratorRun(claimedRun).catch((err: unknown) => {
-                    console.error(`[TaskRunner] Unhandled outer error processing orchestrator run ${claimedRun.id}:`, err);
+                    logError(`Unhandled outer error processing orchestrator run ${claimedRun.id}:`, err);
                 });
             } else {
                 processPipelineRun(claimedRun).catch((err: unknown) => {
-                    console.error(`[TaskRunner] Unhandled outer error processing team run ${claimedRun.id}:`, err);
+                    logError(`Unhandled outer error processing team run ${claimedRun.id}:`, err);
                 });
             }
 
@@ -65,23 +88,42 @@ async function poll() {
         }
     } catch (err: unknown) {
         const errMsg = err instanceof Error ? err.message : String(err);
-        console.error('[TaskRunner] Unexpected error in polling loop:', errMsg);
+        logError(`Unexpected error in polling loop: ${errMsg}`);
     }
 
     isPolling = false;
 }
 
-console.log('[TaskRunner] Starting the Task Runner polling daemon...');
-console.log(`[TaskRunner] Polling every ${POLL_INTERVAL_MS}ms for tasks and team runs.`);
+// ─── Startup ─────────────────────────────────────────────────────────────────
 
-// Start the polling interval
-setInterval(() => { void poll(); }, POLL_INTERVAL_MS);
+async function start() {
+    try {
+        const id = await registerRunner();
+        log(`Registered with ID ${id}`);
+        log(`Polling every ${POLL_INTERVAL_MS}ms for tasks and team runs.`);
 
-// Initial poll
-void poll();
+        // Start the polling interval
+        setInterval(() => { void poll(); }, POLL_INTERVAL_MS);
 
-// Keep process alive
-process.on('SIGINT', () => {
-    console.log('[TaskRunner] Shutting down gracefully...');
+        // Initial poll
+        void poll();
+    } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error(`[TaskRunner] Failed to start: ${errMsg}`);
+        process.exit(1);
+    }
+}
+
+// ─── Graceful Shutdown ───────────────────────────────────────────────────────
+
+async function shutdown(signal: string) {
+    log(`Received ${signal}, shutting down gracefully...`);
+    await deregisterRunner();
     process.exit(0);
-});
+}
+
+process.on('SIGINT', () => { void shutdown('SIGINT'); });
+process.on('SIGTERM', () => { void shutdown('SIGTERM'); });
+
+// Start
+void start();
