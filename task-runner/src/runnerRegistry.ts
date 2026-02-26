@@ -5,6 +5,7 @@ let runnerId: string | null = null;
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
 const HEARTBEAT_INTERVAL_MS = 10_000;
+export const RECOVERY_INTERVAL_MS = 30_000;
 const INSTANCE_NAME = `${os.hostname()}-${process.pid}`;
 
 /**
@@ -50,6 +51,48 @@ async function sendHeartbeat(): Promise<void> {
 
     if (error) {
         console.error(`[Runner ${INSTANCE_NAME}] Heartbeat failed:`, error.message);
+    }
+}
+
+/**
+ * Run a recovery sweep: mark stale runners as dead, then recover their orphaned tasks.
+ * Returns the number of recovered tasks/runs.
+ */
+export async function runRecoverySweep(): Promise<number> {
+    try {
+        // 1. Mark stale runners as dead
+        const markResult = await supabase.rpc('mark_stale_runners');
+        const staleCount = (markResult.data as number | null) ?? 0;
+
+        if (markResult.error) {
+            console.error(`[Runner ${INSTANCE_NAME}] mark_stale_runners failed:`, markResult.error.message);
+            return 0;
+        }
+
+        if (staleCount > 0) {
+            console.warn(`[Runner ${INSTANCE_NAME}] Marked ${staleCount} stale runner(s) as dead.`);
+
+            // 2. Recover orphaned tasks from dead runners
+            const recoverResult = await supabase.rpc('recover_stale_tasks');
+            const recoveredCount = (recoverResult.data as number | null) ?? 0;
+
+            if (recoverResult.error) {
+                console.error(`[Runner ${INSTANCE_NAME}] recover_stale_tasks failed:`, recoverResult.error.message);
+                return 0;
+            }
+
+            if (recoveredCount > 0) {
+                console.warn(`[Runner ${INSTANCE_NAME}] Recovered ${recoveredCount} orphaned task(s)/run(s).`);
+            }
+
+            return recoveredCount;
+        }
+
+        return 0;
+    } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error(`[Runner ${INSTANCE_NAME}] Recovery sweep error: ${errMsg}`);
+        return 0;
     }
 }
 
