@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["nodejs_20", "npm"]
+
+[phases.install]
+cmds = ["cd task-runner && npm ci"]
+
+[phases.build]
+cmds = ["cd task-runner && npm run build"]
+
+[start]
+cmd = "node task-runner/dist/index.js"
