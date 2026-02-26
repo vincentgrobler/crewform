@@ -34,7 +34,16 @@ export function CreateTaskModal({ onClose, initialDate }: CreateTaskModalProps) 
     const [description, setDescription] = useState('')
     const [agentId, setAgentId] = useState('')
     const [priority, setPriority] = useState<TaskPriority>('medium')
-    const [scheduledFor, setScheduledFor] = useState(initialDate ?? '')
+    const [scheduledFor, setScheduledFor] = useState(() => {
+        if (initialDate) {
+            // From calendar: use the selected date at 09:00 local time
+            return `${initialDate}T09:00`
+        }
+        // From list: default to now
+        const now = new Date()
+        const pad = (n: number) => String(n).padStart(2, '0')
+        return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
+    })
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
     function handleSubmit(dispatch: boolean) {
@@ -58,7 +67,7 @@ export function CreateTaskModal({ onClose, initialDate }: CreateTaskModalProps) 
                     priority: validated.priority,
                     status: dispatch ? 'pending' : 'pending',
                     created_by: user.id,
-                    scheduled_for: scheduledFor || null,
+                    scheduled_for: scheduledFor ? new Date(scheduledFor).toISOString() : null,
                 },
                 { onSuccess: () => onClose() },
             )
@@ -171,14 +180,14 @@ export function CreateTaskModal({ onClose, initialDate }: CreateTaskModalProps) 
                         </div>
                     </div>
 
-                    {/* Schedule Date */}
+                    {/* Schedule Date & Time */}
                     <div>
                         <label htmlFor="task-schedule" className="mb-1.5 block text-sm font-medium text-gray-300">
                             Schedule for
                         </label>
                         <input
                             id="task-schedule"
-                            type="date"
+                            type="datetime-local"
                             value={scheduledFor}
                             onChange={(e) => setScheduledFor(e.target.value)}
                             className="w-full rounded-lg border border-border bg-surface-primary px-4 py-2.5 text-sm text-gray-200 outline-none focus:border-brand-primary [color-scheme:dark]"

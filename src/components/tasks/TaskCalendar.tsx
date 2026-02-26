@@ -95,12 +95,13 @@ export function TaskCalendar({ onSelectDate, onSelectTask }: TaskCalendarProps) 
     const today = formatDate(new Date())
     const days = useMemo(() => getCalendarDays(year, month), [year, month])
 
-    // Group tasks by scheduled_for date
+    // Group tasks by scheduled_for date (extract date from ISO timestamp)
     const tasksByDate = useMemo(() => {
         const map = new Map<string, Task[]>()
         for (const task of tasks) {
             if (!task.scheduled_for) continue
-            const key = task.scheduled_for
+            // Extract YYYY-MM-DD from ISO timestamp
+            const key = task.scheduled_for.substring(0, 10)
             const existing = map.get(key)
             if (existing) {
                 existing.push(task)
