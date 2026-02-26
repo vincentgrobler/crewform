@@ -4,6 +4,7 @@ import { executeOpenAI } from './providers/openai';
 import { executeGoogle } from './providers/google';
 import { decryptApiKey } from './crypto';
 import { writeTaskUsageRecord } from './usageWriter';
+import { dispatchWebhooks } from './webhookDispatcher';
 import type { Task, Agent, ApiKey } from './types';
 
 interface AgentTaskRecord {
@@ -37,6 +38,7 @@ function inferProvider(model: string): string | null {
 export async function processTask(task: Task) {
     // Find the auto-created agent_tasks record (created by DB trigger on dispatch)
     let agentTaskId: string | null = null;
+    let agent: Agent | null = null;
 
     try {
         console.log(`[TaskRunner] Claimed task ${task.id} (Agent: ${task.assigned_agent_id})`);
@@ -72,7 +74,7 @@ export async function processTask(task: Task) {
             .eq('id', task.assigned_agent_id)
             .single();
 
-        const agent = agentResponse.data as Agent | null;
+        agent = agentResponse.data as Agent | null;
         const agentError = agentResponse.error;
 
         if (agentError || !agent) {
@@ -202,6 +204,13 @@ export async function processTask(task: Task) {
 
         console.log(`[TaskRunner] Completed task ${task.id} successfully.`);
 
+        // 8. Fire webhooks (fire-and-forget)
+        void dispatchWebhooks(
+            { id: task.id, title: task.title, workspace_id: task.workspace_id, status: 'completed', result: executionResult.result },
+            { name: agent.name },
+            'task.completed',
+        );
+
     } catch (error: unknown) {
         const errMsg = error instanceof Error ? error.message : String(error);
         console.error(`[TaskRunner] Failed task ${task.id}:`, errMsg);
@@ -226,5 +235,12 @@ export async function processTask(task: Task) {
                 })
                 .eq('id', agentTaskId);
         }
+
+        // Fire webhooks for failure (fire-and-forget)
+        void dispatchWebhooks(
+            { id: task.id, title: task.title, workspace_id: task.workspace_id, status: 'failed', error: errMsg },
+            { name: agent?.name ?? 'Unknown Agent' },
+            'task.failed',
+        );
     }
 }
