@@ -9,6 +9,8 @@ import {
     useCostByAgent,
     useStatusDistribution,
     useTopModels,
+    useCostOverTime,
+    useTimeSaved,
 } from '@/hooks/useAnalytics'
 import { DateRangePicker, DATE_PRESETS } from '@/components/analytics/DateRangePicker'
 import type { DateRange } from '@/components/analytics/DateRangePicker'
@@ -16,12 +18,15 @@ import { CompletionChart } from '@/components/analytics/CompletionChart'
 import { CostByAgentChart } from '@/components/analytics/CostByAgentChart'
 import { StatusDonutChart } from '@/components/analytics/StatusDonutChart'
 import { TopModelsChart } from '@/components/analytics/TopModelsChart'
+import { CostOverTimeChart } from '@/components/analytics/CostOverTimeChart'
 import { UsageSummaryCards } from '@/components/analytics/UsageSummaryCards'
+import { TimeSavedCard } from '@/components/analytics/TimeSavedCard'
+import { CsvExportButton } from '@/components/analytics/CsvExportButton'
 import { useUsageSummary } from '@/hooks/useUsage'
 import { ErrorState } from '@/components/shared/ErrorState'
 
 /**
- * Analytics page — 4 Recharts visualizations with date range picker.
+ * Analytics page — charts, summary cards, time saved, and CSV export.
  */
 export function Analytics() {
     const { workspaceId } = useWorkspace()
@@ -39,6 +44,12 @@ export function Analytics() {
     const { data: modelData, isLoading: isLoadingModels } = useTopModels(
         workspaceId, range.startDate, range.endDate,
     )
+    const { data: costTimeData, isLoading: isLoadingCostTime } = useCostOverTime(
+        workspaceId, range.startDate, range.endDate,
+    )
+    const { data: timeSavedData, isLoading: isLoadingTimeSaved } = useTimeSaved(
+        workspaceId, range.startDate, range.endDate,
+    )
     const { summary, isLoading: isLoadingUsage } = useUsageSummary(
         workspaceId, range.startDate, range.endDate,
     )
@@ -53,7 +64,14 @@ export function Analytics() {
                     <BarChart3 className="h-6 w-6 text-brand-primary" />
                     <h1 className="text-2xl font-semibold text-gray-100">Analytics</h1>
                 </div>
-                <DateRangePicker activeLabel={range.label} onChange={setRange} />
+                <div className="flex items-center gap-2">
+                    <CsvExportButton
+                        workspaceId={workspaceId}
+                        startDate={range.startDate}
+                        endDate={range.endDate}
+                    />
+                    <DateRangePicker activeLabel={range.label} onChange={setRange} />
+                </div>
             </div>
 
             {/* Error state */}
@@ -71,6 +89,17 @@ export function Analytics() {
                     Usage Summary
                 </h2>
                 <UsageSummaryCards summary={summary} isLoading={isLoadingUsage} />
+            </div>
+
+            {/* Time Saved + Cost Over Time — side by side */}
+            <div className="mb-6 grid gap-6 lg:grid-cols-2">
+                <TimeSavedCard data={timeSavedData} isLoading={isLoadingTimeSaved} />
+                <div className="rounded-xl border border-border bg-surface-card p-5">
+                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">
+                        Cost Over Time
+                    </h2>
+                    <CostOverTimeChart data={costTimeData} isLoading={isLoadingCostTime} />
+                </div>
             </div>
 
             {/* Charts grid — 2×2 */}
@@ -110,3 +139,4 @@ export function Analytics() {
         </div>
     )
 }
+

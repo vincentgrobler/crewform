@@ -192,3 +192,183 @@ export async function fetchTopModels(
 
     return Array.from(modelMap.values()).sort((a, b) => b.count - a.count).slice(0, 10)
 }
+
+// ─── Cost Over Time ──────────────────────────────────────────────────────────
+
+export interface DailyCost {
+    date: string       // 'YYYY-MM-DD'
+    cost: number
+    tokens: number
+    cumulative: number
+}
+
+/** Fetch daily cost time-series between start and end dates */
+export async function fetchCostOverTime(
+    workspaceId: string,
+    startDate: string,
+    endDate: string,
+): Promise<DailyCost[]> {
+    const { data, error } = await supabase
+        .from('agent_tasks')
+        .select('cost_estimate_usd, tokens_used, completed_at')
+        .eq('workspace_id', workspaceId)
+        .gte('completed_at', startDate)
+        .lte('completed_at', endDate)
+        .in('status', ['completed', 'failed'])
+
+    if (error) throw error
+
+    // Group by day
+    const dayMap = new Map<string, { cost: number; tokens: number }>()
+    for (const row of data as Array<{ cost_estimate_usd: number | null; tokens_used: number | null; completed_at: string }>) {
+        if (!row.completed_at) continue
+        const day = row.completed_at.slice(0, 10)
+        const entry = dayMap.get(day) ?? { cost: 0, tokens: 0 }
+        entry.cost += row.cost_estimate_usd ?? 0
+        entry.tokens += row.tokens_used ?? 0
+        dayMap.set(day, entry)
+    }
+
+    // Fill days + compute cumulative
+    const result: DailyCost[] = []
+    let cumulative = 0
+    const current = new Date(startDate)
+    const end = new Date(endDate)
+
+    while (current <= end) {
+        const dayStr = current.toISOString().slice(0, 10)
+        const entry = dayMap.get(dayStr) ?? { cost: 0, tokens: 0 }
+        cumulative += entry.cost
+        result.push({ date: dayStr, cost: entry.cost, tokens: entry.tokens, cumulative })
+        current.setDate(current.getDate() + 1)
+    }
+
+    return result
+}
+
+// ─── Time Saved ──────────────────────────────────────────────────────────────
+
+export interface TimeSavedData {
+    agentMinutes: number      // Total agent processing time
+    manualEstimate: number    // Estimated manual equivalent (5× multiplier)
+    timeSavedMinutes: number  // Delta
+    taskCount: number
+    avgSecondsPerTask: number
+}
+
+/** Estimate time saved by agents compared to manual work */
+export async function fetchTimeSaved(
+    workspaceId: string,
+    startDate: string,
+    endDate: string,
+): Promise<TimeSavedData> {
+    const { data, error } = await supabase
+        .from('agent_tasks')
+        .select('started_at, completed_at')
+        .eq('workspace_id', workspaceId)
+        .eq('status', 'completed')
+        .gte('completed_at', startDate)
+        .lte('completed_at', endDate)
+        .not('started_at', 'is', null)
+        .not('completed_at', 'is', null)
+
+    if (error) throw error
+
+    let totalSeconds = 0
+    let count = 0
+
+    for (const row of data as Array<{ started_at: string; completed_at: string }>) {
+        const start = new Date(row.started_at).getTime()
+        const end = new Date(row.completed_at).getTime()
+        const duration = (end - start) / 1000
+        if (duration > 0 && duration < 3600) { // Cap at 1 hour to exclude outliers
+            totalSeconds += duration
+            count++
+        }
+    }
+
+    const agentMinutes = totalSeconds / 60
+    const avgSecondsPerTask = count > 0 ? totalSeconds / count : 0
+    const manualEstimate = agentMinutes * 5 // 5× multiplier
+    const timeSavedMinutes = manualEstimate - agentMinutes
+
+    return { agentMinutes, manualEstimate, timeSavedMinutes, taskCount: count, avgSecondsPerTask }
+}
+
+// ─── CSV Export ──────────────────────────────────────────────────────────────
+
+export interface TaskExportRow {
+    date: string
+    task_title: string
+    agent_name: string
+    status: string
+    model: string
+    tokens: number
+    cost_usd: number
+    duration_seconds: number
+}
+
+/** Fetch all task data for CSV export */
+export async function fetchTasksForExport(
+    workspaceId: string,
+    startDate: string,
+    endDate: string,
+): Promise<TaskExportRow[]> {
+    const [taskResult, agentResult] = await Promise.all([
+        supabase
+            .from('agent_tasks')
+            .select('task_id, agent_id, status, model_used, tokens_used, cost_estimate_usd, started_at, completed_at')
+            .eq('workspace_id', workspaceId)
+            .gte('created_at', startDate)
+            .lte('created_at', endDate),
+        supabase
+            .from('agents')
+            .select('id, name')
+            .eq('workspace_id', workspaceId),
+    ])
+
+    if (taskResult.error) throw taskResult.error
+    if (agentResult.error) throw agentResult.error
+
+    const agentMap = new Map<string, string>()
+    for (const a of agentResult.data as Array<{ id: string; name: string }>) {
+        agentMap.set(a.id, a.name)
+    }
+
+    // Fetch task titles
+    const taskIds = [...new Set((taskResult.data as Array<{ task_id: string }>).map(r => r.task_id))]
+    const titleMap = new Map<string, string>()
+
+    if (taskIds.length > 0) {
+        const titleResult = await supabase
+            .from('tasks')
+            .select('id, title')
+            .in('id', taskIds)
+
+        if (!titleResult.error) {
+            for (const t of titleResult.data as Array<{ id: string; title: string }>) {
+                titleMap.set(t.id, t.title)
+            }
+        }
+    }
+
+    return (taskResult.data as Array<{
+        task_id: string; agent_id: string; status: string;
+        model_used: string | null; tokens_used: number | null; cost_estimate_usd: number | null;
+        started_at: string | null; completed_at: string | null
+    }>).map(row => {
+        const durationMs = row.started_at && row.completed_at
+            ? new Date(row.completed_at).getTime() - new Date(row.started_at).getTime()
+            : 0
+        return {
+            date: row.completed_at?.slice(0, 10) ?? '',
+            task_title: titleMap.get(row.task_id) ?? 'Unknown',
+            agent_name: agentMap.get(row.agent_id) ?? 'Unknown',
+            status: row.status,
+            model: row.model_used ?? '',
+            tokens: row.tokens_used ?? 0,
+            cost_usd: row.cost_estimate_usd ?? 0,
+            duration_seconds: Math.round(durationMs / 1000),
+        }
+    }).sort((a, b) => a.date.localeCompare(b.date))
+}

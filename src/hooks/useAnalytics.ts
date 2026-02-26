@@ -7,8 +7,10 @@ import {
     fetchCostByAgent,
     fetchStatusDistribution,
     fetchTopModels,
+    fetchCostOverTime,
+    fetchTimeSaved,
 } from '@/db/analytics'
-import type { DailyCompletion, AgentCost, StatusCount, ModelUsage } from '@/db/analytics'
+import type { DailyCompletion, AgentCost, StatusCount, ModelUsage, DailyCost, TimeSavedData } from '@/db/analytics'
 
 const STALE_TIME = 60 * 1000 // 60 seconds
 
@@ -53,6 +55,30 @@ export function useTopModels(workspaceId: string | null, startDate: string, endD
     const { data = [], isLoading, error } = useQuery<ModelUsage[]>({
         queryKey: ['analytics-models', workspaceId, startDate, endDate],
         queryFn: () => fetchTopModels(workspaceId ?? '', startDate, endDate),
+        enabled: !!workspaceId,
+        staleTime: STALE_TIME,
+        refetchOnWindowFocus: true,
+    })
+    return { data, isLoading, error }
+}
+
+/** Daily cost over time (area chart data) */
+export function useCostOverTime(workspaceId: string | null, startDate: string, endDate: string) {
+    const { data = [], isLoading, error } = useQuery<DailyCost[]>({
+        queryKey: ['analytics-cost-time', workspaceId, startDate, endDate],
+        queryFn: () => fetchCostOverTime(workspaceId ?? '', startDate, endDate),
+        enabled: !!workspaceId,
+        staleTime: STALE_TIME,
+        refetchOnWindowFocus: true,
+    })
+    return { data, isLoading, error }
+}
+
+/** Time saved estimation */
+export function useTimeSaved(workspaceId: string | null, startDate: string, endDate: string) {
+    const { data, isLoading, error } = useQuery<TimeSavedData>({
+        queryKey: ['analytics-time-saved', workspaceId, startDate, endDate],
+        queryFn: () => fetchTimeSaved(workspaceId ?? '', startDate, endDate),
         enabled: !!workspaceId,
         staleTime: STALE_TIME,
         refetchOnWindowFocus: true,
