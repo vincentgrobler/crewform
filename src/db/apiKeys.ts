@@ -70,6 +70,19 @@ export async function upsertApiKey(input: UpsertApiKeyInput): Promise<ApiKey> {
     return result.data as ApiKey
 }
 
+/** Toggle is_active flag on an API key */
+export async function toggleProviderActive(id: string, isActive: boolean): Promise<ApiKey> {
+    const result = await supabase
+        .from('api_keys')
+        .update({ is_active: isActive })
+        .eq('id', id)
+        .select()
+        .single()
+
+    if (result.error) throw result.error
+    return result.data as ApiKey
+}
+
 /** Delete an API key */
 export async function deleteApiKey(id: string): Promise<void> {
     const result = await supabase
