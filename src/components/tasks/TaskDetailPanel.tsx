@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 CrewForm
 
-import { X, Clock, User, Bot, AlertCircle, Loader2, Ban, Terminal, Play } from 'lucide-react'
+import { X, Clock, User, Bot, AlertCircle, Loader2, Ban, Terminal, Play, RefreshCw } from 'lucide-react'
 import { useTask } from '@/hooks/useTask'
 import { useCancelTask } from '@/hooks/useCancelTask'
 import { useDispatchTask } from '@/hooks/useDispatchTask'
+import { useRerunTask } from '@/hooks/useRerunTask'
 import { TaskStatusBadge, TaskPriorityBadge } from '@/components/tasks/TaskStatusBadge'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Agent } from '@/types'
@@ -23,6 +24,7 @@ export function TaskDetailPanel({ taskId, agents, onClose }: TaskDetailPanelProp
     const { task, isLoading, error } = useTask(taskId)
     const cancelMutation = useCancelTask()
     const dispatchMutation = useDispatchTask()
+    const rerunMutation = useRerunTask()
 
     const agent = task ? agents.find((a) => a.id === task.assigned_agent_id) : null
 
@@ -34,6 +36,11 @@ export function TaskDetailPanel({ taskId, agents, onClose }: TaskDetailPanelProp
     function handleDispatch() {
         if (!task) return
         dispatchMutation.mutate({ id: task.id })
+    }
+
+    function handleRerun() {
+        if (!task) return
+        rerunMutation.mutate({ id: task.id, workspaceId: task.workspace_id })
     }
 
     const elapsed = task ? getElapsed(task.created_at, task.updated_at, task.status) : ''
@@ -121,6 +128,23 @@ export function TaskDetailPanel({ taskId, agents, onClose }: TaskDetailPanelProp
                                             <Ban className="h-3.5 w-3.5" />
                                         )}
                                         Cancel Task
+                                    </button>
+                                )}
+
+                                {/* Re-run button */}
+                                {(task.status === 'failed' || task.status === 'completed' || task.status === 'cancelled') && (
+                                    <button
+                                        type="button"
+                                        onClick={handleRerun}
+                                        disabled={rerunMutation.isPending}
+                                        className="flex items-center gap-2 rounded-lg border border-brand-primary/30 px-3 py-1.5 text-xs font-medium text-brand-primary transition-colors hover:bg-brand-primary/10 disabled:opacity-50"
+                                    >
+                                        {rerunMutation.isPending ? (
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        ) : (
+                                            <RefreshCw className="h-3.5 w-3.5" />
+                                        )}
+                                        Re-run Task
                                     </button>
                                 )}
                             </div>
