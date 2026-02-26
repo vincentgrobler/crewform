@@ -26,6 +26,11 @@ function inferProvider(model: string): string | null {
     if (m.includes('gemini')) return 'google';
     if (m.includes('mistral') || m.includes('codestral')) return 'mistral';
     if (m.includes('command-r')) return 'cohere';
+    // New providers
+    if (m.includes('togethercomputer') || m.includes('together/')) return 'together';
+    if (m.includes('nvidia/') || m.includes('nim/')) return 'nvidia';
+    if (m.includes('minimax')) return 'minimax';
+    if (m.includes('moonshot')) return 'moonshot';
     return null;
 }
 
@@ -135,6 +140,18 @@ export async function processTask(task: Task) {
                 executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream, 'https://api.mistral.ai/v1');
             } else if (providerLower === 'cohere') {
                 executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream, 'https://api.cohere.com/compatibility/v1');
+            } else if (providerLower === 'together') {
+                executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream, 'https://api.together.xyz/v1');
+            } else if (providerLower === 'nvidia') {
+                executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream, 'https://integrate.api.nvidia.com/v1');
+            } else if (providerLower === 'huggingface') {
+                executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream, 'https://api-inference.huggingface.co/v1');
+            } else if (providerLower === 'venice') {
+                executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream, 'https://api.venice.ai/api/v1');
+            } else if (providerLower === 'minimax') {
+                executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream, 'https://api.minimaxi.chat/v1');
+            } else if (providerLower === 'moonshot') {
+                executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream, 'https://api.moonshot.cn/v1');
             } else {
                 throw new Error(`Execution for provider "${provider}" is not yet supported in the standalone runner.`);
             }
