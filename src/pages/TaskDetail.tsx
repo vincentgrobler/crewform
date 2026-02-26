@@ -7,9 +7,10 @@ import { useWorkspace } from '@/hooks/useWorkspace'
 import { useAgents } from '@/hooks/useAgents'
 import { useTask } from '@/hooks/useTask'
 import { useCancelTask } from '@/hooks/useCancelTask'
+import { useRerunTask } from '@/hooks/useRerunTask'
 import { TaskStatusBadge, TaskPriorityBadge } from '@/components/tasks/TaskStatusBadge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Loader2, Ban, Terminal, Clock, User, Bot } from 'lucide-react'
+import { Loader2, Ban, Terminal, Clock, User, Bot, RefreshCw } from 'lucide-react'
 
 /**
  * Full-page view of a single task at /tasks/:id.
@@ -22,12 +23,18 @@ export function TaskDetail() {
     const { agents } = useAgents(workspaceId)
     const { task, isLoading, error } = useTask(id ?? null)
     const cancelMutation = useCancelTask()
+    const rerunMutation = useRerunTask()
 
     const agent = task ? agents.find((a) => a.id === task.assigned_agent_id) : null
 
     function handleCancel() {
         if (!task) return
         cancelMutation.mutate({ id: task.id, workspaceId: task.workspace_id })
+    }
+
+    function handleRerun() {
+        if (!task) return
+        rerunMutation.mutate({ id: task.id, workspaceId: task.workspace_id })
     }
 
     const elapsed = task ? getElapsed(task.created_at, task.updated_at, task.status) : ''
@@ -86,6 +93,22 @@ export function TaskDetail() {
                                     <Ban className="h-3.5 w-3.5" />
                                 )}
                                 Cancel Task
+                            </button>
+                        )}
+
+                        {(task.status === 'failed' || task.status === 'completed' || task.status === 'cancelled') && (
+                            <button
+                                type="button"
+                                onClick={handleRerun}
+                                disabled={rerunMutation.isPending}
+                                className="mt-3 flex items-center gap-2 rounded-lg border border-brand-primary/30 px-3 py-1.5 text-xs font-medium text-brand-primary transition-colors hover:bg-brand-primary/10 disabled:opacity-50"
+                            >
+                                {rerunMutation.isPending ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                    <RefreshCw className="h-3.5 w-3.5" />
+                                )}
+                                Re-run Task
                             </button>
                         )}
                     </div>

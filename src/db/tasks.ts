@@ -83,3 +83,22 @@ export async function updateTaskStatus(
     if (result.error) throw result.error
     return result.data as Task
 }
+
+/** Re-run a task: reset to dispatched, clear previous results */
+export async function rerunTask(id: string): Promise<Task> {
+    const result = await supabase
+        .from('tasks')
+        .update({
+            status: 'dispatched' as TaskStatus,
+            result: null,
+            error: null,
+            metadata: null,
+            claimed_by_runner: null,
+        })
+        .eq('id', id)
+        .select()
+        .single()
+
+    if (result.error) throw result.error
+    return result.data as Task
+}
