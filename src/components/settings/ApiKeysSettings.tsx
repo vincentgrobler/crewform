@@ -6,10 +6,13 @@ import { useWorkspace } from '@/hooks/useWorkspace'
 import { useApiKeys } from '@/hooks/useApiKeys'
 import { useSaveApiKey } from '@/hooks/useSaveApiKey'
 import { useRemoveApiKey } from '@/hooks/useRemoveApiKey'
+import { useToggleProvider } from '@/hooks/useToggleProvider'
 import { ProviderKeyCard } from '@/components/settings/ProviderKeyCard'
 import type { ProviderConfig } from '@/components/settings/ProviderKeyCard'
+import { MODEL_OPTIONS } from '@/lib/agentSchema'
 import { Skeleton } from '@/components/ui/skeleton'
 
+/** Build PROVIDERS config by merging static metadata with models from agentSchema */
 const PROVIDERS: ProviderConfig[] = [
     {
         id: 'anthropic',
@@ -67,17 +70,29 @@ const PROVIDERS: ProviderConfig[] = [
         bgColor: 'bg-rose-500/10',
         borderColor: 'border-border',
     },
-]
+].map((p) => {
+    // Match provider by name (case-insensitive) to get its models
+    const modelGroup = MODEL_OPTIONS.find(
+        (g) => g.provider.toLowerCase() === p.id.toLowerCase(),
+    )
+    return {
+        ...p,
+        models: modelGroup
+            ? modelGroup.models.map((m) => ({ value: m.value, label: m.label }))
+            : [],
+    }
+})
 
 /**
  * API Keys settings section.
- * Shows provider cards for all supported LLM providers.
+ * Shows provider cards with active/inactive toggles and model listings.
  */
 export function ApiKeysSettings() {
     const { workspaceId } = useWorkspace()
     const { keysByProvider, isLoading } = useApiKeys(workspaceId)
     const saveMutation = useSaveApiKey()
     const removeMutation = useRemoveApiKey()
+    const toggleMutation = useToggleProvider()
 
     function handleSave(provider: string, rawKey: string) {
         if (!workspaceId) return
@@ -96,6 +111,11 @@ export function ApiKeysSettings() {
     function handleRemove(keyId: string) {
         if (!workspaceId) return
         removeMutation.mutate({ id: keyId, workspaceId })
+    }
+
+    function handleToggleActive(keyId: string, isActive: boolean) {
+        if (!workspaceId) return
+        toggleMutation.mutate({ id: keyId, isActive, workspaceId })
     }
 
     if (isLoading) {
@@ -118,6 +138,7 @@ export function ApiKeysSettings() {
                     <p className="mt-0.5 text-xs text-gray-400">
                         Bring Your Own Key — use your own API keys for full cost transparency and control.
                         Keys are encrypted at rest with AES-256-GCM and never logged.
+                        Toggle a provider to &ldquo;Active&rdquo; to enable its models for agent creation.
                     </p>
                 </div>
             </div>
@@ -135,8 +156,12 @@ export function ApiKeysSettings() {
                             onRemove={() => {
                                 if (existingKey) handleRemove(existingKey.id)
                             }}
+                            onToggleActive={(isActive) => {
+                                if (existingKey) handleToggleActive(existingKey.id, isActive)
+                            }}
                             isSaving={saveMutation.isPending}
                             isRemoving={removeMutation.isPending}
+                            isToggling={toggleMutation.isPending}
                         />
                     )
                 })}

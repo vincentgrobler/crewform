@@ -305,6 +305,7 @@ export interface ApiKey {
   encrypted_key: string
   key_hint: string
   is_valid: boolean
+  is_active: boolean
   created_at: string
   updated_at: string
 }

@@ -2,24 +2,33 @@
 // Copyright (C) 2026 CrewForm
 
 import { useState } from 'react'
+import { AlertCircle } from 'lucide-react'
 import type { AgentFormData } from '@/lib/agentSchema'
-import { agentSchema, MODEL_OPTIONS } from '@/lib/agentSchema'
+import { agentSchema, MODEL_OPTIONS, getActiveModelOptions } from '@/lib/agentSchema'
 import type { ZodError } from 'zod'
 
 interface AgentFormProps {
     initialData: AgentFormData
     onSubmit: (data: AgentFormData) => void
     onBack: () => void
+    /** List of active provider IDs (lowercase). If undefined, all providers shown. */
+    activeProviders?: string[]
 }
 
 /**
  * Step 2: Agent configuration form.
  * Name, description, model, system prompt, temperature.
  * Validates with Zod on submit.
+ * Filters model selector to only show active providers when provided.
  */
-export function AgentForm({ initialData, onSubmit, onBack }: AgentFormProps) {
+export function AgentForm({ initialData, onSubmit, onBack, activeProviders }: AgentFormProps) {
     const [formData, setFormData] = useState<AgentFormData>(initialData)
     const [errors, setErrors] = useState<Record<string, string>>({})
+
+    // Determine which model groups to show
+    const modelOptions = activeProviders
+        ? getActiveModelOptions(activeProviders)
+        : MODEL_OPTIONS
 
     function updateField<K extends keyof AgentFormData>(key: K, value: AgentFormData[K]) {
         setFormData((prev) => ({ ...prev, [key]: value }))
@@ -90,22 +99,35 @@ export function AgentForm({ initialData, onSubmit, onBack }: AgentFormProps) {
                 <label htmlFor="agent-model" className="mb-1.5 block text-sm font-medium text-gray-300">
                     Model <span className="text-red-400">*</span>
                 </label>
-                <select
-                    id="agent-model"
-                    value={formData.model}
-                    onChange={(e) => updateField('model', e.target.value)}
-                    className="w-full rounded-lg border border-border bg-surface-card px-4 py-2.5 text-sm text-gray-200 outline-none focus:border-brand-primary"
-                >
-                    {MODEL_OPTIONS.map((group) => (
-                        <optgroup key={group.provider} label={group.provider}>
-                            {group.models.map((m) => (
-                                <option key={m.value} value={m.value}>
-                                    {m.label}
-                                </option>
-                            ))}
-                        </optgroup>
-                    ))}
-                </select>
+                {modelOptions.length > 0 ? (
+                    <select
+                        id="agent-model"
+                        value={formData.model}
+                        onChange={(e) => updateField('model', e.target.value)}
+                        className="w-full rounded-lg border border-border bg-surface-card px-4 py-2.5 text-sm text-gray-200 outline-none focus:border-brand-primary"
+                    >
+                        {modelOptions.map((group) => (
+                            <optgroup key={group.provider} label={group.provider}>
+                                {group.models.map((m) => (
+                                    <option key={m.value} value={m.value}>
+                                        {m.label}
+                                    </option>
+                                ))}
+                            </optgroup>
+                        ))}
+                    </select>
+                ) : (
+                    <div className="flex items-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-3">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-yellow-400" />
+                        <p className="text-sm text-yellow-300">
+                            No providers are active. Go to{' '}
+                            <a href="/settings" className="font-medium underline underline-offset-2 hover:text-yellow-200">
+                                Settings → API Keys
+                            </a>{' '}
+                            to activate a provider.
+                        </p>
+                    </div>
+                )}
                 {errors.model && <p className="mt-1 text-xs text-status-error-text">{errors.model}</p>}
             </div>
 
@@ -170,7 +192,8 @@ export function AgentForm({ initialData, onSubmit, onBack }: AgentFormProps) {
                 <button
                     type="button"
                     onClick={handleSubmit}
-                    className="rounded-lg bg-brand-primary px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-hover"
+                    disabled={activeProviders !== undefined && modelOptions.length === 0}
+                    className="rounded-lg bg-brand-primary px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     Review
                 </button>

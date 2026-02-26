@@ -116,3 +116,13 @@ export const MODEL_OPTIONS = [
         ],
     },
 ] as const
+
+/**
+ * Filter MODEL_OPTIONS to only include providers whose ID is in the active list.
+ * Provider IDs are lowercase (e.g. 'anthropic', 'openai').
+ */
+export function getActiveModelOptions(activeProviderIds: string[]) {
+    const activeSet = new Set(activeProviderIds.map((id) => id.toLowerCase()))
+    return MODEL_OPTIONS.filter((group) => activeSet.has(group.provider.toLowerCase()))
+}
+

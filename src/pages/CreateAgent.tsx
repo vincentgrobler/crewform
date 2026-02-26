@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 CrewForm
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Check } from 'lucide-react'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useCreateAgent } from '@/hooks/useCreateAgent'
+import { useApiKeys } from '@/hooks/useApiKeys'
 import { TemplateSelector } from '@/components/agents/TemplateSelector'
 import { AgentForm } from '@/components/agents/AgentForm'
 import { AgentReview } from '@/components/agents/AgentReview'
@@ -24,6 +25,13 @@ export function CreateAgent() {
     const navigate = useNavigate()
     const { workspaceId } = useWorkspace()
     const createAgent = useCreateAgent()
+    const { keys } = useApiKeys(workspaceId)
+
+    // Derive active provider IDs from API keys
+    const activeProviders = useMemo(
+        () => keys.filter((k) => k.is_active && k.is_valid).map((k) => k.provider),
+        [keys],
+    )
 
     const [step, setStep] = useState<WizardStep>('template')
     const [formData, setFormData] = useState<AgentFormData | null>(null)
@@ -121,6 +129,7 @@ export function CreateAgent() {
                         initialData={formData}
                         onSubmit={handleFormSubmit}
                         onBack={() => setStep('template')}
+                        activeProviders={activeProviders}
                     />
                 )}
 
