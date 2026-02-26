@@ -9,7 +9,7 @@ import { useUpdateAgent } from '@/hooks/useUpdateAgent'
 import { useDeleteAgent } from '@/hooks/useDeleteAgent'
 import { DeleteAgentDialog } from '@/components/agents/DeleteAgentDialog'
 import { StatusIndicator } from '@/components/ui/StatusIndicator'
-import { agentSchema, MODEL_OPTIONS, getActiveModelOptions, mergeModelOptions } from '@/lib/agentSchema'
+import { agentSchema, MODEL_OPTIONS, getActiveModelOptions, mergeModelOptions, inferProviderFromModel } from '@/lib/agentSchema'
 import { useOpenRouterModels } from '@/hooks/useOpenRouterModels'
 import { useApiKeys } from '@/hooks/useApiKeys'
 import { useWorkspace } from '@/hooks/useWorkspace'
@@ -96,7 +96,7 @@ export function AgentDetail() {
             setFieldErrors({})
 
             updateMutation.mutate(
-                { id, data: validated },
+                { id, data: { ...validated, provider: inferProviderFromModel(validated.model) } },
                 {
                     onSuccess: () => {
                         setHasChanges(false)
