@@ -7,3 +7,6 @@ alter table public.tasks
 create index if not exists idx_tasks_scheduled
     on public.tasks(workspace_id, scheduled_for)
     where scheduled_for is not null;
+
+-- Enable Realtime for live task status updates
+alter publication supabase_realtime add table public.tasks;
