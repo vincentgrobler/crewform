@@ -113,7 +113,7 @@ function CreateWebhookForm({
     const [name, setName] = useState('')
     const [destinationType, setDestinationType] = useState<DestinationType>('http')
     const [events, setEvents] = useState<string[]>(['task.completed', 'task.failed'])
-    const [config, setConfig] = useState<Record<string, string>>({})
+    const [config, setConfig] = useState<Record<string, string | undefined>>({})
 
     function toggleEvent(event: string) {
         setEvents((prev) =>
@@ -248,8 +248,8 @@ function DestinationConfigFields({
     onChange,
 }: {
     type: DestinationType
-    config: Record<string, string>
-    onChange: (c: Record<string, string>) => void
+    config: Record<string, string | undefined>
+    onChange: (c: Record<string, string | undefined>) => void
 }) {
     function updateField(key: string, value: string) {
         onChange({ ...config, [key]: value })

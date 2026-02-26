@@ -13,7 +13,10 @@ import type { CreateRouteInput, UpdateRouteInput, OutputRoute } from '@/db/webho
 export function useWebhooks(workspaceId: string | undefined) {
     return useQuery({
         queryKey: ['webhooks', workspaceId],
-        queryFn: () => fetchRoutes(workspaceId!),
+        queryFn: () => {
+            if (!workspaceId) throw new Error('Missing workspaceId')
+            return fetchRoutes(workspaceId)
+        },
         enabled: !!workspaceId,
     })
 }
@@ -46,8 +49,10 @@ export function useUpdateWebhook() {
 export function useDeleteWebhook() {
     const queryClient = useQueryClient()
 
-    return useMutation<void, Error, { id: string; workspaceId: string }>({
-        mutationFn: ({ id }) => deleteRoute(id),
+    return useMutation({
+        mutationFn: async ({ id }: { id: string; workspaceId: string }) => {
+            await deleteRoute(id)
+        },
         onSuccess: (_data, variables) => {
             void queryClient.invalidateQueries({ queryKey: ['webhooks', variables.workspaceId] })
         },
@@ -58,7 +63,10 @@ export function useDeleteWebhook() {
 export function useWebhookLogs(routeId: string | undefined) {
     return useQuery({
         queryKey: ['webhook-logs', routeId],
-        queryFn: () => fetchWebhookLogs(routeId!),
+        queryFn: () => {
+            if (!routeId) throw new Error('Missing routeId')
+            return fetchWebhookLogs(routeId)
+        },
         enabled: !!routeId,
     })
 }
