@@ -2,6 +2,7 @@
 // Copyright (C) 2026 CrewForm
 
 import { supabase } from '@/lib/supabase'
+import { savePromptVersion } from '@/db/promptHistory'
 import type { Agent } from '@/types'
 
 /**
@@ -64,6 +65,20 @@ export async function createAgent(input: CreateAgentInput): Promise<Agent> {
 export type UpdateAgentInput = Partial<Omit<CreateAgentInput, 'workspace_id'>>
 
 export async function updateAgent(id: string, input: UpdateAgentInput): Promise<Agent> {
+    // Snapshot old prompt if system_prompt is being changed
+    if (input.system_prompt !== undefined) {
+        const currentResult = await supabase
+            .from('agents')
+            .select('system_prompt, model, temperature')
+            .eq('id', id)
+            .single()
+
+        const current = currentResult.data as { system_prompt: string; model: string; temperature: number } | null
+        if (current && current.system_prompt !== input.system_prompt) {
+            await savePromptVersion(id, current.system_prompt, current.model, current.temperature)
+        }
+    }
+
     const result = await supabase
         .from('agents')
         .update(input)

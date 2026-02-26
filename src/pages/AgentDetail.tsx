@@ -3,11 +3,12 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, Trash2, Activity, Settings2, AlertCircle, Loader2 } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, Activity, Settings2, AlertCircle, Loader2, History } from 'lucide-react'
 import { useAgent } from '@/hooks/useAgent'
 import { useUpdateAgent } from '@/hooks/useUpdateAgent'
 import { useDeleteAgent } from '@/hooks/useDeleteAgent'
 import { DeleteAgentDialog } from '@/components/agents/DeleteAgentDialog'
+import { PromptHistoryPanel } from '@/components/agents/PromptHistoryPanel'
 import { StatusIndicator } from '@/components/ui/StatusIndicator'
 import { agentSchema, MODEL_OPTIONS, getActiveModelOptions, mergeModelOptions, inferProviderFromModel } from '@/lib/agentSchema'
 import { useOpenRouterModels } from '@/hooks/useOpenRouterModels'
@@ -18,10 +19,11 @@ import { cn } from '@/lib/utils'
 import type { AgentFormData } from '@/lib/agentSchema'
 import type { ZodError } from 'zod'
 
-type TabKey = 'config' | 'activity'
+type TabKey = 'config' | 'history' | 'activity'
 
 const tabs: { key: TabKey; label: string; icon: typeof Settings2 }[] = [
     { key: 'config', label: 'Configuration', icon: Settings2 },
+    { key: 'history', label: 'History', icon: History },
     { key: 'activity', label: 'Activity', icon: Activity },
 ]
 
@@ -249,6 +251,17 @@ export function AgentDetail() {
                     fieldErrors={fieldErrors}
                     onUpdateField={updateField}
                     modelOptions={dynamicModelOptions}
+                />
+            )}
+
+            {activeTab === 'history' && id && formData && (
+                <PromptHistoryPanel
+                    agentId={id}
+                    currentPrompt={formData.system_prompt}
+                    onRestore={(prompt) => {
+                        updateField('system_prompt', prompt)
+                        setActiveTab('config')
+                    }}
                 />
             )}
 
