@@ -42,6 +42,7 @@ export interface CreateAgentInput {
     name: string
     description: string
     model: string
+    provider: string
     system_prompt: string
     temperature: number
     tools: string[]

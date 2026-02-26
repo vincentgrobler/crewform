@@ -74,8 +74,8 @@ export async function processTask(task: Task) {
             throw new Error(`Failed to load agent: ${agentError?.message}`);
         }
 
-        // Derive provider from agent or infer from model name
-        const provider = agent.provider ?? inferProvider(agent.model);
+        // Derive provider from model name first (authoritative), fall back to stored value
+        const provider = inferProvider(agent.model) ?? agent.provider;
         if (!provider) {
             throw new Error(`Cannot determine provider for agent "${agent.name}" with model "${agent.model}". Please update the agent's provider in Settings.`);
         }

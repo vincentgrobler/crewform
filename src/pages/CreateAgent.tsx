@@ -11,6 +11,7 @@ import { TemplateSelector } from '@/components/agents/TemplateSelector'
 import { AgentForm } from '@/components/agents/AgentForm'
 import { AgentReview } from '@/components/agents/AgentReview'
 import type { AgentFormData } from '@/lib/agentSchema'
+import { inferProviderFromModel } from '@/lib/agentSchema'
 import { cn } from '@/lib/utils'
 
 type WizardStep = 'template' | 'configure' | 'review'
@@ -57,6 +58,7 @@ export function CreateAgent() {
                 name: formData.name,
                 description: formData.description,
                 model: formData.model,
+                provider: inferProviderFromModel(formData.model),
                 system_prompt: formData.system_prompt,
                 temperature: formData.temperature,
                 tools: formData.tools,

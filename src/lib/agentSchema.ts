@@ -144,3 +144,20 @@ export function mergeModelOptions(
     })
 }
 
+/**
+ * Derive the provider from a model name.
+ * Used at save time to ensure provider and model are always in sync.
+ */
+export function inferProviderFromModel(model: string): string {
+    const m = model.toLowerCase()
+    // Prefix checks first — must take priority over keyword matches
+    if (m.startsWith('openrouter/')) return 'openrouter'
+    if (m.startsWith('groq/')) return 'groq'
+    // Keyword matches
+    if (m.includes('claude')) return 'anthropic'
+    if (m.includes('gpt') || m.includes('o1') || m.includes('o3')) return 'openai'
+    if (m.includes('gemini')) return 'google'
+    if (m.includes('mistral') || m.includes('codestral')) return 'mistral'
+    if (m.includes('command-r')) return 'cohere'
+    return 'unknown'
+}
