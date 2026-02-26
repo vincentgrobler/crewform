@@ -116,26 +116,33 @@ export async function processTask(task: Task) {
         let executionResult;
         const providerLower = provider.toLowerCase();
 
-        if (providerLower === 'anthropic') {
-            executionResult = await executeAnthropic(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream);
-        } else if (providerLower === 'openai') {
-            executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream);
-        } else if (providerLower === 'google') {
-            executionResult = await executeGoogle(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream);
-        } else if (providerLower === 'openrouter') {
-            // OpenRouter uses OpenAI-compatible API; strip 'openrouter/' prefix from model name
-            const orModel = agent.model.replace(/^openrouter\//, '');
-            executionResult = await executeOpenAI(rawKey, orModel, systemPrompt, userPrompt, updateResultStream, 'https://openrouter.ai/api/v1');
-        } else if (providerLower === 'groq') {
-            // Groq uses OpenAI-compatible API; strip 'groq/' prefix from model name
-            const groqModel = agent.model.replace(/^groq\//, '');
-            executionResult = await executeOpenAI(rawKey, groqModel, systemPrompt, userPrompt, updateResultStream, 'https://api.groq.com/openai/v1');
-        } else if (providerLower === 'mistral') {
-            executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream, 'https://api.mistral.ai/v1');
-        } else if (providerLower === 'cohere') {
-            executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream, 'https://api.cohere.com/compatibility/v1');
-        } else {
-            throw new Error(`Execution for provider "${provider}" is not yet supported in the standalone runner.`);
+        try {
+            if (providerLower === 'anthropic') {
+                executionResult = await executeAnthropic(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream);
+            } else if (providerLower === 'openai') {
+                executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream);
+            } else if (providerLower === 'google') {
+                executionResult = await executeGoogle(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream);
+            } else if (providerLower === 'openrouter') {
+                const orModel = agent.model.replace(/^openrouter\//, '');
+                executionResult = await executeOpenAI(rawKey, orModel, systemPrompt, userPrompt, updateResultStream, 'https://openrouter.ai/api/v1');
+            } else if (providerLower === 'groq') {
+                const groqModel = agent.model.replace(/^groq\//, '');
+                executionResult = await executeOpenAI(rawKey, groqModel, systemPrompt, userPrompt, updateResultStream, 'https://api.groq.com/openai/v1');
+            } else if (providerLower === 'mistral') {
+                executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream, 'https://api.mistral.ai/v1');
+            } else if (providerLower === 'cohere') {
+                executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream, 'https://api.cohere.com/compatibility/v1');
+            } else {
+                throw new Error(`Execution for provider "${provider}" is not yet supported in the standalone runner.`);
+            }
+        } catch (llmError: unknown) {
+            // Surface user-friendly message for invalid model IDs (400/404 from API)
+            const msg = llmError instanceof Error ? llmError.message : String(llmError);
+            if (msg.includes('400') || msg.includes('404') || msg.includes('not a valid model') || msg.includes('model_not_found')) {
+                throw new Error(`Model "${agent.model}" is not available on ${provider}. Please update the agent's model in Settings → Agents.`);
+            }
+            throw llmError;
         }
 
         // 5. Finalize Task success
