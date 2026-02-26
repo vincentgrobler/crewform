@@ -6,9 +6,10 @@ export async function executeOpenAI(
     model: string,
     systemPrompt: string,
     userPrompt: string,
-    onChunk: (text: string) => Promise<void>
+    onChunk: (text: string) => Promise<void>,
+    baseURL?: string
 ): Promise<{ result: string; usage: TokenUsage }> {
-    const openai = new OpenAI({ apiKey });
+    const openai = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
     let fullText = '';
 
     const stream = await openai.chat.completions.create({
