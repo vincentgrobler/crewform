@@ -127,3 +127,13 @@ export async function updateTaskSchedule(
     if (result.error) throw result.error
     return result.data as Task
 }
+
+/** Delete a task */
+export async function deleteTask(id: string): Promise<void> {
+    const result = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', id)
+
+    if (result.error) throw result.error
+}
