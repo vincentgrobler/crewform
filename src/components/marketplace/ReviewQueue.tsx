@@ -94,7 +94,7 @@ export function ReviewQueue() {
                             ) : (
                                 <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-400" />
                             )}
-                            <div>
+                            <div className="flex-1">
                                 <p className={cn(
                                     'text-xs font-medium',
                                     scan.safe ? 'text-green-300' : 'text-red-300',
@@ -107,6 +107,18 @@ export function ReviewQueue() {
                                             <li key={flag} className="text-[10px] text-red-400">• {flag}</li>
                                         ))}
                                     </ul>
+                                )}
+                                {scan.aiScan && (
+                                    <div className="mt-1.5 border-t border-border/50 pt-1.5">
+                                        <p className="text-[10px] font-medium text-gray-400">
+                                            AI Scan ({Math.round(scan.aiScan.confidence * 100)}% confidence)
+                                            {' — '}
+                                            <span className={scan.aiScan.safe ? 'text-green-400' : 'text-red-400'}>
+                                                {scan.aiScan.safe ? 'Safe' : 'Flagged'}
+                                            </span>
+                                        </p>
+                                        <p className="text-[10px] text-gray-500">{scan.aiScan.reasoning}</p>
+                                    </div>
                                 )}
                             </div>
                         </div>

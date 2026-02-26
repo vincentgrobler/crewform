@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 CrewForm
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Building2, Save, Loader2, AlertTriangle } from 'lucide-react'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useUpdateWorkspace } from '@/hooks/useMembers'
@@ -13,14 +13,26 @@ export function WorkspaceSettings() {
     const updateMutation = useUpdateWorkspace()
     const isOwner = hasMinRole('owner')
 
-    const [name, setName] = useState(workspace?.name ?? '')
-    const [slug, setSlug] = useState(workspace?.slug ?? '')
+    const [name, setName] = useState('')
+    const [slug, setSlug] = useState('')
     const [showDanger, setShowDanger] = useState(false)
+
+    useEffect(() => {
+        if (workspace) {
+            setName(workspace.name)
+            setSlug(workspace.slug)
+        }
+    }, [workspace])
+
+    const isDirty = workspace
+        ? name !== workspace.name || slug !== workspace.slug
+        : false
 
     function handleSave() {
         if (!workspaceId) return
         updateMutation.mutate({ workspaceId, data: { name, slug } })
     }
+
 
     return (
         <div className="space-y-6">
@@ -58,7 +70,7 @@ export function WorkspaceSettings() {
                         />
                     </div>
 
-                    {isOwner && (
+                    {isOwner && isDirty && (
                         <button
                             type="button"
                             onClick={handleSave}

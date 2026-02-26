@@ -91,6 +91,11 @@ export interface MarketplaceSubmission {
 export interface InjectionScanResult {
     safe: boolean
     flags: string[]
+    aiScan?: {
+        safe: boolean
+        reasoning: string
+        confidence: number // 0–1
+    }
 }
 
 export interface CreatorStats {
@@ -128,6 +133,39 @@ export function scanForInjection(prompt: string): InjectionScanResult {
     return { safe: flags.length === 0, flags }
 }
 
+/**
+ * AI-powered injection scan via Supabase Edge Function.
+ * Sends the prompt to a super admin agent that analyses it for injection risks.
+ * Falls back gracefully if the Edge Function is not deployed.
+ */
+async function aiScanForInjection(
+    prompt: string,
+): Promise<{ safe: boolean; reasoning: string; confidence: number }> {
+    const response = await supabase.functions.invoke<{ safe: boolean; reasoning: string; confidence: number }>('ai-injection-scan', {
+        body: { prompt },
+    })
+
+    if (response.error) {
+        // Edge Function not deployed or unavailable — stub response
+        console.warn('[AI Scan] Edge Function unavailable, using stub:', String(response.error))
+        return {
+            safe: true,
+            reasoning: 'AI scan unavailable — skipped.',
+            confidence: 0,
+        }
+    }
+
+    const result = response.data
+    if (!result) {
+        return { safe: true, reasoning: 'AI scan returned no data.', confidence: 0 }
+    }
+    return {
+        safe: result.safe,
+        reasoning: result.reasoning,
+        confidence: result.confidence,
+    }
+}
+
 // ─── Publishing ─────────────────────────────────────────────────────────────
 
 /** Submit an agent for marketplace review */
@@ -152,7 +190,21 @@ export async function submitAgentForReview(
         .single()
 
     const prompt = (agentResult.data as { system_prompt: string } | null)?.system_prompt ?? ''
-    const scanResult = scanForInjection(prompt)
+    const regexScan = scanForInjection(prompt)
+
+    // Run AI scan (non-blocking — falls back to regex-only if unavailable)
+    let aiResult: InjectionScanResult['aiScan'] | undefined
+    try {
+        aiResult = await aiScanForInjection(prompt)
+    } catch {
+        // AI scan unavailable — proceed with regex-only
+    }
+
+    const combinedScan: InjectionScanResult = {
+        safe: regexScan.safe && (aiResult?.safe ?? true),
+        flags: regexScan.flags,
+        aiScan: aiResult,
+    }
 
     // Create submission
     const result = await supabase
@@ -160,7 +212,7 @@ export async function submitAgentForReview(
         .insert({
             agent_id: agentId,
             submitted_by: userId,
-            injection_scan_result: scanResult,
+            injection_scan_result: combinedScan,
         })
         .select()
         .single()

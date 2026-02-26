@@ -15,6 +15,7 @@ export interface AdminWorkspace {
     member_count: number
     subscription_plan: string | null
     subscription_status: string | null
+    is_beta: boolean
 }
 
 export interface AdminUser {
@@ -62,7 +63,7 @@ export async function fetchAllWorkspaces(): Promise<AdminWorkspace[]> {
 
     const workspaces = workspacesResult.data as Array<{
         id: string; name: string; slug: string; owner_id: string;
-        plan: string; created_at: string
+        plan: string; created_at: string; is_beta: boolean
     }>
 
     // Fetch member counts
@@ -140,4 +141,14 @@ export async function overrideWorkspacePlan(workspaceId: string, plan: string): 
         .from('workspaces')
         .update({ plan })
         .eq('id', workspaceId)
+}
+
+/** Toggle beta status for a workspace */
+export async function toggleBeta(workspaceId: string, isBeta: boolean): Promise<void> {
+    const result = await supabase
+        .from('workspaces')
+        .update({ is_beta: isBeta })
+        .eq('id', workspaceId)
+
+    if (result.error) throw result.error
 }
