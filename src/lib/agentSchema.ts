@@ -85,12 +85,7 @@ export const MODEL_OPTIONS = [
     },
     {
         provider: 'OpenRouter',
-        models: [
-            { value: 'openrouter/meta-llama/llama-3.1-405b', label: 'Llama 3.1 405B' },
-            { value: 'openrouter/meta-llama/llama-3.1-70b', label: 'Llama 3.1 70B' },
-            { value: 'openrouter/deepseek/deepseek-v3', label: 'DeepSeek V3' },
-            { value: 'openrouter/mistralai/mistral-large', label: 'Mistral Large (via OR)' },
-        ],
+        models: [] as { value: string; label: string }[], // Populated dynamically
     },
     {
         provider: 'Mistral',
@@ -115,7 +110,9 @@ export const MODEL_OPTIONS = [
             { value: 'command-r', label: 'Command R' },
         ],
     },
-] as const
+]
+
+export type ModelGroup = typeof MODEL_OPTIONS[number]
 
 /**
  * Filter MODEL_OPTIONS to only include providers whose ID is in the active list.
@@ -124,5 +121,26 @@ export const MODEL_OPTIONS = [
 export function getActiveModelOptions(activeProviderIds: string[]) {
     const activeSet = new Set(activeProviderIds.map((id) => id.toLowerCase()))
     return MODEL_OPTIONS.filter((group) => activeSet.has(group.provider.toLowerCase()))
+}
+
+/**
+ * Merge dynamic models into the static model options.
+ * Used for providers like OpenRouter whose model list is fetched live.
+ */
+export function mergeModelOptions(
+    staticOptions: ModelGroup[],
+    dynamicModels: { provider: string; models: { value: string; label: string }[] }[],
+): ModelGroup[] {
+    const dynamicMap = new Map(
+        dynamicModels.map((d) => [d.provider.toLowerCase(), d.models]),
+    )
+
+    return staticOptions.map((group) => {
+        const dynamic = dynamicMap.get(group.provider.toLowerCase())
+        if (dynamic && dynamic.length > 0) {
+            return { ...group, models: dynamic }
+        }
+        return group
+    })
 }
 

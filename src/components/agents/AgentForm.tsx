@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 CrewForm
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { AlertCircle } from 'lucide-react'
 import type { AgentFormData } from '@/lib/agentSchema'
-import { agentSchema, MODEL_OPTIONS, getActiveModelOptions } from '@/lib/agentSchema'
+import { agentSchema, MODEL_OPTIONS, getActiveModelOptions, mergeModelOptions } from '@/lib/agentSchema'
+import { useOpenRouterModels } from '@/hooks/useOpenRouterModels'
 import type { ZodError } from 'zod'
 
 interface AgentFormProps {
@@ -25,10 +26,22 @@ export function AgentForm({ initialData, onSubmit, onBack, activeProviders }: Ag
     const [formData, setFormData] = useState<AgentFormData>(initialData)
     const [errors, setErrors] = useState<Record<string, string>>({})
 
-    // Determine which model groups to show
-    const modelOptions = activeProviders
-        ? getActiveModelOptions(activeProviders)
-        : MODEL_OPTIONS
+    // Fetch live OpenRouter models when OpenRouter is active
+    const isOpenRouterActive = activeProviders
+        ? activeProviders.some((p) => p.toLowerCase() === 'openrouter')
+        : true // Show all if no filter
+    const { models: openRouterModels, isLoading: isLoadingModels } = useOpenRouterModels(isOpenRouterActive)
+
+    // Determine which model groups to show, merging dynamic models
+    const modelOptions = useMemo(() => {
+        const filtered = activeProviders
+            ? getActiveModelOptions(activeProviders)
+            : MODEL_OPTIONS
+
+        return mergeModelOptions(filtered, [
+            { provider: 'OpenRouter', models: openRouterModels },
+        ])
+    }, [activeProviders, openRouterModels])
 
     function updateField<K extends keyof AgentFormData>(key: K, value: AgentFormData[K]) {
         setFormData((prev) => ({ ...prev, [key]: value }))
@@ -106,15 +119,26 @@ export function AgentForm({ initialData, onSubmit, onBack, activeProviders }: Ag
                         onChange={(e) => updateField('model', e.target.value)}
                         className="w-full rounded-lg border border-border bg-surface-card px-4 py-2.5 text-sm text-gray-200 outline-none focus:border-brand-primary"
                     >
-                        {modelOptions.map((group) => (
-                            <optgroup key={group.provider} label={group.provider}>
-                                {group.models.map((m) => (
-                                    <option key={m.value} value={m.value}>
-                                        {m.label}
-                                    </option>
-                                ))}
-                            </optgroup>
-                        ))}
+                        {modelOptions.map((group) => {
+                            // Show loading placeholder for groups that fetch dynamically
+                            if (group.models.length === 0 && isLoadingModels && group.provider === 'OpenRouter') {
+                                return (
+                                    <optgroup key={group.provider} label={group.provider}>
+                                        <option disabled>Loading models…</option>
+                                    </optgroup>
+                                )
+                            }
+                            if (group.models.length === 0) return null
+                            return (
+                                <optgroup key={group.provider} label={group.provider}>
+                                    {group.models.map((m) => (
+                                        <option key={m.value} value={m.value}>
+                                            {m.label}
+                                        </option>
+                                    ))}
+                                </optgroup>
+                            )
+                        })}
                     </select>
                 ) : (
                     <div className="flex items-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-3">
