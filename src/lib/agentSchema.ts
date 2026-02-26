@@ -110,6 +110,52 @@ export const MODEL_OPTIONS = [
             { value: 'command-r', label: 'Command R' },
         ],
     },
+    {
+        provider: 'Together',
+        models: [
+            { value: 'meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo', label: 'Llama 3.1 405B Turbo' },
+            { value: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo', label: 'Llama 3.1 70B Turbo' },
+            { value: 'mistralai/Mixtral-8x22B-Instruct-v0.1', label: 'Mixtral 8x22B' },
+            { value: 'Qwen/Qwen2.5-72B-Instruct-Turbo', label: 'Qwen 2.5 72B Turbo' },
+        ],
+    },
+    {
+        provider: 'NVIDIA',
+        models: [
+            { value: 'nvidia/llama-3.1-nemotron-70b-instruct', label: 'Nemotron 70B' },
+            { value: 'meta/llama-3.1-405b-instruct', label: 'Llama 3.1 405B' },
+        ],
+    },
+    {
+        provider: 'Hugging Face',
+        models: [
+            { value: 'meta-llama/Llama-3.1-70B-Instruct', label: 'Llama 3.1 70B' },
+            { value: 'mistralai/Mistral-7B-Instruct-v0.3', label: 'Mistral 7B v0.3' },
+            { value: 'Qwen/Qwen2.5-72B-Instruct', label: 'Qwen 2.5 72B' },
+        ],
+    },
+    {
+        provider: 'Venice',
+        models: [
+            { value: 'llama-3.3-70b', label: 'Llama 3.3 70B' },
+            { value: 'deepseek-r1-671b', label: 'DeepSeek R1 671B' },
+        ],
+    },
+    {
+        provider: 'MiniMax',
+        models: [
+            { value: 'MiniMax-Text-01', label: 'MiniMax Text 01' },
+            { value: 'abab6.5s-chat', label: 'Abab 6.5s Chat' },
+        ],
+    },
+    {
+        provider: 'Moonshot',
+        models: [
+            { value: 'moonshot-v1-128k', label: 'Moonshot V1 128K' },
+            { value: 'moonshot-v1-32k', label: 'Moonshot V1 32K' },
+            { value: 'moonshot-v1-8k', label: 'Moonshot V1 8K' },
+        ],
+    },
 ]
 
 export type ModelGroup = typeof MODEL_OPTIONS[number]
@@ -159,5 +205,11 @@ export function inferProviderFromModel(model: string): string {
     if (m.includes('gemini')) return 'google'
     if (m.includes('mistral') || m.includes('codestral')) return 'mistral'
     if (m.includes('command-r')) return 'cohere'
+    // New providers
+    if (m.includes('togethercomputer') || m.includes('together/')) return 'together'
+    if (m.includes('nvidia/') || m.includes('nim/') || m.includes('nemotron')) return 'nvidia'
+    if (m.includes('minimax') || m.includes('abab')) return 'minimax'
+    if (m.includes('moonshot')) return 'moonshot'
+    if (m.includes('venice') || m.includes('deepseek-r1')) return 'venice'
     return 'unknown'
 }
