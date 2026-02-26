@@ -9,8 +9,10 @@ import { useUpdateAgent } from '@/hooks/useUpdateAgent'
 import { useDeleteAgent } from '@/hooks/useDeleteAgent'
 import { DeleteAgentDialog } from '@/components/agents/DeleteAgentDialog'
 import { StatusIndicator } from '@/components/ui/StatusIndicator'
-import { agentSchema, MODEL_OPTIONS, mergeModelOptions } from '@/lib/agentSchema'
+import { agentSchema, MODEL_OPTIONS, getActiveModelOptions, mergeModelOptions } from '@/lib/agentSchema'
 import { useOpenRouterModels } from '@/hooks/useOpenRouterModels'
+import { useApiKeys } from '@/hooks/useApiKeys'
+import { useWorkspace } from '@/hooks/useWorkspace'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import type { AgentFormData } from '@/lib/agentSchema'
@@ -30,6 +32,9 @@ export function AgentDetail() {
     const updateMutation = useUpdateAgent()
     const deleteMutation = useDeleteAgent()
 
+    const { workspaceId } = useWorkspace()
+    const { keys } = useApiKeys(workspaceId)
+
     const [activeTab, setActiveTab] = useState<TabKey>('config')
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [formData, setFormData] = useState<AgentFormData | null>(null)
@@ -37,12 +42,23 @@ export function AgentDetail() {
     const [hasChanges, setHasChanges] = useState(false)
     const [saveSuccess, setSaveSuccess] = useState(false)
 
-    // Dynamic OpenRouter models
-    const { models: openRouterModels } = useOpenRouterModels(true)
-    const dynamicModelOptions = useMemo(
-        () => mergeModelOptions(MODEL_OPTIONS, [{ provider: 'OpenRouter', models: openRouterModels }]),
-        [openRouterModels],
+    // Only show models for providers with active API keys
+    const activeProviders = useMemo(
+        () => keys.filter((k) => k.is_active && k.is_valid).map((k) => k.provider),
+        [keys],
     )
+    const isOpenRouterActive = activeProviders.some((p) => p.toLowerCase() === 'openrouter')
+    const { models: openRouterModels } = useOpenRouterModels(isOpenRouterActive)
+
+    const dynamicModelOptions = useMemo(() => {
+        const filtered = activeProviders.length > 0
+            ? getActiveModelOptions(activeProviders)
+            : MODEL_OPTIONS
+
+        return mergeModelOptions(filtered, [
+            { provider: 'OpenRouter', models: openRouterModels },
+        ])
+    }, [activeProviders, openRouterModels])
 
     // Populate form when agent loads
     useEffect(() => {
