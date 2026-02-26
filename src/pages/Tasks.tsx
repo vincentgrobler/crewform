@@ -2,7 +2,7 @@
 // Copyright (C) 2026 CrewForm
 
 import { useState } from 'react'
-import { ListTodo, Plus, SearchX } from 'lucide-react'
+import { ListTodo, Plus, SearchX, LayoutList, CalendarDays } from 'lucide-react'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useAgents } from '@/hooks/useAgents'
 import { useTasksQuery } from '@/hooks/useTasksQuery'
@@ -10,8 +10,10 @@ import { TaskRow } from '@/components/tasks/TaskRow'
 import { TaskFilters } from '@/components/tasks/TaskFilters'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel'
+import { TaskCalendar } from '@/components/tasks/TaskCalendar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/shared/ErrorState'
+import { cn } from '@/lib/utils'
 import type { TaskStatus, TaskPriority } from '@/types'
 
 export function Tasks() {
@@ -25,6 +27,8 @@ export function Tasks() {
   const [agentFilter, setAgentFilter] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
+  const [calendarDate, setCalendarDate] = useState<string | undefined>(undefined)
 
   const filters = {
     status: statusFilter.length > 0 ? statusFilter : undefined,
@@ -60,21 +64,55 @@ export function Tasks() {
         </button>
       </div>
 
-      {/* Filters */}
-      <TaskFilters
-        search={search}
-        onSearchChange={setSearch}
-        statusFilter={statusFilter}
-        onStatusChange={setStatusFilter}
-        priorityFilter={priorityFilter}
-        onPriorityChange={setPriorityFilter}
-        agentFilter={agentFilter}
-        onAgentChange={setAgentFilter}
-        agents={agents}
-      />
+      {/* View Toggle + Filters */}
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex rounded-lg border border-border p-0.5">
+          <button
+            type="button"
+            onClick={() => setViewMode('list')}
+            className={cn(
+              'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+              viewMode === 'list'
+                ? 'bg-brand-primary text-white'
+                : 'text-gray-500 hover:text-gray-300',
+            )}
+          >
+            <LayoutList className="h-3.5 w-3.5" />
+            List
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('calendar')}
+            className={cn(
+              'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+              viewMode === 'calendar'
+                ? 'bg-brand-primary text-white'
+                : 'text-gray-500 hover:text-gray-300',
+            )}
+          >
+            <CalendarDays className="h-3.5 w-3.5" />
+            Calendar
+          </button>
+        </div>
+      </div>
+
+      {/* Filters (list view only) */}
+      {viewMode === 'list' && (
+        <TaskFilters
+          search={search}
+          onSearchChange={setSearch}
+          statusFilter={statusFilter}
+          onStatusChange={setStatusFilter}
+          priorityFilter={priorityFilter}
+          onPriorityChange={setPriorityFilter}
+          agentFilter={agentFilter}
+          onAgentChange={setAgentFilter}
+          agents={agents}
+        />
+      )}
 
       {/* Loading */}
-      {isLoading && (
+      {viewMode === 'list' && isLoading && (
         <div className="space-y-3">
           {[...Array(5) as undefined[]].map((_, i) => (
             <Skeleton key={i} className="h-16 w-full rounded-lg" />
@@ -82,15 +120,26 @@ export function Tasks() {
         </div>
       )}
 
-      {!isLoading && error && (
+      {viewMode === 'list' && !isLoading && error && (
         <ErrorState
           message={error instanceof Error ? error.message : 'Failed to load tasks'}
           onRetry={() => void refetch()}
         />
       )}
 
-      {/* Table */}
-      {!isLoading && !error && tasks.length > 0 && (
+      {/* Calendar View */}
+      {viewMode === 'calendar' && (
+        <TaskCalendar
+          onSelectDate={(date) => {
+            setCalendarDate(date)
+            setShowCreateModal(true)
+          }}
+          onSelectTask={(taskId) => setSelectedTaskId(taskId)}
+        />
+      )}
+
+      {/* Table (list view) */}
+      {viewMode === 'list' && !isLoading && !error && tasks.length > 0 && (
         <div className="overflow-x-auto rounded-lg border border-border bg-surface-card">
           <table className="w-full">
             <thead>
@@ -114,7 +163,7 @@ export function Tasks() {
       )}
 
       {/* Empty — no tasks at all */}
-      {!isLoading && tasks.length === 0 && !hasFilters && (
+      {viewMode === 'list' && !isLoading && tasks.length === 0 && !hasFilters && (
         <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-surface-card py-16">
           <ListTodo className="mb-4 h-12 w-12 text-gray-600" />
           <h2 className="mb-2 text-lg font-medium text-gray-300">No tasks yet</h2>
@@ -133,7 +182,7 @@ export function Tasks() {
       )}
 
       {/* Empty — no results for filters */}
-      {!isLoading && tasks.length === 0 && hasFilters && (
+      {viewMode === 'list' && !isLoading && tasks.length === 0 && hasFilters && (
         <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-surface-card py-16">
           <SearchX className="mb-4 h-12 w-12 text-gray-600" />
           <h2 className="mb-2 text-lg font-medium text-gray-300">No matching tasks</h2>
@@ -145,7 +194,13 @@ export function Tasks() {
 
       {/* Create modal */}
       {showCreateModal && (
-        <CreateTaskModal onClose={() => setShowCreateModal(false)} />
+        <CreateTaskModal
+          onClose={() => {
+            setShowCreateModal(false)
+            setCalendarDate(undefined)
+          }}
+          initialDate={calendarDate}
+        />
       )}
 
       {/* Detail panel */}
