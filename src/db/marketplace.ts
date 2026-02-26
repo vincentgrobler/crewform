@@ -70,3 +70,246 @@ export async function fetchMarketplaceTags(): Promise<string[]> {
 
     return Array.from(tagSet).sort()
 }
+
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+export interface MarketplaceSubmission {
+    id: string
+    agent_id: string
+    submitted_by: string
+    status: 'pending' | 'approved' | 'rejected'
+    review_notes: string | null
+    injection_scan_result: InjectionScanResult
+    reviewed_by: string | null
+    reviewed_at: string | null
+    created_at: string
+    // Joined
+    agent_name?: string
+    agent_description?: string
+}
+
+export interface InjectionScanResult {
+    safe: boolean
+    flags: string[]
+}
+
+export interface CreatorStats {
+    publishedCount: number
+    totalInstalls: number
+    avgRating: number
+    submissions: MarketplaceSubmission[]
+}
+
+// ─── Prompt Injection Scan ──────────────────────────────────────────────────
+
+const INJECTION_PATTERNS = [
+    { pattern: /ignore\s+(all\s+)?previous\s+(instructions?|prompts?)/i, label: 'Ignore previous instructions' },
+    { pattern: /you\s+are\s+now\s+(a|an)\s+/i, label: 'Identity override attempt' },
+    { pattern: /disregard\s+(all\s+)?(prior|earlier|above)/i, label: 'Disregard prior context' },
+    { pattern: /forget\s+(everything|all|your)\s/i, label: 'Memory wipe attempt' },
+    { pattern: /do\s+not\s+follow\s+(any|the)\s+(rules?|instructions?)/i, label: 'Rule bypass' },
+    { pattern: /pretend\s+(you|that)\s+(are|is)\s/i, label: 'Role pretending' },
+    { pattern: /act\s+as\s+(if|though)\s+you\s+(have\s+)?no\s+(restrictions?|limits?)/i, label: 'Restriction removal' },
+    { pattern: /override\s+(your\s+)?(safety|content\s+policy|guidelines)/i, label: 'Safety override' },
+    { pattern: /jailbreak/i, label: 'Jailbreak keyword' },
+    { pattern: /DAN\s*(mode)?/i, label: 'DAN mode reference' },
+]
+
+/** Scan a prompt for common injection patterns */
+export function scanForInjection(prompt: string): InjectionScanResult {
+    const flags: string[] = []
+
+    for (const { pattern, label } of INJECTION_PATTERNS) {
+        if (pattern.test(prompt)) {
+            flags.push(label)
+        }
+    }
+
+    return { safe: flags.length === 0, flags }
+}
+
+// ─── Publishing ─────────────────────────────────────────────────────────────
+
+/** Submit an agent for marketplace review */
+export async function submitAgentForReview(
+    agentId: string,
+    tags: string[],
+    userId: string,
+): Promise<MarketplaceSubmission> {
+    // Update agent tags
+    const updateResult = await supabase
+        .from('agents')
+        .update({ marketplace_tags: tags })
+        .eq('id', agentId)
+
+    if (updateResult.error) throw updateResult.error
+
+    // Get the agent's prompt for injection scan
+    const agentResult = await supabase
+        .from('agents')
+        .select('system_prompt')
+        .eq('id', agentId)
+        .single()
+
+    const prompt = (agentResult.data as { system_prompt: string } | null)?.system_prompt ?? ''
+    const scanResult = scanForInjection(prompt)
+
+    // Create submission
+    const result = await supabase
+        .from('marketplace_submissions')
+        .insert({
+            agent_id: agentId,
+            submitted_by: userId,
+            injection_scan_result: scanResult,
+        })
+        .select()
+        .single()
+
+    if (result.error) throw result.error
+    return result.data as MarketplaceSubmission
+}
+
+/** Fetch my submissions */
+export async function fetchMySubmissions(userId: string): Promise<MarketplaceSubmission[]> {
+    const result = await supabase
+        .from('marketplace_submissions')
+        .select('*')
+        .eq('submitted_by', userId)
+        .order('created_at', { ascending: false })
+
+    if (result.error) throw result.error
+
+    const submissions = result.data as MarketplaceSubmission[]
+
+    // Fetch agent names
+    const agentIds = submissions.map(s => s.agent_id)
+    if (agentIds.length > 0) {
+        const agentsResult = await supabase
+            .from('agents')
+            .select('id, name, description')
+            .in('id', agentIds)
+
+        if (!agentsResult.error) {
+            const agentMap = new Map<string, { name: string; description: string }>()
+            for (const a of agentsResult.data as Array<{ id: string; name: string; description: string }>) {
+                agentMap.set(a.id, a)
+            }
+            for (const s of submissions) {
+                s.agent_name = agentMap.get(s.agent_id)?.name
+                s.agent_description = agentMap.get(s.agent_id)?.description
+            }
+        }
+    }
+
+    return submissions
+}
+
+/** Fetch all pending submissions (admin) */
+export async function fetchPendingSubmissions(): Promise<MarketplaceSubmission[]> {
+    const result = await supabase
+        .from('marketplace_submissions')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true })
+
+    if (result.error) throw result.error
+
+    const submissions = result.data as MarketplaceSubmission[]
+
+    // Fetch agent names
+    const agentIds = submissions.map(s => s.agent_id)
+    if (agentIds.length > 0) {
+        const agentsResult = await supabase
+            .from('agents')
+            .select('id, name, description')
+            .in('id', agentIds)
+
+        if (!agentsResult.error) {
+            const agentMap = new Map<string, { name: string; description: string }>()
+            for (const a of agentsResult.data as Array<{ id: string; name: string; description: string }>) {
+                agentMap.set(a.id, a)
+            }
+            for (const s of submissions) {
+                s.agent_name = agentMap.get(s.agent_id)?.name
+                s.agent_description = agentMap.get(s.agent_id)?.description
+            }
+        }
+    }
+
+    return submissions
+}
+
+/** Approve a submission and publish the agent */
+export async function approveSubmission(id: string, reviewerId: string): Promise<void> {
+    // Get the submission to find the agent
+    const subResult = await supabase
+        .from('marketplace_submissions')
+        .select('agent_id')
+        .eq('id', id)
+        .single()
+
+    if (subResult.error) throw subResult.error
+    const agentId = (subResult.data as { agent_id: string }).agent_id
+
+    // Update submission status
+    const updateResult = await supabase
+        .from('marketplace_submissions')
+        .update({
+            status: 'approved',
+            reviewed_by: reviewerId,
+            reviewed_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+
+    if (updateResult.error) throw updateResult.error
+
+    // Publish the agent
+    const publishResult = await supabase
+        .from('agents')
+        .update({ is_published: true })
+        .eq('id', agentId)
+
+    if (publishResult.error) throw publishResult.error
+}
+
+/** Reject a submission */
+export async function rejectSubmission(id: string, reviewerId: string, notes: string): Promise<void> {
+    const result = await supabase
+        .from('marketplace_submissions')
+        .update({
+            status: 'rejected',
+            reviewed_by: reviewerId,
+            reviewed_at: new Date().toISOString(),
+            review_notes: notes,
+        })
+        .eq('id', id)
+
+    if (result.error) throw result.error
+}
+
+// ─── Creator Stats ──────────────────────────────────────────────────────────
+
+/** Fetch creator statistics for published agents */
+export async function fetchCreatorStats(userId: string): Promise<CreatorStats> {
+    // Get published agents by this user
+    const agentsResult = await supabase
+        .from('agents')
+        .select('install_count, rating_avg')
+        .eq('workspace_id', userId) // agents belong to workspace, not user directly
+        .eq('is_published', true)
+
+    const agents = !agentsResult.error
+        ? (agentsResult.data as Array<{ install_count: number; rating_avg: number }>)
+        : []
+
+    const publishedCount = agents.length
+    const totalInstalls = agents.reduce((sum, a) => sum + a.install_count, 0)
+    const avgRating = agents.length > 0
+        ? agents.reduce((sum, a) => sum + a.rating_avg, 0) / agents.length
+        : 0
+
+    // Get submissions
+    const submissions = await fetchMySubmissions(userId)
+
+    return { publishedCount, totalInstalls, avgRating, submissions }
+}
