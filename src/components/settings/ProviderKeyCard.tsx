@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 CrewForm
 
-import { useState } from 'react'
-import { Check, X, Eye, EyeOff, Trash2, Loader2, Plus, ChevronDown, ChevronRight, Cpu } from 'lucide-react'
 import type { ApiKey } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -24,294 +22,70 @@ export interface ProviderConfig {
 interface ProviderKeyCardProps {
     provider: ProviderConfig
     existingKey: ApiKey | undefined
-    onSave: (key: string) => void
-    onRemove: () => void
-    onToggleActive: (isActive: boolean) => void
-    isSaving: boolean
-    isRemoving: boolean
-    isToggling: boolean
+    onClick: () => void
 }
 
 /**
- * Per-provider API key card.
- * States: not configured → input mode → configured (masked).
- * Features active/inactive toggle and available models list.
+ * Compact provider card for the 3-column grid.
+ * Shows provider name, active/inactive badge, and model count.
+ * Clicking opens the detail modal.
  */
-export function ProviderKeyCard({
-    provider,
-    existingKey,
-    onSave,
-    onRemove,
-    onToggleActive,
-    isSaving,
-    isRemoving,
-    isToggling,
-}: ProviderKeyCardProps) {
-    const [isEditing, setIsEditing] = useState(false)
-    const [keyInput, setKeyInput] = useState('')
-    const [isRevealed, setIsRevealed] = useState(false)
-    const [testResult, setTestResult] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
-    const [testError, setTestError] = useState('')
-    const [showModels, setShowModels] = useState(false)
-
+export function ProviderKeyCard({ provider, existingKey, onClick }: ProviderKeyCardProps) {
     const isConfigured = !!existingKey
     const isActive = existingKey?.is_active ?? false
 
-    function validatePrefix(key: string): boolean {
-        if (!provider.prefix) return key.length >= 8
-        return key.startsWith(provider.prefix)
-    }
-
-    function handleTestConnection() {
-        if (!keyInput.trim()) return
-
-        if (!validatePrefix(keyInput)) {
-            setTestResult('error')
-            setTestError(provider.prefix ? `Key must start with "${provider.prefix}"` : 'Key must be at least 8 characters')
-            return
-        }
-
-        setTestResult('testing')
-        setTestError('')
-
-        // Simulate test connection (Edge Function will handle real tests)
-        setTimeout(() => {
-            setTestResult('success')
-        }, 1200)
-    }
-
-    function handleSave() {
-        if (!keyInput.trim() || testResult !== 'success') return
-        onSave(keyInput)
-        setKeyInput('')
-        setIsEditing(false)
-        setTestResult('idle')
-    }
-
-    function handleCancel() {
-        setKeyInput('')
-        setIsEditing(false)
-        setTestResult('idle')
-        setTestError('')
-    }
-
-    // Masked key display
-    const maskedKey = existingKey
-        ? `${provider.prefix ? provider.prefix : ''}••••••••${existingKey.key_hint}`
-        : ''
-
     return (
-        <div className={cn(
-            'rounded-lg border bg-surface-card transition-colors',
-            isActive ? 'border-green-500/30' : provider.borderColor,
-        )}>
+        <button
+            type="button"
+            onClick={onClick}
+            className={cn(
+                'group w-full rounded-xl border bg-surface-card p-5 text-left transition-all hover:shadow-lg hover:shadow-brand-primary/5',
+                isActive
+                    ? 'border-green-500/30 hover:border-green-500/50'
+                    : 'border-border hover:border-brand-primary/40',
+            )}
+        >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 pt-5 pb-4">
+            <div className="mb-3 flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                    <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold', provider.bgColor, provider.color)}>
+                    <div className={cn(
+                        'flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold',
+                        provider.bgColor,
+                        provider.color,
+                    )}>
                         {provider.name.charAt(0)}
                     </div>
                     <div>
-                        <h3 className="text-sm font-semibold text-gray-200">{provider.name}</h3>
-                        <StatusBadge isConfigured={isConfigured} isValid={existingKey?.is_valid ?? false} isActive={isActive} />
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    {/* Active / Inactive toggle */}
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">
-                            {isActive ? 'Active' : 'Inactive'}
-                        </span>
-                        <button
-                            type="button"
-                            role="switch"
-                            aria-checked={isActive}
-                            aria-label={`Toggle ${provider.name} ${isActive ? 'inactive' : 'active'}`}
-                            disabled={!isConfigured || isToggling}
-                            onClick={() => onToggleActive(!isActive)}
-                            className={cn(
-                                'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 focus:ring-offset-surface-primary',
-                                isActive ? 'bg-green-500' : 'bg-gray-600',
-                                (!isConfigured || isToggling) && 'cursor-not-allowed opacity-40',
-                            )}
-                        >
-                            <span
-                                className={cn(
-                                    'inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200',
-                                    isActive ? 'translate-x-6' : 'translate-x-1',
-                                )}
-                            />
-                        </button>
-                    </div>
-
-                    {/* Remove button */}
-                    {isConfigured && !isEditing && (
-                        <button
-                            type="button"
-                            onClick={onRemove}
-                            disabled={isRemoving}
-                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-600/10 disabled:opacity-50"
-                        >
-                            {isRemoving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                            Remove
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            <div className="px-5 pb-5 space-y-3">
-                {/* Configured state — masked key */}
-                {isConfigured && !isEditing && (
-                    <div className="flex items-center gap-2 rounded-lg border border-border-muted bg-surface-primary px-3 py-2">
-                        <code className="flex-1 font-mono text-sm text-gray-400">
-                            {isRevealed ? `${provider.prefix}••••••••${existingKey.key_hint}` : maskedKey}
-                        </code>
-                        <button
-                            type="button"
-                            onClick={() => setIsRevealed(!isRevealed)}
-                            className="text-gray-500 hover:text-gray-300"
-                            aria-label={isRevealed ? 'Hide key' : 'Reveal key'}
-                        >
-                            {isRevealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                    </div>
-                )}
-
-                {/* Not configured — add button */}
-                {!isConfigured && !isEditing && (
-                    <button
-                        type="button"
-                        onClick={() => setIsEditing(true)}
-                        className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border py-3 text-sm font-medium text-gray-500 transition-colors hover:border-gray-500 hover:text-gray-300"
-                    >
-                        <Plus className="h-4 w-4" />
-                        Add API Key
-                    </button>
-                )}
-
-                {/* Input mode */}
-                {isEditing && (
-                    <div className="space-y-3">
-                        <div>
-                            <input
-                                type="password"
-                                value={keyInput}
-                                onChange={(e) => {
-                                    setKeyInput(e.target.value)
-                                    setTestResult('idle')
-                                    setTestError('')
-                                }}
-                                placeholder={`Paste your ${provider.name} API key${provider.prefix ? ` (${provider.prefix}...)` : ''}`}
-                                className="w-full rounded-lg border border-border bg-surface-primary px-4 py-2.5 font-mono text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
-                                autoFocus
-                            />
-                            {testError && <p className="mt-1 text-xs text-red-400">{testError}</p>}
-                        </div>
-
-                        {/* Test result */}
-                        {testResult === 'success' && (
-                            <div className="flex items-center gap-2 rounded-lg bg-green-500/10 px-3 py-2 text-xs font-medium text-green-400">
-                                <Check className="h-4 w-4" />
-                                Connection successful — key is valid
-                            </div>
-                        )}
-
-                        {/* Action buttons */}
-                        <div className="flex items-center gap-2">
-                            <button
-                                type="button"
-                                onClick={handleTestConnection}
-                                disabled={!keyInput.trim() || testResult === 'testing'}
-                                className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                {testResult === 'testing' ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : testResult === 'success' ? (
-                                    <Check className="h-3.5 w-3.5 text-green-400" />
-                                ) : (
-                                    <span className="h-3.5 w-3.5" />
-                                )}
-                                Test Connection
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={handleSave}
-                                disabled={testResult !== 'success' || isSaving}
-                                className="flex items-center gap-2 rounded-lg bg-brand-primary px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                {isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                                Save
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={handleCancel}
-                                className="rounded-lg px-3 py-2 text-xs font-medium text-gray-500 transition-colors hover:text-gray-300"
-                            >
-                                <X className="h-3.5 w-3.5" />
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* Available Models — collapsible section (only when active) */}
-                {isActive && provider.models.length > 0 && (
-                    <div className="rounded-lg border border-border-muted bg-surface-primary">
-                        <button
-                            type="button"
-                            onClick={() => setShowModels(!showModels)}
-                            className="flex w-full items-center justify-between px-3 py-2.5 text-xs font-medium text-gray-400 transition-colors hover:text-gray-300"
-                        >
-                            <span className="flex items-center gap-2">
-                                <Cpu className="h-3.5 w-3.5" />
-                                Available Models ({provider.models.length})
+                        <h3 className="text-sm font-semibold text-gray-200 group-hover:text-brand-primary transition-colors">
+                            {provider.name}
+                        </h3>
+                        {isConfigured ? (
+                            <span className="text-xs text-gray-500">
+                                ••••{existingKey.key_hint}
                             </span>
-                            {showModels
-                                ? <ChevronDown className="h-3.5 w-3.5" />
-                                : <ChevronRight className="h-3.5 w-3.5" />
-                            }
-                        </button>
-                        {showModels && (
-                            <div className="border-t border-border-muted px-3 py-2 space-y-1.5">
-                                {provider.models.map((model) => (
-                                    <div key={model.value} className="flex items-center gap-2 py-1">
-                                        <span className="h-1.5 w-1.5 rounded-full bg-green-400 shrink-0" />
-                                        <span className="text-xs text-gray-300">{model.label}</span>
-                                        <code className="ml-auto text-[10px] text-gray-600 font-mono">{model.value}</code>
-                                    </div>
-                                ))}
-                            </div>
+                        ) : (
+                            <span className="text-xs text-gray-600">Not configured</span>
                         )}
                     </div>
-                )}
-            </div>
-        </div>
-    )
-}
+                </div>
 
-function StatusBadge({ isConfigured, isValid, isActive }: { isConfigured: boolean; isValid: boolean; isActive: boolean }) {
-    if (!isConfigured) {
-        return <span className="text-xs text-gray-600">Not configured</span>
-    }
-    if (isActive && isValid) {
-        return (
-            <span className="flex items-center gap-1 text-xs font-medium text-green-400">
-                <Check className="h-3 w-3" /> Active
-            </span>
-        )
-    }
-    if (isValid) {
-        return (
-            <span className="flex items-center gap-1 text-xs font-medium text-gray-500">
-                <Check className="h-3 w-3" /> Connected (inactive)
-            </span>
-        )
-    }
-    return (
-        <span className="flex items-center gap-1 text-xs font-medium text-yellow-400">
-            ⚠️ Invalid
-        </span>
+                {/* Status badge */}
+                <span className={cn(
+                    'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+                    isActive
+                        ? 'bg-green-500/10 text-green-400'
+                        : 'bg-gray-500/10 text-gray-500',
+                )}>
+                    {isActive ? 'Active' : 'Inactive'}
+                </span>
+            </div>
+
+            {/* Models tag */}
+            <div className="flex items-center gap-2">
+                <span className="inline-flex items-center rounded-md bg-surface-overlay px-2 py-0.5 text-xs text-gray-400">
+                    {provider.models.length} Available Model{provider.models.length !== 1 ? 's' : ''}
+                </span>
+            </div>
+        </button>
     )
 }
