@@ -175,7 +175,7 @@ export function ApiKeysSettings() {
                             {activeProviders.length}
                         </span>
                     </div>
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-4 sm:grid-cols-2">
                         {activeProviders.map((provider) => (
                             <ProviderKeyCard
                                 key={provider.id}
@@ -200,7 +200,7 @@ export function ApiKeysSettings() {
                             {inactiveProviders.length}
                         </span>
                     </div>
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-4 sm:grid-cols-2">
                         {inactiveProviders.map((provider) => (
                             <ProviderKeyCard
                                 key={provider.id}
