@@ -65,6 +65,7 @@ export const MODEL_OPTIONS = [
     {
         provider: 'Anthropic',
         models: [
+            { value: 'claude-opus-4-20250514', label: 'Claude Opus 4' },
             { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
             { value: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku' },
         ],
@@ -72,6 +73,13 @@ export const MODEL_OPTIONS = [
     {
         provider: 'OpenAI',
         models: [
+            { value: 'o3', label: 'o3' },
+            { value: 'o3-mini', label: 'o3 Mini' },
+            { value: 'o1', label: 'o1' },
+            { value: 'o1-mini', label: 'o1 Mini' },
+            { value: 'gpt-4.1', label: 'GPT-4.1' },
+            { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini' },
+            { value: 'gpt-4.1-nano', label: 'GPT-4.1 Nano' },
             { value: 'gpt-4o', label: 'GPT-4o' },
             { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
         ],
@@ -79,8 +87,10 @@ export const MODEL_OPTIONS = [
     {
         provider: 'Google',
         models: [
+            { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+            { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+            { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
             { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-            { value: 'gemini-2.5-pro-preview-05-06', label: 'Gemini 2.5 Pro' },
         ],
     },
     {
@@ -90,9 +100,15 @@ export const MODEL_OPTIONS = [
     {
         provider: 'Mistral',
         models: [
-            { value: 'mistral-large-latest', label: 'Mistral Large' },
+            { value: 'mistral-large-latest', label: 'Mistral Large 3' },
+            { value: 'mistral-medium-latest', label: 'Mistral Medium 3.1' },
+            { value: 'mistral-small-latest', label: 'Mistral Small 3.2' },
+            { value: 'ministral-3-14b-latest', label: 'Ministral 3 14B' },
+            { value: 'ministral-3-8b-latest', label: 'Ministral 3 8B' },
+            { value: 'magistral-medium-latest', label: 'Magistral Medium' },
+            { value: 'magistral-small-latest', label: 'Magistral Small' },
             { value: 'codestral-latest', label: 'Codestral' },
-            { value: 'mistral-small-latest', label: 'Mistral Small' },
+            { value: 'devstral-2-latest', label: 'Devstral 2' },
         ],
     },
     {
@@ -100,52 +116,83 @@ export const MODEL_OPTIONS = [
         models: [
             { value: 'groq/llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
             { value: 'groq/llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant' },
-            { value: 'groq/mixtral-8x7b-32768', label: 'Mixtral 8x7B' },
+            { value: 'groq/openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
+            { value: 'groq/openai/gpt-oss-20b', label: 'GPT-OSS 20B' },
+            { value: 'groq/meta-llama/llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout 17B' },
+            { value: 'groq/qwen/qwen3-32b', label: 'Qwen3 32B' },
         ],
     },
     {
         provider: 'Cohere',
         models: [
-            { value: 'command-r-plus', label: 'Command R+' },
-            { value: 'command-r', label: 'Command R' },
+            { value: 'command-a-03-2025', label: 'Command A' },
+            { value: 'command-a-reasoning-08-2025', label: 'Command A Reasoning' },
+            { value: 'command-r-plus-08-2024', label: 'Command R+ (08-2024)' },
+            { value: 'command-r-08-2024', label: 'Command R (08-2024)' },
+            { value: 'command-r7b-12-2024', label: 'Command R 7B' },
         ],
     },
     {
         provider: 'Together',
         models: [
+            { value: 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8', label: 'Llama 4 Maverick 17B' },
+            { value: 'meta-llama/Llama-4-Scout-17B-16E-Instruct', label: 'Llama 4 Scout 17B' },
+            { value: 'meta-llama/Meta-Llama-3.3-70B-Instruct-Turbo', label: 'Llama 3.3 70B Turbo' },
             { value: 'meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo', label: 'Llama 3.1 405B Turbo' },
             { value: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo', label: 'Llama 3.1 70B Turbo' },
-            { value: 'mistralai/Mixtral-8x22B-Instruct-v0.1', label: 'Mixtral 8x22B' },
+            { value: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo', label: 'Llama 3.1 8B Turbo' },
+            { value: 'Qwen/Qwen3-235B-A22B-fp8', label: 'Qwen3 235B' },
             { value: 'Qwen/Qwen2.5-72B-Instruct-Turbo', label: 'Qwen 2.5 72B Turbo' },
+            { value: 'deepseek-ai/DeepSeek-R1', label: 'DeepSeek R1' },
+            { value: 'deepseek-ai/DeepSeek-V3', label: 'DeepSeek V3' },
+            { value: 'google/gemma-2-27b-it', label: 'Gemma 2 27B' },
+            { value: 'mistralai/Mixtral-8x22B-Instruct-v0.1', label: 'Mixtral 8x22B' },
         ],
     },
     {
         provider: 'NVIDIA',
         models: [
             { value: 'nvidia/llama-3.1-nemotron-70b-instruct', label: 'Nemotron 70B' },
+            { value: 'meta/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
             { value: 'meta/llama-3.1-405b-instruct', label: 'Llama 3.1 405B' },
+            { value: 'meta/llama-3.1-70b-instruct', label: 'Llama 3.1 70B' },
+            { value: 'meta/llama-3.1-8b-instruct', label: 'Llama 3.1 8B' },
+            { value: 'mistralai/mistral-large-2-instruct', label: 'Mistral Large 2' },
+            { value: 'google/gemma-2-27b-it', label: 'Gemma 2 27B' },
+            { value: 'deepseek-ai/deepseek-r1', label: 'DeepSeek R1' },
         ],
     },
     {
         provider: 'Hugging Face',
         models: [
+            { value: 'meta-llama/Llama-3.3-70B-Instruct', label: 'Llama 3.3 70B' },
             { value: 'meta-llama/Llama-3.1-70B-Instruct', label: 'Llama 3.1 70B' },
-            { value: 'mistralai/Mistral-7B-Instruct-v0.3', label: 'Mistral 7B v0.3' },
+            { value: 'meta-llama/Llama-3.1-8B-Instruct', label: 'Llama 3.1 8B' },
             { value: 'Qwen/Qwen2.5-72B-Instruct', label: 'Qwen 2.5 72B' },
+            { value: 'Qwen/Qwen2.5-Coder-32B-Instruct', label: 'Qwen 2.5 Coder 32B' },
+            { value: 'mistralai/Mistral-7B-Instruct-v0.3', label: 'Mistral 7B v0.3' },
+            { value: 'google/gemma-2-27b-it', label: 'Gemma 2 27B' },
+            { value: 'deepseek-ai/DeepSeek-R1', label: 'DeepSeek R1' },
         ],
     },
     {
         provider: 'Venice',
         models: [
-            { value: 'llama-3.3-70b', label: 'Llama 3.3 70B' },
             { value: 'deepseek-r1-671b', label: 'DeepSeek R1 671B' },
+            { value: 'deepseek-v3-0324', label: 'DeepSeek V3' },
+            { value: 'llama-3.3-70b', label: 'Llama 3.3 70B' },
+            { value: 'llama-3.1-405b', label: 'Llama 3.1 405B' },
+            { value: 'qwen-2.5-coder-32b', label: 'Qwen 2.5 Coder 32B' },
         ],
     },
     {
         provider: 'MiniMax',
         models: [
-            { value: 'MiniMax-Text-01', label: 'MiniMax Text 01' },
-            { value: 'abab6.5s-chat', label: 'Abab 6.5s Chat' },
+            { value: 'MiniMax-M2.5', label: 'MiniMax M2.5' },
+            { value: 'MiniMax-M2.5-highspeed', label: 'MiniMax M2.5 Highspeed' },
+            { value: 'MiniMax-M2.1', label: 'MiniMax M2.1' },
+            { value: 'MiniMax-M2.1-highspeed', label: 'MiniMax M2.1 Highspeed' },
+            { value: 'MiniMax-M2', label: 'MiniMax M2' },
         ],
     },
     {
