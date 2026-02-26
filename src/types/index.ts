@@ -197,6 +197,7 @@ export interface Task {
   created_at: string
   updated_at: string
   claimed_by_runner: string | null
+  scheduled_for: string | null
 }
 
 export type TaskStatus = 'pending' | 'dispatched' | 'running' | 'completed' | 'failed' | 'cancelled'

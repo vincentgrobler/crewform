@@ -14,6 +14,7 @@ import type { ZodError } from 'zod'
 
 interface CreateTaskModalProps {
     onClose: () => void
+    initialDate?: string
 }
 
 const PRIORITIES: { value: TaskPriority; label: string }[] = [
@@ -23,7 +24,7 @@ const PRIORITIES: { value: TaskPriority; label: string }[] = [
     { value: 'urgent', label: 'Urgent' },
 ]
 
-export function CreateTaskModal({ onClose }: CreateTaskModalProps) {
+export function CreateTaskModal({ onClose, initialDate }: CreateTaskModalProps) {
     const { workspaceId } = useWorkspace()
     const { user } = useAuth()
     const { agents } = useAgents(workspaceId)
@@ -33,6 +34,7 @@ export function CreateTaskModal({ onClose }: CreateTaskModalProps) {
     const [description, setDescription] = useState('')
     const [agentId, setAgentId] = useState('')
     const [priority, setPriority] = useState<TaskPriority>('medium')
+    const [scheduledFor, setScheduledFor] = useState(initialDate ?? '')
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
     function handleSubmit(dispatch: boolean) {
@@ -56,6 +58,7 @@ export function CreateTaskModal({ onClose }: CreateTaskModalProps) {
                     priority: validated.priority,
                     status: dispatch ? 'pending' : 'pending',
                     created_by: user.id,
+                    scheduled_for: scheduledFor || null,
                 },
                 { onSuccess: () => onClose() },
             )
@@ -166,6 +169,20 @@ export function CreateTaskModal({ onClose }: CreateTaskModalProps) {
                                 </button>
                             ))}
                         </div>
+                    </div>
+
+                    {/* Schedule Date */}
+                    <div>
+                        <label htmlFor="task-schedule" className="mb-1.5 block text-sm font-medium text-gray-300">
+                            Schedule for
+                        </label>
+                        <input
+                            id="task-schedule"
+                            type="date"
+                            value={scheduledFor}
+                            onChange={(e) => setScheduledFor(e.target.value)}
+                            className="w-full rounded-lg border border-border bg-surface-primary px-4 py-2.5 text-sm text-gray-200 outline-none focus:border-brand-primary [color-scheme:dark]"
+                        />
                     </div>
 
                     {/* Error */}
