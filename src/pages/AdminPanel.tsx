@@ -4,12 +4,13 @@
 import { useState } from 'react'
 import {
     Shield, BarChart3, Building2, Search,
-    Loader2, Users, Bot, ListTodo,
+    Loader2, Users, Bot, ListTodo, PackageOpen,
 } from 'lucide-react'
 import { usePlatformStats, useAllWorkspaces, useOverridePlan } from '@/hooks/useAdmin'
+import { ReviewQueue } from '@/components/marketplace/ReviewQueue'
 import { cn } from '@/lib/utils'
 
-type AdminTab = 'overview' | 'workspaces'
+type AdminTab = 'overview' | 'workspaces' | 'review-queue'
 
 const PLAN_COLORS: Record<string, string> = {
     free: 'text-gray-400 bg-gray-500/10',
@@ -42,6 +43,7 @@ export function AdminPanel() {
                 {([
                     { key: 'overview' as const, label: 'Overview', icon: BarChart3 },
                     { key: 'workspaces' as const, label: 'Workspaces', icon: Building2 },
+                    { key: 'review-queue' as const, label: 'Review Queue', icon: PackageOpen },
                 ] as const).map(({ key, label, icon: Icon }) => (
                     <button
                         key={key}
@@ -63,6 +65,7 @@ export function AdminPanel() {
             {/* Tab content */}
             {activeTab === 'overview' && <OverviewTab />}
             {activeTab === 'workspaces' && <WorkspacesTab />}
+            {activeTab === 'review-queue' && <ReviewQueue />}
         </div>
     )
 }
