@@ -17,11 +17,13 @@ interface AgentTaskRecord {
  */
 function inferProvider(model: string): string | null {
     const m = model.toLowerCase();
+    // Prefix checks FIRST — must take priority over keyword matches
+    if (m.startsWith('openrouter/')) return 'openrouter';
+    if (m.startsWith('groq/')) return 'groq';
+    // Then keyword matches
     if (m.includes('claude')) return 'anthropic';
     if (m.includes('gpt') || m.includes('o1') || m.includes('o3')) return 'openai';
     if (m.includes('gemini')) return 'google';
-    if (m.startsWith('groq/')) return 'groq';
-    if (m.startsWith('openrouter/')) return 'openrouter';
     if (m.includes('mistral') || m.includes('codestral')) return 'mistral';
     if (m.includes('command-r')) return 'cohere';
     return null;
