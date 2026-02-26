@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 CrewForm
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, Trash2, Activity, Settings2, AlertCircle, Loader2 } from 'lucide-react'
 import { useAgent } from '@/hooks/useAgent'
@@ -9,7 +9,10 @@ import { useUpdateAgent } from '@/hooks/useUpdateAgent'
 import { useDeleteAgent } from '@/hooks/useDeleteAgent'
 import { DeleteAgentDialog } from '@/components/agents/DeleteAgentDialog'
 import { StatusIndicator } from '@/components/ui/StatusIndicator'
-import { agentSchema, MODEL_OPTIONS } from '@/lib/agentSchema'
+import { agentSchema, MODEL_OPTIONS, getActiveModelOptions, mergeModelOptions } from '@/lib/agentSchema'
+import { useOpenRouterModels } from '@/hooks/useOpenRouterModels'
+import { useApiKeys } from '@/hooks/useApiKeys'
+import { useWorkspace } from '@/hooks/useWorkspace'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import type { AgentFormData } from '@/lib/agentSchema'
@@ -29,12 +32,33 @@ export function AgentDetail() {
     const updateMutation = useUpdateAgent()
     const deleteMutation = useDeleteAgent()
 
+    const { workspaceId } = useWorkspace()
+    const { keys } = useApiKeys(workspaceId)
+
     const [activeTab, setActiveTab] = useState<TabKey>('config')
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [formData, setFormData] = useState<AgentFormData | null>(null)
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
     const [hasChanges, setHasChanges] = useState(false)
     const [saveSuccess, setSaveSuccess] = useState(false)
+
+    // Only show models for providers with active API keys
+    const activeProviders = useMemo(
+        () => keys.filter((k) => k.is_active && k.is_valid).map((k) => k.provider),
+        [keys],
+    )
+    const isOpenRouterActive = activeProviders.some((p) => p.toLowerCase() === 'openrouter')
+    const { models: openRouterModels } = useOpenRouterModels(isOpenRouterActive)
+
+    const dynamicModelOptions = useMemo(() => {
+        const filtered = activeProviders.length > 0
+            ? getActiveModelOptions(activeProviders)
+            : MODEL_OPTIONS
+
+        return mergeModelOptions(filtered, [
+            { provider: 'OpenRouter', models: openRouterModels },
+        ])
+    }, [activeProviders, openRouterModels])
 
     // Populate form when agent loads
     useEffect(() => {
@@ -224,6 +248,7 @@ export function AgentDetail() {
                     formData={formData}
                     fieldErrors={fieldErrors}
                     onUpdateField={updateField}
+                    modelOptions={dynamicModelOptions}
                 />
             )}
 
@@ -248,9 +273,10 @@ interface ConfigTabProps {
     formData: AgentFormData
     fieldErrors: Record<string, string>
     onUpdateField: <K extends keyof AgentFormData>(key: K, value: AgentFormData[K]) => void
+    modelOptions: typeof MODEL_OPTIONS
 }
 
-function ConfigurationTab({ formData, fieldErrors, onUpdateField }: ConfigTabProps) {
+function ConfigurationTab({ formData, fieldErrors, onUpdateField, modelOptions }: ConfigTabProps) {
     return (
         <div className="mx-auto max-w-2xl space-y-6">
             {/* Name */}
@@ -294,13 +320,16 @@ function ConfigurationTab({ formData, fieldErrors, onUpdateField }: ConfigTabPro
                     onChange={(e) => onUpdateField('model', e.target.value)}
                     className="w-full rounded-lg border border-border bg-surface-card px-4 py-2.5 text-sm text-gray-200 outline-none focus:border-brand-primary"
                 >
-                    {MODEL_OPTIONS.map((group) => (
-                        <optgroup key={group.provider} label={group.provider}>
-                            {group.models.map((m) => (
-                                <option key={m.value} value={m.value}>{m.label}</option>
-                            ))}
-                        </optgroup>
-                    ))}
+                    {modelOptions.map((group) => {
+                        if (group.models.length === 0) return null
+                        return (
+                            <optgroup key={group.provider} label={group.provider}>
+                                {group.models.map((m) => (
+                                    <option key={m.value} value={m.value}>{m.label}</option>
+                                ))}
+                            </optgroup>
+                        )
+                    })}
                 </select>
                 {fieldErrors.model && <p className="mt-1 text-xs text-status-error-text">{fieldErrors.model}</p>}
             </div>
