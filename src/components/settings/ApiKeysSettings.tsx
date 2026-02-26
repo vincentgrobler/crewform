@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 CrewForm
 
-import { Info } from 'lucide-react'
+import { useState } from 'react'
+import { Info, Key } from 'lucide-react'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useApiKeys } from '@/hooks/useApiKeys'
 import { useSaveApiKey } from '@/hooks/useSaveApiKey'
 import { useRemoveApiKey } from '@/hooks/useRemoveApiKey'
 import { useToggleProvider } from '@/hooks/useToggleProvider'
 import { ProviderKeyCard } from '@/components/settings/ProviderKeyCard'
+import { ProviderDetailModal } from '@/components/settings/ProviderDetailModal'
 import type { ProviderConfig } from '@/components/settings/ProviderKeyCard'
 import { MODEL_OPTIONS } from '@/lib/agentSchema'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -71,7 +73,6 @@ const PROVIDERS: ProviderConfig[] = [
         borderColor: 'border-border',
     },
 ].map((p) => {
-    // Match provider by name (case-insensitive) to get its models
     const modelGroup = MODEL_OPTIONS.find(
         (g) => g.provider.toLowerCase() === p.id.toLowerCase(),
     )
@@ -85,7 +86,7 @@ const PROVIDERS: ProviderConfig[] = [
 
 /**
  * API Keys settings section.
- * Shows provider cards with active/inactive toggles and model listings.
+ * 3-column grid split into Active / Inactive sections, with a detail modal for editing.
  */
 export function ApiKeysSettings() {
     const { workspaceId } = useWorkspace()
@@ -94,15 +95,15 @@ export function ApiKeysSettings() {
     const removeMutation = useRemoveApiKey()
     const toggleMutation = useToggleProvider()
 
+    const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null)
+
     function handleSave(provider: string, rawKey: string) {
         if (!workspaceId) return
-
         const hint = rawKey.slice(-4)
-
         saveMutation.mutate({
             workspace_id: workspaceId,
             provider,
-            encrypted_key: rawKey, // Edge Function will encrypt before DB write
+            encrypted_key: rawKey,
             key_hint: hint,
             is_valid: true,
         })
@@ -118,18 +119,39 @@ export function ApiKeysSettings() {
         toggleMutation.mutate({ id: keyId, isActive, workspaceId })
     }
 
+    // Split providers into active and inactive
+    const activeProviders = PROVIDERS.filter((p) => {
+        const key = keysByProvider.get(p.id)
+        return key?.is_active
+    })
+    const inactiveProviders = PROVIDERS.filter((p) => {
+        const key = keysByProvider.get(p.id)
+        return !key?.is_active
+    })
+
+    // Current selected provider for modal
+    const selectedProvider = selectedProviderId
+        ? PROVIDERS.find((p) => p.id === selectedProviderId) ?? null
+        : null
+    const selectedKey = selectedProviderId
+        ? keysByProvider.get(selectedProviderId)
+        : undefined
+
     if (isLoading) {
         return (
-            <div className="space-y-4">
-                <Skeleton className="h-32 w-full rounded-lg" />
-                <Skeleton className="h-32 w-full rounded-lg" />
-                <Skeleton className="h-32 w-full rounded-lg" />
+            <div className="space-y-6">
+                <Skeleton className="h-20 w-full rounded-lg" />
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <Skeleton className="h-28 w-full rounded-xl" />
+                    <Skeleton className="h-28 w-full rounded-xl" />
+                    <Skeleton className="h-28 w-full rounded-xl" />
+                </div>
             </div>
         )
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             {/* Info banner */}
             <div className="flex items-start gap-3 rounded-lg border border-brand-primary/20 bg-brand-muted/30 px-4 py-3">
                 <Info className="mt-0.5 h-4 w-4 shrink-0 text-brand-primary" />
@@ -138,34 +160,77 @@ export function ApiKeysSettings() {
                     <p className="mt-0.5 text-xs text-gray-400">
                         Bring Your Own Key — use your own API keys for full cost transparency and control.
                         Keys are encrypted at rest with AES-256-GCM and never logged.
-                        Toggle a provider to &ldquo;Active&rdquo; to enable its models for agent creation.
+                        Click any provider to configure its API key and toggle it active.
                     </p>
                 </div>
             </div>
 
-            {/* Provider cards */}
-            <div className="space-y-4">
-                {PROVIDERS.map((provider) => {
-                    const existingKey = keysByProvider.get(provider.id)
-                    return (
-                        <ProviderKeyCard
-                            key={provider.id}
-                            provider={provider}
-                            existingKey={existingKey}
-                            onSave={(key) => handleSave(provider.id, key)}
-                            onRemove={() => {
-                                if (existingKey) handleRemove(existingKey.id)
-                            }}
-                            onToggleActive={(isActive) => {
-                                if (existingKey) handleToggleActive(existingKey.id, isActive)
-                            }}
-                            isSaving={saveMutation.isPending}
-                            isRemoving={removeMutation.isPending}
-                            isToggling={toggleMutation.isPending}
-                        />
-                    )
-                })}
-            </div>
+            {/* Active Providers */}
+            {activeProviders.length > 0 && (
+                <section>
+                    <div className="mb-4 flex items-center gap-2">
+                        <Key className="h-4 w-4 text-green-400" />
+                        <h3 className="text-sm font-semibold text-gray-200">Active Providers</h3>
+                        <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-400">
+                            {activeProviders.length}
+                        </span>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {activeProviders.map((provider) => (
+                            <ProviderKeyCard
+                                key={provider.id}
+                                provider={provider}
+                                existingKey={keysByProvider.get(provider.id)}
+                                onClick={() => setSelectedProviderId(provider.id)}
+                            />
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            {/* Inactive Providers */}
+            {inactiveProviders.length > 0 && (
+                <section>
+                    <div className="mb-4 flex items-center gap-2">
+                        <Key className="h-4 w-4 text-gray-500" />
+                        <h3 className="text-sm font-semibold text-gray-200">
+                            {activeProviders.length > 0 ? 'Inactive Providers' : 'All Providers'}
+                        </h3>
+                        <span className="rounded-full bg-gray-500/10 px-2 py-0.5 text-xs font-medium text-gray-500">
+                            {inactiveProviders.length}
+                        </span>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {inactiveProviders.map((provider) => (
+                            <ProviderKeyCard
+                                key={provider.id}
+                                provider={provider}
+                                existingKey={keysByProvider.get(provider.id)}
+                                onClick={() => setSelectedProviderId(provider.id)}
+                            />
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            {/* Detail Modal */}
+            <ProviderDetailModal
+                provider={selectedProvider}
+                existingKey={selectedKey}
+                onClose={() => setSelectedProviderId(null)}
+                onSave={(key) => {
+                    if (selectedProviderId) handleSave(selectedProviderId, key)
+                }}
+                onRemove={() => {
+                    if (selectedKey) handleRemove(selectedKey.id)
+                }}
+                onToggleActive={(isActive) => {
+                    if (selectedKey) handleToggleActive(selectedKey.id, isActive)
+                }}
+                isSaving={saveMutation.isPending}
+                isRemoving={removeMutation.isPending}
+                isToggling={toggleMutation.isPending}
+            />
         </div>
     )
 }
