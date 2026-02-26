@@ -42,23 +42,25 @@ export function ProviderDetailModal({
 
     if (!provider) return null
 
+    // Capture for use in nested functions (TS can't narrow across closures)
+    const currentProvider = provider
+
     const isConfigured = !!existingKey
     const isActive = existingKey?.is_active ?? false
     const maskedKey = existingKey
-        ? `${provider.prefix ? provider.prefix : ''}••••••••${existingKey.key_hint}`
+        ? `${currentProvider.prefix ? currentProvider.prefix : ''}••••••••${existingKey.key_hint}`
         : ''
 
     function validatePrefix(key: string): boolean {
-        if (!provider) return false
-        if (!provider.prefix) return key.length >= 8
-        return key.startsWith(provider.prefix)
+        if (!currentProvider.prefix) return key.length >= 8
+        return key.startsWith(currentProvider.prefix)
     }
 
     function handleTestConnection() {
         if (!keyInput.trim()) return
         if (!validatePrefix(keyInput)) {
             setTestResult('error')
-            setTestError(provider!.prefix ? `Key must start with "${provider!.prefix}"` : 'Key must be at least 8 characters')
+            setTestError(currentProvider.prefix ? `Key must start with "${currentProvider.prefix}"` : 'Key must be at least 8 characters')
             return
         }
         setTestResult('testing')
