@@ -5,7 +5,7 @@
         "buildCommand": "cd task-runner && npm ci && npm run build"
     },
     "deploy": {
-        "startCommand": "cd task-runner && node dist/index.js",
+        "startCommand": "node task-runner/dist/index.js",
         "restartPolicyType": "ON_FAILURE",
         "restartPolicyMaxRetries": 10,
         "healthcheckPath": null,
