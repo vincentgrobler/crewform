@@ -13,9 +13,11 @@ import {
   Settings,
   LogOut,
   X,
+  Shield,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
+import { useSuperAdmin } from '@/hooks/useAdmin'
 import { useIsMobile, useIsTablet } from '@/hooks/useMediaQuery'
 import { TopBar } from '@/components/layout/TopBar'
 import { MobileNav } from '@/components/layout/MobileNav'
@@ -33,6 +35,7 @@ const navItems = [
 
 export function RootLayout() {
   const { user, signOut } = useAuth()
+  const { isSuperAdmin } = useSuperAdmin()
   const isMobile = useIsMobile()
   const isTablet = useIsTablet()
   const location = useLocation()
@@ -58,6 +61,11 @@ export function RootLayout() {
 
   // Collapsed mode: icon-only on tablet
   const collapsed = isTablet
+
+  // Build full nav items including admin if super admin
+  const allNavItems = isSuperAdmin
+    ? [...navItems, { to: '/admin' as const, icon: Shield, label: 'Admin' }]
+    : navItems
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-950">
@@ -110,7 +118,7 @@ export function RootLayout() {
 
         {/* Navigation */}
         <nav className={cn('flex-1 space-y-1 py-4', collapsed ? 'px-2' : 'px-3')}>
-          {navItems.map(({ to, icon: Icon, label }) => (
+          {allNavItems.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
               to={to}

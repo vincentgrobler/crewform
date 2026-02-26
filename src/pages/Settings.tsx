@@ -2,21 +2,23 @@
 // Copyright (C) 2026 CrewForm
 
 import { useState } from 'react'
-import { KeyRound, User, Building2, Webhook, Users, ScrollText } from 'lucide-react'
+import { KeyRound, User, Building2, Webhook, Users, ScrollText, CreditCard } from 'lucide-react'
 import { ApiKeysSettings } from '@/components/settings/ApiKeysSettings'
 import { WebhooksSettings } from '@/components/settings/WebhooksSettings'
 import { MembersSettings } from '@/components/settings/MembersSettings'
 import { WorkspaceSettings } from '@/components/settings/WorkspaceSettings'
 import { AuditLogPanel } from '@/components/settings/AuditLogPanel'
+import { BillingSettings } from '@/components/settings/BillingSettings'
 import { cn } from '@/lib/utils'
 
-type SettingsTab = 'api-keys' | 'webhooks' | 'members' | 'workspace' | 'audit-log' | 'profile'
+type SettingsTab = 'api-keys' | 'webhooks' | 'members' | 'workspace' | 'billing' | 'audit-log' | 'profile'
 
 const settingsTabs: { key: SettingsTab; label: string; icon: typeof KeyRound }[] = [
   { key: 'api-keys', label: 'API Keys', icon: KeyRound },
   { key: 'webhooks', label: 'Webhooks', icon: Webhook },
   { key: 'members', label: 'Members', icon: Users },
   { key: 'workspace', label: 'Workspace', icon: Building2 },
+  { key: 'billing', label: 'Billing', icon: CreditCard },
   { key: 'audit-log', label: 'Audit Log', icon: ScrollText },
   { key: 'profile', label: 'Profile', icon: User },
 ]
@@ -49,7 +51,7 @@ export function Settings() {
       </div>
 
       {/* Tab content */}
-      <div className="mx-auto max-w-2xl">
+      <div className={cn('mx-auto', activeTab === 'billing' ? 'max-w-4xl' : 'max-w-2xl')}>
         {activeTab === 'api-keys' && <ApiKeysSettings />}
 
         {activeTab === 'webhooks' && <WebhooksSettings />}
@@ -57,6 +59,8 @@ export function Settings() {
         {activeTab === 'members' && <MembersSettings />}
 
         {activeTab === 'workspace' && <WorkspaceSettings />}
+
+        {activeTab === 'billing' && <BillingSettings />}
 
         {activeTab === 'audit-log' && <AuditLogPanel />}
 

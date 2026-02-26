@@ -5,6 +5,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { RootLayout } from '@/layouts/RootLayout'
 import { AuthGuard } from '@/components/auth/AuthGuard'
+import { AdminGuard } from '@/components/auth/AdminGuard'
 import { Loader2 } from 'lucide-react'
 
 // ── Lazy-loaded pages ────────────────────────────────────────────────────────
@@ -22,6 +23,7 @@ const TaskDetail = lazy(() => import('@/pages/TaskDetail').then(m => ({ default:
 const TeamDetail = lazy(() => import('@/pages/TeamDetail').then(m => ({ default: m.TeamDetail })))
 const TeamRunDetail = lazy(() => import('@/pages/TeamRunDetail').then(m => ({ default: m.TeamRunDetail })))
 const Analytics = lazy(() => import('@/pages/Analytics').then(m => ({ default: m.Analytics })))
+const AdminPanel = lazy(() => import('@/pages/AdminPanel').then(m => ({ default: m.AdminPanel })))
 
 // ── Suspense fallback ────────────────────────────────────────────────────────
 function PageLoader() {
@@ -63,6 +65,9 @@ export function App() {
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/settings" element={<Settings />} />
+
+          {/* Admin — super admin only */}
+          <Route path="/admin" element={<AdminGuard><AdminPanel /></AdminGuard>} />
         </Route>
       </Routes>
     </Suspense>
