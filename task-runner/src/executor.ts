@@ -11,6 +11,22 @@ interface AgentTaskRecord {
     status: string;
 }
 
+/**
+ * Derive provider from model name when agent.provider is null.
+ * Maps well-known model prefixes to their provider.
+ */
+function inferProvider(model: string): string | null {
+    const m = model.toLowerCase();
+    if (m.includes('claude')) return 'anthropic';
+    if (m.includes('gpt') || m.includes('o1') || m.includes('o3')) return 'openai';
+    if (m.includes('gemini')) return 'google';
+    if (m.startsWith('groq/')) return 'groq';
+    if (m.startsWith('openrouter/')) return 'openrouter';
+    if (m.includes('mistral') || m.includes('codestral')) return 'mistral';
+    if (m.includes('command-r')) return 'cohere';
+    return null;
+}
+
 export async function processTask(task: Task) {
     // Find the auto-created agent_tasks record (created by DB trigger on dispatch)
     let agentTaskId: string | null = null;
@@ -56,19 +72,25 @@ export async function processTask(task: Task) {
             throw new Error(`Failed to load agent: ${agentError?.message}`);
         }
 
+        // Derive provider from agent or infer from model name
+        const provider = agent.provider ?? inferProvider(agent.model);
+        if (!provider) {
+            throw new Error(`Cannot determine provider for agent "${agent.name}" with model "${agent.model}". Please update the agent's provider in Settings.`);
+        }
+
         // 2. Fetch API Key for Agent's provider
         const apiKeyResponse = await supabase
             .from('api_keys')
             .select('*')
             .eq('workspace_id', task.workspace_id)
-            .eq('provider', agent.provider)
+            .eq('provider', provider.toLowerCase())
             .single();
 
         const apiKeyData = apiKeyResponse.data as ApiKey | null;
         const keyError = apiKeyResponse.error;
 
         if (keyError || !apiKeyData) {
-            throw new Error(`Failed to load API key for provider ${agent.provider}. Please configure it in Settings.`);
+            throw new Error(`Failed to load API key for provider "${provider}". Please configure it in Settings.`);
         }
 
         const rawKey = decryptApiKey(apiKeyData.encrypted_key);
@@ -92,16 +114,16 @@ export async function processTask(task: Task) {
 
         // 4. Execute LLM
         let executionResult;
-        const provider = agent.provider.toLowerCase();
+        const providerLower = provider.toLowerCase();
 
-        if (provider === 'anthropic') {
+        if (providerLower === 'anthropic') {
             executionResult = await executeAnthropic(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream);
-        } else if (provider === 'openai') {
+        } else if (providerLower === 'openai') {
             executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream);
-        } else if (provider === 'google') {
+        } else if (providerLower === 'google') {
             executionResult = await executeGoogle(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream);
         } else {
-            throw new Error(`Execution for provider ${provider} is not yet supported in the standalone runner.`);
+            throw new Error(`Execution for provider "${provider}" is not yet supported in the standalone runner.`);
         }
 
         // 5. Finalize Task success
@@ -134,7 +156,7 @@ export async function processTask(task: Task) {
             workspaceId: task.workspace_id,
             taskId: task.id,
             agentId: agent.id,
-            provider: agent.provider,
+            provider: provider,
             model: agent.model,
             tokensUsed: executionResult.usage.totalTokens,
             costEstimateUsd: executionResult.usage.costEstimateUSD,
