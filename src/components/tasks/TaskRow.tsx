@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 CrewForm
 
-import { Play, Loader2 } from 'lucide-react'
+import { Play, Loader2, RefreshCw, Trash2 } from 'lucide-react'
 import { TaskStatusBadge, TaskPriorityBadge } from '@/components/tasks/TaskStatusBadge'
 import { useDispatchTask } from '@/hooks/useDispatchTask'
+import { useRerunTask } from '@/hooks/useRerunTask'
+import { useDeleteTask } from '@/hooks/useDeleteTask'
 import type { Task, Agent } from '@/types'
 
 interface TaskRowProps {
@@ -14,17 +16,31 @@ interface TaskRowProps {
 
 /**
  * Table row for the task list.
- * Status · Title · Agent · Priority · Created · Elapsed
+ * Status · Title · Agent · Priority · Created · Elapsed · Actions
  */
 export function TaskRow({ task, agents, onClick }: TaskRowProps) {
     const agent = agents.find((a) => a.id === task.assigned_agent_id)
     const dispatchMutation = useDispatchTask()
+    const rerunMutation = useRerunTask()
+    const deleteMutation = useDeleteTask()
 
     const elapsed = getElapsedText(task)
+    const canRerun = task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled'
 
     function handleStart(e: React.MouseEvent) {
-        e.stopPropagation() // Don't open the detail panel
+        e.stopPropagation()
         dispatchMutation.mutate({ id: task.id })
+    }
+
+    function handleRerun(e: React.MouseEvent) {
+        e.stopPropagation()
+        rerunMutation.mutate({ id: task.id, workspaceId: task.workspace_id })
+    }
+
+    function handleDelete(e: React.MouseEvent) {
+        e.stopPropagation()
+        if (!confirm('Delete this task? This cannot be undone.')) return
+        deleteMutation.mutate({ id: task.id, workspaceId: task.workspace_id })
     }
 
     return (
@@ -75,21 +91,58 @@ export function TaskRow({ task, agents, onClick }: TaskRowProps) {
 
             {/* Actions */}
             <td className="px-4 py-3">
-                {task.status === 'pending' && task.assigned_agent_id && (
+                <div className="flex items-center gap-1.5">
+                    {/* Start (pending only) */}
+                    {task.status === 'pending' && task.assigned_agent_id && (
+                        <button
+                            type="button"
+                            onClick={handleStart}
+                            disabled={dispatchMutation.isPending}
+                            title="Start task"
+                            className="flex items-center gap-1.5 rounded-md border border-green-600/30 bg-green-600/10 px-2.5 py-1 text-xs font-medium text-green-400 transition-colors hover:bg-green-600/20 disabled:opacity-50"
+                        >
+                            {dispatchMutation.isPending ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                                <Play className="h-3 w-3" />
+                            )}
+                            Start
+                        </button>
+                    )}
+
+                    {/* Rerun (completed/failed/cancelled) */}
+                    {canRerun && (
+                        <button
+                            type="button"
+                            onClick={handleRerun}
+                            disabled={rerunMutation.isPending}
+                            title="Re-run task"
+                            className="flex items-center gap-1.5 rounded-md border border-blue-600/30 bg-blue-600/10 px-2.5 py-1 text-xs font-medium text-blue-400 transition-colors hover:bg-blue-600/20 disabled:opacity-50"
+                        >
+                            {rerunMutation.isPending ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                                <RefreshCw className="h-3 w-3" />
+                            )}
+                            Rerun
+                        </button>
+                    )}
+
+                    {/* Delete */}
                     <button
                         type="button"
-                        onClick={handleStart}
-                        disabled={dispatchMutation.isPending}
-                        className="flex items-center gap-1.5 rounded-md border border-green-600/30 bg-green-600/10 px-2.5 py-1 text-xs font-medium text-green-400 transition-colors hover:bg-green-600/20 disabled:opacity-50"
+                        onClick={handleDelete}
+                        disabled={deleteMutation.isPending}
+                        title="Delete task"
+                        className="rounded-md p-1.5 text-gray-600 transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
                     >
-                        {dispatchMutation.isPending ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
+                        {deleteMutation.isPending ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
-                            <Play className="h-3 w-3" />
+                            <Trash2 className="h-3.5 w-3.5" />
                         )}
-                        Start
                     </button>
-                )}
+                </div>
             </td>
         </tr>
     )
