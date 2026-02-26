@@ -6,7 +6,7 @@ import {
     Shield, BarChart3, Building2, Search,
     Loader2, Users, Bot, ListTodo, PackageOpen,
 } from 'lucide-react'
-import { usePlatformStats, useAllWorkspaces, useOverridePlan } from '@/hooks/useAdmin'
+import { usePlatformStats, useAllWorkspaces, useOverridePlan, useToggleBeta } from '@/hooks/useAdmin'
 import { ReviewQueue } from '@/components/marketplace/ReviewQueue'
 import { cn } from '@/lib/utils'
 
@@ -136,6 +136,7 @@ function OverviewTab() {
 function WorkspacesTab() {
     const { data: workspaces, isLoading } = useAllWorkspaces()
     const overrideMutation = useOverridePlan()
+    const betaMutation = useToggleBeta()
     const [search, setSearch] = useState('')
 
     if (isLoading) {
@@ -193,6 +194,24 @@ function WorkspacesTab() {
                                 <option value="team">Team</option>
                                 <option value="enterprise">Enterprise</option>
                             </select>
+                            <label className="flex cursor-pointer items-center gap-1.5">
+                                <input
+                                    type="checkbox"
+                                    checked={ws.is_beta}
+                                    onChange={() => betaMutation.mutate({
+                                        workspaceId: ws.id,
+                                        isBeta: !ws.is_beta,
+                                    })}
+                                    disabled={betaMutation.isPending}
+                                    className="h-3.5 w-3.5 rounded border-border accent-brand-primary"
+                                />
+                                <span className={cn(
+                                    'text-[10px] font-bold uppercase',
+                                    ws.is_beta ? 'text-emerald-400' : 'text-gray-600',
+                                )}>
+                                    Beta
+                                </span>
+                            </label>
                             <span className="text-xs text-gray-600">
                                 {new Date(ws.created_at).toLocaleDateString()}
                             </span>

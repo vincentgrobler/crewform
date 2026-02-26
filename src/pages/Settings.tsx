@@ -9,6 +9,7 @@ import { MembersSettings } from '@/components/settings/MembersSettings'
 import { WorkspaceSettings } from '@/components/settings/WorkspaceSettings'
 import { AuditLogPanel } from '@/components/settings/AuditLogPanel'
 import { BillingSettings } from '@/components/settings/BillingSettings'
+import { ProfileSettings } from '@/components/settings/ProfileSettings'
 import { cn } from '@/lib/utils'
 
 type SettingsTab = 'api-keys' | 'webhooks' | 'members' | 'workspace' | 'billing' | 'audit-log' | 'profile'
@@ -64,15 +65,7 @@ export function Settings() {
 
         {activeTab === 'audit-log' && <AuditLogPanel />}
 
-        {activeTab === 'profile' && (
-          <div className="rounded-lg border border-border bg-surface-card p-8 text-center">
-            <User className="mx-auto mb-3 h-10 w-10 text-gray-600" />
-            <h3 className="mb-1 text-lg font-medium text-gray-300">Profile Settings</h3>
-            <p className="text-sm text-gray-500">
-              Avatar upload, display name, and timezone settings coming soon.
-            </p>
-          </div>
-        )}
+        {activeTab === 'profile' && <ProfileSettings />}
       </div>
     </div>
   )

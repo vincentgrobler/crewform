@@ -138,6 +138,17 @@ export async function checkQuota(
     workspaceId: string,
     resource: string,
 ): Promise<QuotaCheckResult> {
+    // Beta workspaces bypass all quota limits
+    const wsResult = await supabase
+        .from('workspaces')
+        .select('is_beta')
+        .eq('id', workspaceId)
+        .single()
+
+    if (!wsResult.error && (wsResult.data as { is_beta: boolean }).is_beta) {
+        return { allowed: true, current: 0, limit: -1, resource }
+    }
+
     // Get current plan
     const subscription = await fetchSubscription(workspaceId)
     const plan = subscription?.plan ?? 'free'

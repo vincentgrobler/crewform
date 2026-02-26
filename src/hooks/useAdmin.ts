@@ -4,7 +4,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
     checkIsSuperAdmin, fetchAllWorkspaces, fetchPlatformStats,
-    overrideWorkspacePlan,
+    overrideWorkspacePlan, toggleBeta,
 } from '@/db/admin'
 import type { AdminWorkspace, PlatformStats } from '@/db/admin'
 
@@ -47,6 +47,20 @@ export function useOverridePlan() {
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: ['admin-workspaces'] })
             void queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+        },
+    })
+}
+
+/** Toggle beta status for a workspace */
+export function useToggleBeta() {
+    const queryClient = useQueryClient()
+    return useMutation<undefined, Error, { workspaceId: string; isBeta: boolean }>({
+        mutationFn: async ({ workspaceId, isBeta }) => {
+            await toggleBeta(workspaceId, isBeta)
+            return undefined
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['admin-workspaces'] })
         },
     })
 }
