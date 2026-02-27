@@ -6,6 +6,7 @@ import { decryptApiKey } from './crypto';
 import { writeTaskUsageRecord } from './usageWriter';
 import { dispatchWebhooks } from './webhookDispatcher';
 import { executeWithToolLoop, getToolDefinitions } from './toolExecutor';
+import type { CustomToolConfig } from './toolExecutor';
 import type { Task, Agent, ApiKey, TokenUsage } from './types';
 
 interface AgentTaskRecord {
@@ -128,6 +129,23 @@ export async function processTask(task: Task) {
         const agentTools: string[] = Array.isArray(agent.tools) ? agent.tools : [];
         const hasTools = agentTools.length > 0;
 
+        // Fetch custom tools from Supabase if any custom:* tools are configured
+        let customToolConfigs: CustomToolConfig[] = [];
+        const hasCustomTools = agentTools.some(t => t.startsWith('custom:'));
+        if (hasCustomTools) {
+            const customToolIds = agentTools
+                .filter(t => t.startsWith('custom:'))
+                .map(t => t.replace('custom:', ''));
+            const ctResult = await supabase
+                .from('custom_tools')
+                .select('*')
+                .in('id', customToolIds);
+            if (ctResult.data) {
+                customToolConfigs = ctResult.data as CustomToolConfig[];
+            }
+            console.log(`[TaskRunner] Loaded ${customToolConfigs.length.toString()} custom tools`);
+        }
+
         try {
             if (hasTools) {
                 // ── Tool-Use Mode: non-streaming with tool loop ──
@@ -141,6 +159,7 @@ export async function processTask(task: Task) {
                     userPrompt,
                     agentTools,
                     updateResultStream,
+                    customToolConfigs,
                 );
             } else if (providerLower === 'anthropic') {
                 executionResult = await executeAnthropic(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream);
@@ -277,6 +296,7 @@ async function executeToolUseTask(
     userPrompt: string,
     toolNames: string[],
     onProgressUpdate: (text: string) => Promise<void>,
+    customTools?: CustomToolConfig[],
 ): Promise<{ result: string; usage: TokenUsage }> {
     // Determine base URL for OpenAI-compatible providers
     const baseURLMap: Record<string, string> = {
@@ -293,8 +313,6 @@ async function executeToolUseTask(
     };
 
     // For tool-use, we use the OpenAI SDK for all providers (they're all OpenAI-compatible)
-    // Anthropic and Google need special handling if we want native tool support,
-    // but for Phase 3 we route them through OpenAI-compatible endpoints where possible
     const baseURL = baseURLMap[providerLower];
     let effectiveModel = model;
 
@@ -306,7 +324,7 @@ async function executeToolUseTask(
     }
 
     const openai = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
-    const tools = getToolDefinitions(toolNames);
+    const tools = getToolDefinitions(toolNames, customTools);
 
     const toolLoopResult = await executeWithToolLoop(
         async (messages, toolDefs) => {
@@ -374,6 +392,7 @@ async function executeToolUseTask(
         systemPrompt,
         userPrompt,
         toolNames,
+        customTools,
     );
 
     void tools; // definitions are used internally by the loop
