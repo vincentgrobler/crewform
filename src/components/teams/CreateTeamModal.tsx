@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { X, Loader2, GitBranch, Lock } from 'lucide-react'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useCreateTeam } from '@/hooks/useCreateTeam'
-import type { TeamMode, PipelineConfig } from '@/types'
+import type { TeamMode, PipelineConfig, OrchestratorConfig } from '@/types'
 
 interface CreateTeamModalProps {
     onClose: () => void
@@ -25,7 +25,7 @@ const MODES: { value: TeamMode; label: string; icon: typeof GitBranch; descripti
         label: 'Orchestrator',
         icon: GitBranch,
         description: 'A brain agent delegates sub-tasks to specialist agents.',
-        available: false,
+        available: true,
     },
     {
         value: 'collaboration',
@@ -47,7 +47,7 @@ export function CreateTeamModal({ onClose }: CreateTeamModalProps) {
 
     const [name, setName] = useState('')
     const [description, setDescription] = useState('')
-    const [mode] = useState<TeamMode>('pipeline')
+    const [mode, setMode] = useState<TeamMode>('pipeline')
     const [nameError, setNameError] = useState('')
 
     function handleSubmit(e: React.FormEvent) {
@@ -63,10 +63,18 @@ export function CreateTeamModal({ onClose }: CreateTeamModalProps) {
             return
         }
 
-        const defaultConfig: PipelineConfig = {
-            steps: [],
-            auto_handoff: true,
-        }
+        const defaultConfig = mode === 'orchestrator'
+            ? {
+                brain_agent_id: '',
+                quality_threshold: 0.7,
+                routing_strategy: 'auto',
+                planner_enabled: false,
+                max_delegation_depth: 3,
+            }
+            : {
+                steps: [] as PipelineConfig['steps'],
+                auto_handoff: true,
+            }
 
         createMutation.mutate(
             {
@@ -74,7 +82,7 @@ export function CreateTeamModal({ onClose }: CreateTeamModalProps) {
                 name: trimmed,
                 description: description.trim(),
                 mode,
-                config: defaultConfig,
+                config: defaultConfig as PipelineConfig | OrchestratorConfig,
             },
             {
                 onSuccess: (team) => {
@@ -155,6 +163,7 @@ export function CreateTeamModal({ onClose }: CreateTeamModalProps) {
                                             ? 'border-border hover:border-gray-600 cursor-pointer'
                                             : 'border-border opacity-50 cursor-not-allowed'
                                         }`}
+                                    onClick={() => { if (m.available) setMode(m.value) }}
                                 >
                                     <m.icon className={`mt-0.5 h-4 w-4 ${m.value === mode ? 'text-brand-primary' : 'text-gray-500'}`} />
                                     <div className="flex-1">
