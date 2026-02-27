@@ -90,6 +90,9 @@ export async function dispatchWebhooks(
             deliverWithRetry(route, task.id, event, payload),
         );
         await Promise.allSettled(promises);
+
+        // 4. Also dispatch to Zapier subscriptions
+        void dispatchZapierHooks(task.workspace_id, event, payload);
     } catch (err: unknown) {
         // Never let webhook errors bubble up
         console.error('[Webhooks] Dispatch error:', err instanceof Error ? err.message : String(err));
@@ -131,8 +134,57 @@ export async function dispatchTeamRunWebhooks(
             deliverWithRetry(route, teamRun.id, event, payload),
         );
         await Promise.allSettled(promises);
+
+        // Also dispatch to Zapier subscriptions
+        void dispatchZapierHooks(teamRun.workspace_id, event, payload);
     } catch (err: unknown) {
         console.error('[Webhooks] Team run dispatch error:', err instanceof Error ? err.message : String(err));
+    }
+}
+
+/**
+ * Dispatch to any Zapier REST Hook subscriptions for this workspace + event.
+ * Never throws — failures are logged but never block the calling flow.
+ */
+async function dispatchZapierHooks(
+    workspaceId: string,
+    event: string,
+    payload: WebhookPayload,
+): Promise<void> {
+    try {
+        const { data: subs, error } = await supabase
+            .from('zapier_subscriptions')
+            .select('id, target_url')
+            .eq('workspace_id', workspaceId)
+            .eq('event', event);
+
+        if (error || !subs || subs.length === 0) return;
+
+        const deliveries = (subs as Array<{ id: string; target_url: string }>).map(async (sub) => {
+            try {
+                const resp = await fetch(sub.target_url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    signal: AbortSignal.timeout(10000),
+                });
+
+                if (!resp.ok) {
+                    console.warn(`[Zapier] Hook ${sub.id} returned ${resp.status}`);
+                    // If Zapier returns 410 Gone, the subscription was cancelled — clean it up
+                    if (resp.status === 410) {
+                        await supabase.from('zapier_subscriptions').delete().eq('id', sub.id);
+                        console.log(`[Zapier] Removed stale subscription ${sub.id}`);
+                    }
+                }
+            } catch (err: unknown) {
+                console.error(`[Zapier] Hook ${sub.id} failed:`, err instanceof Error ? err.message : String(err));
+            }
+        });
+
+        await Promise.allSettled(deliveries);
+    } catch (err: unknown) {
+        console.error('[Zapier] Dispatch error:', err instanceof Error ? err.message : String(err));
     }
 }
 
