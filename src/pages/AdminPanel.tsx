@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 CrewForm
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
     Shield, BarChart3, Building2, Search,
-    Loader2, Users, Bot, ListTodo, PackageOpen,
+    Loader2, Users, Bot, ListTodo, PackageOpen, Store, XCircle,
 } from 'lucide-react'
 import { usePlatformStats, useAllWorkspaces, useOverridePlan, useToggleBeta } from '@/hooks/useAdmin'
 import { ReviewQueue } from '@/components/marketplace/ReviewQueue'
+import { fetchPublishedAgents, unpublishAgent } from '@/db/marketplace'
 import { cn } from '@/lib/utils'
 
-type AdminTab = 'overview' | 'workspaces' | 'review-queue'
+type AdminTab = 'overview' | 'workspaces' | 'review-queue' | 'marketplace'
 
 const PLAN_COLORS: Record<string, string> = {
     free: 'text-gray-400 bg-gray-500/10',
@@ -43,6 +44,7 @@ export function AdminPanel() {
                 {([
                     { key: 'overview' as const, label: 'Overview', icon: BarChart3 },
                     { key: 'workspaces' as const, label: 'Workspaces', icon: Building2 },
+                    { key: 'marketplace' as const, label: 'Marketplace', icon: Store },
                     { key: 'review-queue' as const, label: 'Review Queue', icon: PackageOpen },
                 ] as const).map(({ key, label, icon: Icon }) => (
                     <button
@@ -65,6 +67,7 @@ export function AdminPanel() {
             {/* Tab content */}
             {activeTab === 'overview' && <OverviewTab />}
             {activeTab === 'workspaces' && <WorkspacesTab />}
+            {activeTab === 'marketplace' && <MarketplaceTab />}
             {activeTab === 'review-queue' && <ReviewQueue />}
         </div>
     )
@@ -215,6 +218,118 @@ function WorkspacesTab() {
                             <span className="text-xs text-gray-600">
                                 {new Date(ws.created_at).toLocaleDateString()}
                             </span>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    )
+}
+
+// ─── Marketplace Tab ────────────────────────────────────────────────────────
+
+function MarketplaceTab() {
+    const [agents, setAgents] = useState<Array<{
+        id: string; name: string; provider: string; model: string;
+        install_count: number; rating_avg: number; workspace_id: string
+    }>>([])
+    const [isLoading, setIsLoading] = useState(true)
+    const [removing, setRemoving] = useState<string | null>(null)
+    const [search, setSearch] = useState('')
+
+    async function loadAgents() {
+        setIsLoading(true)
+        try {
+            const data = await fetchPublishedAgents()
+            setAgents(data)
+        } catch {
+            // ignore
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    useEffect(() => { void loadAgents() }, [])
+
+    async function handleRemove(agentId: string, agentName: string) {
+        if (!confirm(`Remove "${agentName}" from the marketplace? This will unpublish it.`)) return
+        setRemoving(agentId)
+        try {
+            await unpublishAgent(agentId)
+            setAgents(prev => prev.filter(a => a.id !== agentId))
+        } catch {
+            alert('Failed to remove agent.')
+        } finally {
+            setRemoving(null)
+        }
+    }
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center py-16">
+                <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+            </div>
+        )
+    }
+
+    const filtered = agents.filter(a =>
+        a.name.toLowerCase().includes(search.toLowerCase()) ||
+        a.provider.toLowerCase().includes(search.toLowerCase()),
+    )
+
+    return (
+        <div className="space-y-4">
+            {/* Header row */}
+            <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-400">
+                    {agents.length} published agent{agents.length !== 1 ? 's' : ''}
+                </p>
+            </div>
+
+            {/* Search */}
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search published agents..."
+                    className="w-full rounded-lg border border-border bg-surface-card py-2.5 pl-10 pr-4 text-sm text-gray-200 outline-none focus:border-brand-primary"
+                />
+            </div>
+
+            {/* Agent list */}
+            <div className="rounded-xl border border-border bg-surface-card divide-y divide-border/50">
+                {filtered.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-sm text-gray-500">
+                        {agents.length === 0 ? 'No agents published yet' : 'No matching agents'}
+                    </div>
+                ) : (
+                    filtered.map((agent) => (
+                        <div key={agent.id} className="flex items-center gap-4 px-4 py-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-primary/10">
+                                <Bot className="h-4 w-4 text-brand-primary" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-gray-200">{agent.name}</p>
+                                <p className="text-xs text-gray-500">
+                                    {agent.provider} · {agent.model} · {agent.install_count} install{agent.install_count !== 1 ? 's' : ''}
+                                    {agent.rating_avg > 0 && ` · ★ ${agent.rating_avg}`}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                disabled={removing === agent.id}
+                                onClick={() => void handleRemove(agent.id, agent.name)}
+                                className="flex items-center gap-1.5 rounded-lg border border-red-600/30 px-3 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-600/10 disabled:opacity-50"
+                            >
+                                {removing === agent.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                    <XCircle className="h-3.5 w-3.5" />
+                                )}
+                                Remove
+                            </button>
                         </div>
                     ))
                 )}

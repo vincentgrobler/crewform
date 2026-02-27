@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, Trash2, Upload, Activity, Settings2, AlertCircle, Loader2, History, Zap } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, Upload, DownloadCloud, Activity, Settings2, AlertCircle, Loader2, History, Zap } from 'lucide-react'
 import { useAgent } from '@/hooks/useAgent'
 import { useUpdateAgent } from '@/hooks/useUpdateAgent'
 import { useDeleteAgent } from '@/hooks/useDeleteAgent'
@@ -11,6 +11,7 @@ import { DeleteAgentDialog } from '@/components/agents/DeleteAgentDialog'
 import { PromptHistoryPanel } from '@/components/agents/PromptHistoryPanel'
 import { TriggersPanel } from '@/components/agents/TriggersPanel'
 import { PublishAgentModal } from '@/components/marketplace/PublishAgentModal'
+import { unpublishAgent } from '@/db/marketplace'
 import { StatusIndicator } from '@/components/ui/StatusIndicator'
 import { agentSchema, MODEL_OPTIONS, getActiveModelOptions, mergeModelOptions, inferProviderFromModel } from '@/lib/agentSchema'
 import { useOpenRouterModels } from '@/hooks/useOpenRouterModels'
@@ -47,6 +48,7 @@ export function AgentDetail() {
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
     const [hasChanges, setHasChanges] = useState(false)
     const [saveSuccess, setSaveSuccess] = useState(false)
+    const [isUnpublishing, setIsUnpublishing] = useState(false)
 
     // Only show models for providers with active API keys
     const activeProviders = useMemo(
@@ -209,15 +211,38 @@ export function AgentDetail() {
                         {saveSuccess ? 'Saved!' : 'Save'}
                     </button>
 
-                    {/* Publish button */}
-                    <button
-                        type="button"
-                        onClick={() => setShowPublishModal(true)}
-                        className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-surface-elevated hover:text-brand-primary"
-                    >
-                        <Upload className="h-4 w-4" />
-                        Publish
-                    </button>
+                    {/* Publish / Unpublish button */}
+                    {agent.is_published ? (
+                        <button
+                            type="button"
+                            disabled={isUnpublishing}
+                            onClick={() => void (async () => {
+                                if (!confirm('Are you sure you want to unpublish this agent from the marketplace?')) return
+                                setIsUnpublishing(true)
+                                try {
+                                    await unpublishAgent(agent.id)
+                                    window.location.reload()
+                                } catch {
+                                    alert('Failed to unpublish agent.')
+                                } finally {
+                                    setIsUnpublishing(false)
+                                }
+                            })()}
+                            className="flex items-center gap-2 rounded-lg border border-orange-500/30 px-4 py-2 text-sm font-medium text-orange-400 transition-colors hover:bg-orange-600/10"
+                        >
+                            {isUnpublishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4" />}
+                            Unpublish
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => setShowPublishModal(true)}
+                            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-surface-elevated hover:text-brand-primary"
+                        >
+                            <Upload className="h-4 w-4" />
+                            Publish
+                        </button>
+                    )}
 
                     {/* Delete button */}
                     <button
