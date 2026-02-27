@@ -8,11 +8,9 @@
  * and returns the connected account label.
  */
 
-const BASE_URL = process.env.CREWFORM_API_URL;
-
 const test = async (z, bundle) => {
     const response = await z.request({
-        url: `${BASE_URL}/api-me`,
+        url: `${bundle.authData.api_url}/api-me`,
         method: 'GET',
     });
 
@@ -24,7 +22,6 @@ const test = async (z, bundle) => {
 };
 
 const getConnectionLabel = (z, bundle) => {
-    // Display the workspace name in Zapier's connection list
     return `${bundle.inputData.workspace_name} (${bundle.inputData.email || bundle.inputData.id})`;
 };
 
@@ -52,10 +49,11 @@ const authentication = {
     connectionLabel: getConnectionLabel,
 };
 
-// Middleware — injected into every request at the app level (index.js)
+// Middleware — inject API key + base URL into every request
 const addApiKeyHeader = (request, z, bundle) => {
-    if (bundle.authData.api_url) {
-        request.url = request.url.replace(BASE_URL || 'CREWFORM_API_URL', bundle.authData.api_url);
+    // Prefix relative URLs with the user-provided API URL
+    if (bundle.authData.api_url && !request.url.startsWith('http')) {
+        request.url = `${bundle.authData.api_url}${request.url}`;
     }
 
     request.headers = request.headers || {};
@@ -65,4 +63,5 @@ const addApiKeyHeader = (request, z, bundle) => {
 };
 
 module.exports = { authentication, addApiKeyHeader };
+
 
