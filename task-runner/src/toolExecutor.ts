@@ -132,6 +132,21 @@ const TOOL_REGISTRY: Record<string, ToolDefinition> = {
             },
         },
     },
+    grammar_check: {
+        type: 'function',
+        function: {
+            name: 'grammar_check',
+            description: 'Check text for grammar, spelling, and style issues. Returns a list of issues with suggestions. Supports language auto-detection.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    text: { type: 'string', description: 'The text to check for grammar and spelling issues' },
+                    language: { type: 'string', description: 'Language code (e.g. en-US, de-DE, fr). Defaults to auto-detect.' },
+                },
+                required: ['text'],
+            },
+        },
+    },
 };
 
 // ─── Tool Execution ──────────────────────────────────────────────────────────
@@ -182,6 +197,11 @@ export async function executeToolCall(toolCall: ToolCall, customTools?: CustomTo
                 return executeCodeInterpreter(args.code as string);
             case 'read_file':
                 return await executeReadFile(args.url as string);
+            case 'grammar_check':
+                return await executeGrammarCheck(
+                    args.text as string,
+                    (args.language as string) || 'auto',
+                );
             default:
                 return `Error: Unknown tool "${name}"`;
         }
@@ -288,6 +308,75 @@ async function executeReadFile(url: string): Promise<string> {
 
     const text = await response.text();
     return text.length > 8000 ? text.slice(0, 8000) + '\n... (truncated)' : text;
+}
+
+async function executeGrammarCheck(text: string, language: string): Promise<string> {
+    const params = new URLSearchParams({
+        text,
+        language,
+        enabledOnly: 'false',
+    });
+
+    const response = await fetch('https://api.languagetool.org/v2/check', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'CrewForm-Agent/1.0',
+        },
+        body: params.toString(),
+        signal: AbortSignal.timeout(15000),
+    });
+
+    if (!response.ok) {
+        return `Grammar check failed: HTTP ${response.status.toString()} ${response.statusText}`;
+    }
+
+    interface LTMatch {
+        message: string;
+        shortMessage: string;
+        offset: number;
+        length: number;
+        replacements: { value: string }[];
+        rule: { id: string; category: { name: string } };
+        context: { text: string; offset: number; length: number };
+    }
+
+    interface LTResponse {
+        matches: LTMatch[];
+        language: { name: string; code: string; detectedLanguage?: { name: string; code: string } };
+    }
+
+    const data = await response.json() as LTResponse;
+    const matches = data.matches;
+
+    if (matches.length === 0) {
+        const lang = data.language.detectedLanguage?.name ?? data.language.name;
+        return `✅ No grammar, spelling, or style issues found. Language detected: ${lang}.`;
+    }
+
+    const lang = data.language.detectedLanguage?.name ?? data.language.name;
+    let result = `Found ${matches.length.toString()} issue(s) (Language: ${lang}):\n\n`;
+
+    for (let i = 0; i < Math.min(matches.length, 20); i++) {
+        const m = matches[i];
+        const num = (i + 1).toString();
+        const category = m.rule.category.name;
+        const suggestions = m.replacements.slice(0, 3).map(r => `"${r.value}"`).join(', ');
+        const context = m.context.text;
+
+        result += `${num}. [${category}] ${m.message}\n`;
+        result += `   Context: "...${context}..."\n`;
+        if (suggestions) {
+            result += `   Suggestions: ${suggestions}\n`;
+        }
+        result += '\n';
+    }
+
+    if (matches.length > 20) {
+        result += `... and ${(matches.length - 20).toString()} more issues.\n`;
+    }
+
+    return result;
 }
 
 // ─── Custom Tool Webhook Execution ───────────────────────────────────────────
