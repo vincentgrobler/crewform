@@ -27,6 +27,8 @@ export interface Agent {
     provider: 'Anthropic' | 'OpenAI' | 'Google' | 'Mistral' | 'Groq' | 'Cohere' | 'OpenRouter' | 'Ollama';
     model: string;
     system_prompt: string;
+    temperature: number;
+    tools: string[];
 }
 
 export interface ApiKey {

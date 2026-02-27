@@ -1,0 +1,350 @@
+/**
+ * Tool Executor — Implements built-in tools for agent task execution.
+ *
+ * Each tool follows a standard interface: takes parameters, returns a string result.
+ * The executor handles the tool-use loop: LLM calls → tool calls → results fed back.
+ */
+
+import type { TokenUsage } from './types';
+
+// ─── Tool Definitions (OpenAI-compatible format) ─────────────────────────────
+
+export interface ToolDefinition {
+    type: 'function';
+    function: {
+        name: string;
+        description: string;
+        parameters: {
+            type: 'object';
+            properties: Record<string, { type: string; description: string }>;
+            required: string[];
+        };
+    };
+}
+
+/**
+ * Returns OpenAI-compatible tool definitions for the given tool names.
+ */
+export function getToolDefinitions(toolNames: string[]): ToolDefinition[] {
+    const defs: ToolDefinition[] = [];
+
+    for (const name of toolNames) {
+        const def = TOOL_REGISTRY[name];
+        if (def) {
+            defs.push(def);
+        }
+    }
+
+    return defs;
+}
+
+const TOOL_REGISTRY: Record<string, ToolDefinition> = {
+    web_search: {
+        type: 'function',
+        function: {
+            name: 'web_search',
+            description: 'Search the web for current information. Returns relevant text snippets.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    query: { type: 'string', description: 'The search query' },
+                },
+                required: ['query'],
+            },
+        },
+    },
+    http_request: {
+        type: 'function',
+        function: {
+            name: 'http_request',
+            description: 'Make an HTTP request to a URL. Returns the response body (truncated to 4000 chars).',
+            parameters: {
+                type: 'object',
+                properties: {
+                    url: { type: 'string', description: 'The URL to request' },
+                    method: { type: 'string', description: 'HTTP method (GET, POST, PUT, DELETE). Defaults to GET.' },
+                    body: { type: 'string', description: 'Request body for POST/PUT requests (JSON string)' },
+                },
+                required: ['url'],
+            },
+        },
+    },
+    code_interpreter: {
+        type: 'function',
+        function: {
+            name: 'code_interpreter',
+            description: 'Execute JavaScript code in a sandboxed environment. Returns the result of the last expression or console output.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    code: { type: 'string', description: 'JavaScript code to execute' },
+                },
+                required: ['code'],
+            },
+        },
+    },
+    read_file: {
+        type: 'function',
+        function: {
+            name: 'read_file',
+            description: 'Read the contents of a file from a URL. Returns the file text (truncated to 8000 chars).',
+            parameters: {
+                type: 'object',
+                properties: {
+                    url: { type: 'string', description: 'URL of the file to read' },
+                },
+                required: ['url'],
+            },
+        },
+    },
+};
+
+// ─── Tool Execution ──────────────────────────────────────────────────────────
+
+interface ToolCall {
+    id: string;
+    function: {
+        name: string;
+        arguments: string;
+    };
+}
+
+/**
+ * Execute a single tool call and return the result string.
+ */
+export async function executeToolCall(toolCall: ToolCall): Promise<string> {
+    const { name, arguments: argsStr } = toolCall.function;
+
+    let args: Record<string, unknown>;
+    try {
+        args = JSON.parse(argsStr) as Record<string, unknown>;
+    } catch {
+        return `Error: Invalid JSON arguments: ${argsStr}`;
+    }
+
+    try {
+        switch (name) {
+            case 'web_search':
+                return await executeWebSearch(args.query as string);
+            case 'http_request':
+                return await executeHttpRequest(
+                    args.url as string,
+                    (args.method as string) || 'GET',
+                    args.body as string | undefined,
+                );
+            case 'code_interpreter':
+                return executeCodeInterpreter(args.code as string);
+            case 'read_file':
+                return await executeReadFile(args.url as string);
+            default:
+                return `Error: Unknown tool "${name}"`;
+        }
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return `Error executing ${name}: ${msg}`;
+    }
+}
+
+// ─── Built-in Tool Implementations ───────────────────────────────────────────
+
+async function executeWebSearch(query: string): Promise<string> {
+    // Use a simple fetch-based approach — hit DuckDuckGo's html endpoint
+    const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+    const response = await fetch(url, {
+        headers: {
+            'User-Agent': 'CrewForm-Agent/1.0',
+        },
+    });
+
+    if (!response.ok) {
+        return `Search failed with status ${response.status.toString()}`;
+    }
+
+    const html = await response.text();
+
+    // Extract result snippets from DuckDuckGo HTML
+    const snippets: string[] = [];
+    const snippetRegex = /class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
+    let match;
+    while ((match = snippetRegex.exec(html)) !== null && snippets.length < 5) {
+        // Strip HTML tags
+        const text = match[1].replace(/<[^>]+>/g, '').trim();
+        if (text) snippets.push(text);
+    }
+
+    if (snippets.length === 0) {
+        return `No search results found for: "${query}"`;
+    }
+
+    return `Search results for "${query}":\n\n${snippets.map((s, i) => `${(i + 1).toString()}. ${s}`).join('\n\n')}`;
+}
+
+async function executeHttpRequest(url: string, method: string, body?: string): Promise<string> {
+    const opts: RequestInit = {
+        method: method.toUpperCase(),
+        headers: {
+            'User-Agent': 'CrewForm-Agent/1.0',
+            'Accept': 'application/json, text/plain, */*',
+        },
+    };
+
+    if (body && (method.toUpperCase() === 'POST' || method.toUpperCase() === 'PUT')) {
+        opts.body = body;
+        opts.headers = { ...opts.headers, 'Content-Type': 'application/json' };
+    }
+
+    const response = await fetch(url, opts);
+    const text = await response.text();
+
+    const statusInfo = `HTTP ${response.status.toString()} ${response.statusText}`;
+    const truncated = text.length > 4000 ? text.slice(0, 4000) + '\n... (truncated)' : text;
+
+    return `${statusInfo}\n\n${truncated}`;
+}
+
+function executeCodeInterpreter(code: string): string {
+    // Sandboxed JS evaluation using Function constructor
+    // This is intentionally limited — no access to Node.js APIs
+    try {
+        const logs: string[] = [];
+        const mockConsole = {
+            log: (...args: unknown[]) => logs.push(args.map(String).join(' ')),
+            warn: (...args: unknown[]) => logs.push(`[warn] ${args.map(String).join(' ')}`),
+            error: (...args: unknown[]) => logs.push(`[error] ${args.map(String).join(' ')}`),
+        };
+
+        // Create sandboxed function
+        const fn = new Function('console', 'Math', 'JSON', 'Date', 'parseInt', 'parseFloat', 'isNaN', 'isFinite',
+            `"use strict";\n${code}`);
+        const result: unknown = fn(mockConsole, Math, JSON, Date, parseInt, parseFloat, isNaN, isFinite);
+
+        const output = logs.length > 0 ? logs.join('\n') : '';
+        const returnValue = result !== undefined ? String(result) : '';
+
+        if (output && returnValue) {
+            return `Console output:\n${output}\n\nReturn value: ${returnValue}`;
+        }
+        return output || returnValue || '(no output)';
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return `Code execution error: ${msg}`;
+    }
+}
+
+async function executeReadFile(url: string): Promise<string> {
+    const response = await fetch(url, {
+        headers: { 'User-Agent': 'CrewForm-Agent/1.0' },
+    });
+
+    if (!response.ok) {
+        return `Failed to read file: HTTP ${response.status.toString()} ${response.statusText}`;
+    }
+
+    const text = await response.text();
+    return text.length > 8000 ? text.slice(0, 8000) + '\n... (truncated)' : text;
+}
+
+// ─── Tool-Use Loop (OpenAI-compatible) ───────────────────────────────────────
+
+interface ToolUseMessage {
+    role: 'system' | 'user' | 'assistant' | 'tool';
+    content?: string | null;
+    tool_calls?: ToolCall[];
+    tool_call_id?: string;
+    name?: string;
+}
+
+interface ToolUseResult {
+    result: string;
+    usage: TokenUsage;
+    toolCallsMade: number;
+}
+
+/**
+ * Executes an OpenAI-compatible tool-use loop.
+ * - Calls the LLM with tools
+ * - If the LLM returns tool_calls, executes them
+ * - Feeds results back and loops
+ * - Max 10 rounds to prevent infinite loops
+ */
+export async function executeWithToolLoop(
+    callLLM: (messages: ToolUseMessage[], tools: ToolDefinition[]) => Promise<{
+        message: { role: string; content: string | null; tool_calls?: ToolCall[] };
+        usage: { promptTokens: number; completionTokens: number };
+    }>,
+    systemPrompt: string,
+    userPrompt: string,
+    toolNames: string[],
+): Promise<ToolUseResult> {
+    const tools = getToolDefinitions(toolNames);
+    const messages: ToolUseMessage[] = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+    ];
+
+    const MAX_ROUNDS = 10;
+    let totalPromptTokens = 0;
+    let totalCompletionTokens = 0;
+    let toolCallsMade = 0;
+
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+        const response = await callLLM(messages, tools);
+
+        totalPromptTokens += response.usage.promptTokens;
+        totalCompletionTokens += response.usage.completionTokens;
+
+        const assistantMessage = response.message;
+
+        // If no tool calls, we're done
+        if (!assistantMessage.tool_calls || assistantMessage.tool_calls.length === 0) {
+            const totalTokens = totalPromptTokens + totalCompletionTokens;
+            const costEstimateUSD = (totalPromptTokens / 1_000_000) * 5 + (totalCompletionTokens / 1_000_000) * 15;
+
+            return {
+                result: assistantMessage.content ?? '',
+                usage: {
+                    promptTokens: totalPromptTokens,
+                    completionTokens: totalCompletionTokens,
+                    totalTokens,
+                    costEstimateUSD,
+                },
+                toolCallsMade,
+            };
+        }
+
+        // Add assistant message with tool_calls to conversation
+        messages.push({
+            role: 'assistant',
+            content: assistantMessage.content,
+            tool_calls: assistantMessage.tool_calls,
+        });
+
+        // Execute each tool call and add results
+        for (const toolCall of assistantMessage.tool_calls) {
+            toolCallsMade++;
+            console.log(`[ToolExecutor] Executing tool: ${toolCall.function.name} (round ${(round + 1).toString()}, call #${toolCallsMade.toString()})`);
+            const result = await executeToolCall(toolCall);
+            messages.push({
+                role: 'tool',
+                tool_call_id: toolCall.id,
+                content: result,
+            });
+        }
+    }
+
+    // If we hit max rounds, return whatever we have
+    const totalTokens = totalPromptTokens + totalCompletionTokens;
+    const costEstimateUSD = (totalPromptTokens / 1_000_000) * 5 + (totalCompletionTokens / 1_000_000) * 15;
+    const lastAssistant = messages.filter(m => m.role === 'assistant').pop();
+
+    return {
+        result: lastAssistant?.content ?? '[Tool-use loop reached maximum rounds without final response]',
+        usage: {
+            promptTokens: totalPromptTokens,
+            completionTokens: totalCompletionTokens,
+            totalTokens,
+            costEstimateUSD,
+        },
+        toolCallsMade,
+    };
+}

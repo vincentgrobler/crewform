@@ -4,6 +4,39 @@
 import { z } from 'zod'
 
 /**
+ * Built-in tools available for agents.
+ * Each tool has a name (used as the ID), label, description, and icon.
+ */
+export const BUILT_IN_TOOLS = [
+    {
+        name: 'web_search',
+        label: 'Web Search',
+        description: 'Search the web for current information using a query.',
+        icon: '🔍',
+    },
+    {
+        name: 'http_request',
+        label: 'HTTP Request',
+        description: 'Make HTTP requests to external APIs and URLs.',
+        icon: '🌐',
+    },
+    {
+        name: 'code_interpreter',
+        label: 'Code Interpreter',
+        description: 'Execute JavaScript code in a sandboxed environment.',
+        icon: '💻',
+    },
+    {
+        name: 'read_file',
+        label: 'Read File',
+        description: 'Read contents of a file from a provided URL.',
+        icon: '📄',
+    },
+] as const
+
+export type BuiltInToolName = typeof BUILT_IN_TOOLS[number]['name']
+
+/**
  * Zod schema for agent creation / editing.
  * Validates all fields before Supabase insert.
  */

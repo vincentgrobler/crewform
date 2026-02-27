@@ -5,7 +5,8 @@ import { executeGoogle } from './providers/google';
 import { decryptApiKey } from './crypto';
 import { writeTaskUsageRecord } from './usageWriter';
 import { dispatchWebhooks } from './webhookDispatcher';
-import type { Task, Agent, ApiKey } from './types';
+import { executeWithToolLoop, getToolDefinitions } from './toolExecutor';
+import type { Task, Agent, ApiKey, TokenUsage } from './types';
 
 interface AgentTaskRecord {
     id: string;
@@ -124,9 +125,24 @@ export async function processTask(task: Task) {
         // 4. Execute LLM
         let executionResult;
         const providerLower = provider.toLowerCase();
+        const agentTools: string[] = Array.isArray(agent.tools) ? agent.tools : [];
+        const hasTools = agentTools.length > 0;
 
         try {
-            if (providerLower === 'anthropic') {
+            if (hasTools) {
+                // ── Tool-Use Mode: non-streaming with tool loop ──
+                console.log(`[TaskRunner] Agent has ${agentTools.length.toString()} tools enabled: ${agentTools.join(', ')}`);
+
+                executionResult = await executeToolUseTask(
+                    providerLower,
+                    rawKey,
+                    agent.model,
+                    systemPrompt,
+                    userPrompt,
+                    agentTools,
+                    updateResultStream,
+                );
+            } else if (providerLower === 'anthropic') {
                 executionResult = await executeAnthropic(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream);
             } else if (providerLower === 'openai') {
                 executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream);
@@ -243,4 +259,129 @@ export async function processTask(task: Task) {
             'task.failed',
         );
     }
+}
+
+// ─── Tool-Use Task Executor ─────────────────────────────────────────────────────────────────
+
+import OpenAI from 'openai';
+
+/**
+ * Execute a task using the tool-use loop.
+ * Uses non-streaming OpenAI-compatible calls to support tool_calls.
+ */
+async function executeToolUseTask(
+    providerLower: string,
+    apiKey: string,
+    model: string,
+    systemPrompt: string,
+    userPrompt: string,
+    toolNames: string[],
+    onProgressUpdate: (text: string) => Promise<void>,
+): Promise<{ result: string; usage: TokenUsage }> {
+    // Determine base URL for OpenAI-compatible providers
+    const baseURLMap: Record<string, string> = {
+        openrouter: 'https://openrouter.ai/api/v1',
+        groq: 'https://api.groq.com/openai/v1',
+        mistral: 'https://api.mistral.ai/v1',
+        cohere: 'https://api.cohere.com/compatibility/v1',
+        together: 'https://api.together.xyz/v1',
+        nvidia: 'https://integrate.api.nvidia.com/v1',
+        huggingface: 'https://api-inference.huggingface.co/v1',
+        venice: 'https://api.venice.ai/api/v1',
+        minimax: 'https://api.minimaxi.chat/v1',
+        moonshot: 'https://api.moonshot.cn/v1',
+    };
+
+    // For tool-use, we use the OpenAI SDK for all providers (they're all OpenAI-compatible)
+    // Anthropic and Google need special handling if we want native tool support,
+    // but for Phase 3 we route them through OpenAI-compatible endpoints where possible
+    const baseURL = baseURLMap[providerLower];
+    let effectiveModel = model;
+
+    // Strip provider prefix for routed providers
+    if (providerLower === 'openrouter') {
+        effectiveModel = model.replace(/^openrouter\//, '');
+    } else if (providerLower === 'groq') {
+        effectiveModel = model.replace(/^groq\//, '');
+    }
+
+    const openai = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
+    const tools = getToolDefinitions(toolNames);
+
+    const toolLoopResult = await executeWithToolLoop(
+        async (messages, toolDefs) => {
+            // Build properly-typed OpenAI messages
+            const openaiMessages: OpenAI.ChatCompletionMessageParam[] = messages.map(m => {
+                if (m.role === 'system') {
+                    return { role: 'system' as const, content: m.content ?? '' };
+                }
+                if (m.role === 'user') {
+                    return { role: 'user' as const, content: m.content ?? '' };
+                }
+                if (m.role === 'tool') {
+                    return { role: 'tool' as const, content: m.content ?? '', tool_call_id: m.tool_call_id ?? '' };
+                }
+                // assistant
+                const assistantMsg: OpenAI.ChatCompletionAssistantMessageParam = {
+                    role: 'assistant' as const,
+                    content: m.content ?? '',
+                };
+                if (m.tool_calls && m.tool_calls.length > 0) {
+                    assistantMsg.tool_calls = m.tool_calls.map(tc => ({
+                        id: tc.id,
+                        type: 'function' as const,
+                        function: { name: tc.function.name, arguments: tc.function.arguments },
+                    }));
+                }
+                return assistantMsg;
+            });
+
+            const response = await openai.chat.completions.create({
+                model: effectiveModel,
+                messages: openaiMessages,
+                tools: toolDefs,
+            });
+
+            const choice = response.choices[0];
+            const assistantMsg = choice?.message;
+
+            // Update progress with current content
+            if (assistantMsg?.content) {
+                await onProgressUpdate(assistantMsg.content);
+            }
+
+            // Extract tool_calls — handle both SDK shapes
+            const toolCalls = assistantMsg?.tool_calls?.map(tc => ({
+                id: tc.id,
+                function: {
+                    name: (tc as { function: { name: string; arguments: string } }).function.name,
+                    arguments: (tc as { function: { name: string; arguments: string } }).function.arguments,
+                },
+            }));
+
+            return {
+                message: {
+                    role: 'assistant' as const,
+                    content: assistantMsg?.content ?? null,
+                    tool_calls: toolCalls,
+                },
+                usage: {
+                    promptTokens: response.usage?.prompt_tokens ?? 0,
+                    completionTokens: response.usage?.completion_tokens ?? 0,
+                },
+            };
+        },
+        systemPrompt,
+        userPrompt,
+        toolNames,
+    );
+
+    void tools; // definitions are used internally by the loop
+
+    console.log(`[TaskRunner] Tool-use complete. ${toolLoopResult.toolCallsMade.toString()} tool calls made.`);
+
+    return {
+        result: toolLoopResult.result,
+        usage: toolLoopResult.usage,
+    };
 }
