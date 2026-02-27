@@ -32,6 +32,12 @@ export const BUILT_IN_TOOLS = [
         description: 'Read contents of a file from a provided URL.',
         icon: '📄',
     },
+    {
+        name: 'grammar_check',
+        label: 'Grammar Check',
+        description: 'Check text for grammar, spelling, and style issues using LanguageTool.',
+        icon: '✏️',
+    },
 ] as const
 
 export type BuiltInToolName = typeof BUILT_IN_TOOLS[number]['name']
