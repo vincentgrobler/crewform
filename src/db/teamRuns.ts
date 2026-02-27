@@ -56,6 +56,29 @@ export async function createTeamRun(input: CreateTeamRunInput): Promise<TeamRun>
     return result.data as TeamRun
 }
 
+/** Re-run a failed/completed/cancelled team run: reset to pending, clear progress */
+export async function rerunTeamRun(id: string): Promise<TeamRun> {
+    const result = await supabase
+        .from('team_runs')
+        .update({
+            status: 'pending',
+            output: null,
+            current_step_idx: null,
+            error_message: null,
+            started_at: null,
+            completed_at: null,
+            claimed_by_runner: null,
+            tokens_total: 0,
+            cost_estimate_usd: 0,
+        })
+        .eq('id', id)
+        .select()
+        .single()
+
+    if (result.error) throw result.error
+    return result.data as TeamRun
+}
+
 // ─── Team Messages ───────────────────────────────────────────────────────────
 
 /** Fetch messages for a run, ordered chronologically */
