@@ -97,9 +97,7 @@ export function RootLayout() {
           'flex h-14 shrink-0 items-center border-b border-gray-800',
           collapsed ? 'justify-center px-2' : 'gap-2 px-6',
         )}>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 font-bold text-white">
-            C
-          </div>
+          <img src="/crewform-icon.png" alt="CrewForm" className="h-8 w-8 shrink-0 rounded-lg" />
           {!collapsed && (
             <span className="text-lg font-semibold text-gray-100">CrewForm</span>
           )}
