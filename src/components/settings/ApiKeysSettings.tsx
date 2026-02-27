@@ -120,6 +120,14 @@ const PROVIDERS: ProviderConfig[] = [
         bgColor: 'bg-sky-500/10',
         borderColor: 'border-border',
     },
+    {
+        id: 'perplexity',
+        name: 'Perplexity',
+        prefix: 'pplx-',
+        color: 'text-violet-400',
+        bgColor: 'bg-violet-500/10',
+        borderColor: 'border-border',
+    },
 ].map((p) => {
     const modelGroup = MODEL_OPTIONS.find(
         (g) => g.provider.toLowerCase() === p.id.toLowerCase(),

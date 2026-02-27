@@ -34,6 +34,7 @@ function inferProvider(model: string): string | null {
     if (m.includes('nvidia/') || m.includes('nim/')) return 'nvidia';
     if (m.includes('minimax')) return 'minimax';
     if (m.includes('moonshot')) return 'moonshot';
+    if (m.includes('sonar')) return 'perplexity';
     return null;
 }
 
@@ -196,6 +197,8 @@ export async function processTask(task: Task) {
                 executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream, 'https://api.minimaxi.chat/v1');
             } else if (providerLower === 'moonshot') {
                 executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream, 'https://api.moonshot.cn/v1');
+            } else if (providerLower === 'perplexity') {
+                executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, updateResultStream, 'https://api.perplexity.ai');
             } else {
                 throw new Error(`Execution for provider "${provider}" is not yet supported in the standalone runner.`);
             }
@@ -317,6 +320,7 @@ async function executeToolUseTask(
         venice: 'https://api.venice.ai/api/v1',
         minimax: 'https://api.minimaxi.chat/v1',
         moonshot: 'https://api.moonshot.cn/v1',
+        perplexity: 'https://api.perplexity.ai',
     };
 
     // For tool-use, we use the OpenAI SDK for all providers (they're all OpenAI-compatible)
