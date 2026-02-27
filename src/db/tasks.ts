@@ -101,8 +101,9 @@ export async function rerunTask(id: string): Promise<Task> {
             status: 'dispatched' as TaskStatus,
             result: null,
             error: null,
-            metadata: null,
+            metadata: {},
             claimed_by_runner: null,
+            scheduled_for: null,
         })
         .eq('id', id)
         .select()
