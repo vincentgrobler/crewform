@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import {
     Globe, MessageSquare, Send, Hash, Plus, Trash2, Power, PowerOff,
-    CheckCircle2, XCircle, ChevronDown, ChevronUp, Loader2, Zap, CheckSquare,
+    CheckCircle2, XCircle, ChevronDown, ChevronUp, Loader2, Zap, CheckSquare, Pencil,
 } from 'lucide-react'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useWebhooks, useCreateWebhook, useUpdateWebhook, useDeleteWebhook, useWebhookLogs } from '@/hooks/useWebhooks'
@@ -425,6 +425,42 @@ function WebhookCard({
     const Icon = meta.icon
     const isExpanded = expandedLogs === route.id
 
+    // ── Edit state ──────────────────────────────────────────────────────
+    const [isEditing, setIsEditing] = useState(false)
+    const [editName, setEditName] = useState(route.name)
+    const [editConfig, setEditConfig] = useState<Record<string, string | undefined>>(route.config as Record<string, string | undefined>)
+    const [editEvents, setEditEvents] = useState<string[]>(route.events)
+
+    function openEdit() {
+        setEditName(route.name)
+        setEditConfig(route.config as Record<string, string | undefined>)
+        setEditEvents(route.events)
+        setIsEditing(true)
+    }
+
+    function toggleEditEvent(event: string) {
+        setEditEvents((prev) =>
+            prev.includes(event) ? prev.filter((e) => e !== event) : [...prev, event],
+        )
+    }
+
+    function handleSaveEdit(e: React.FormEvent) {
+        e.preventDefault()
+        if (!workspaceId) return
+        updateMutation.mutate(
+            {
+                id: route.id,
+                data: {
+                    name: editName,
+                    config: editConfig,
+                    events: editEvents,
+                },
+                workspaceId,
+            },
+            { onSuccess: () => setIsEditing(false) },
+        )
+    }
+
     function handleToggleActive() {
         if (!workspaceId) return
         updateMutation.mutate({
@@ -504,6 +540,14 @@ function WebhookCard({
                     </button>
                     <button
                         type="button"
+                        onClick={openEdit}
+                        title="Edit webhook"
+                        className="rounded-lg p-2 text-gray-500 hover:bg-brand-primary/10 hover:text-brand-primary"
+                    >
+                        <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                        type="button"
                         onClick={() => onToggleLogs(route.id)}
                         title="View delivery logs"
                         className="rounded-lg p-2 text-gray-500 hover:bg-surface-raised hover:text-gray-300"
@@ -529,8 +573,71 @@ function WebhookCard({
                 </div>
             </div>
 
+            {/* Edit panel */}
+            {isEditing && (
+                <form onSubmit={handleSaveEdit} className="border-t border-border p-4 space-y-4">
+                    {/* Name */}
+                    <div>
+                        <label className="mb-1 block text-xs font-medium text-gray-400">Name</label>
+                        <input
+                            type="text"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-gray-200 focus:border-brand-primary focus:outline-none"
+                        />
+                    </div>
+
+                    {/* Destination config */}
+                    <DestinationConfigFields
+                        type={route.destination_type}
+                        config={editConfig}
+                        onChange={setEditConfig}
+                    />
+
+                    {/* Events */}
+                    <div>
+                        <label className="mb-2 block text-xs font-medium text-gray-400">Events</label>
+                        <div className="flex flex-wrap gap-2">
+                            {EVENT_OPTIONS.map((opt) => (
+                                <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => toggleEditEvent(opt.value)}
+                                    className={cn(
+                                        'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
+                                        editEvents.includes(opt.value)
+                                            ? 'border-brand-primary bg-brand-primary/10 text-brand-primary'
+                                            : 'border-border bg-surface-raised text-gray-500 hover:text-gray-300',
+                                    )}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="flex justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setIsEditing(false)}
+                            className="rounded-lg border border-border px-4 py-2 text-sm text-gray-400 hover:text-gray-200"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={updateMutation.isPending || !editName.trim() || editEvents.length === 0}
+                            className="rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90 disabled:opacity-50"
+                        >
+                            {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
+                        </button>
+                    </div>
+                </form>
+            )}
+
             {/* Logs panel */}
-            {isExpanded && <WebhookLogsPanel routeId={route.id} />}
+            {isExpanded && !isEditing && <WebhookLogsPanel routeId={route.id} />}
         </div>
     )
 }

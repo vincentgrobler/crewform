@@ -95,7 +95,7 @@ Deno.serve(async (req: Request) => {
         // ── Look up trigger by token ────────────────────────────────────
         const { data: trigger, error: triggerError } = await supabase
             .from('agent_triggers')
-            .select('id, agent_id, workspace_id, trigger_type, task_title_template, task_description_template, enabled')
+            .select('id, agent_id, team_id, workspace_id, trigger_type, task_title_template, task_description_template, enabled')
             .eq('webhook_token', token)
             .eq('trigger_type', 'webhook')
             .single();
@@ -106,7 +106,8 @@ Deno.serve(async (req: Request) => {
 
         const triggerRecord = trigger as {
             id: string;
-            agent_id: string;
+            agent_id: string | null;
+            team_id: string | null;
             workspace_id: string;
             trigger_type: string;
             task_title_template: string;
@@ -154,59 +155,107 @@ Deno.serve(async (req: Request) => {
 
         const ownerId = (workspace as { owner_id: string }).owner_id;
 
-        // ── Create the task ─────────────────────────────────────────────
-        const { data: task, error: taskError } = await supabase
-            .from('tasks')
-            .insert({
-                title: taskTitle,
-                description: taskDescription,
-                workspace_id: triggerRecord.workspace_id,
-                assigned_agent_id: triggerRecord.agent_id,
-                created_by: ownerId,
-                status: 'pending',
-                priority: 'medium',
-                metadata: {
-                    source: 'webhook_trigger',
-                    trigger_id: triggerRecord.id,
-                    webhook_payload: payload,
-                },
-            })
-            .select('id, title, status, created_at')
-            .single();
+        // ── Create task OR team run ─────────────────────────────────────
+        if (triggerRecord.team_id) {
+            // Team trigger → create a team_runs row
+            const inputTask = taskDescription
+                ? `${taskTitle}\n\n${taskDescription}`
+                : taskTitle;
 
-        if (taskError) {
-            // Log failure
+            const { data: teamRun, error: runError } = await supabase
+                .from('team_runs')
+                .insert({
+                    team_id: triggerRecord.team_id,
+                    workspace_id: triggerRecord.workspace_id,
+                    input_task: inputTask,
+                    created_by: ownerId,
+                    status: 'pending',
+                })
+                .select('id, status, created_at')
+                .single();
+
+            if (runError) {
+                await supabase.from('trigger_log').insert({
+                    trigger_id: triggerRecord.id,
+                    status: 'failed',
+                    error: runError.message,
+                });
+                return serverError(`Failed to create team run: ${runError.message}`);
+            }
+
+            // Update last_fired_at
+            await supabase
+                .from('agent_triggers')
+                .update({ last_fired_at: new Date().toISOString() })
+                .eq('id', triggerRecord.id);
+
+            const runRecord = teamRun as { id: string; status: string; created_at: string };
             await supabase.from('trigger_log').insert({
                 trigger_id: triggerRecord.id,
-                status: 'failed',
-                error: taskError.message,
+                status: 'fired',
             });
-            return serverError(`Failed to create task: ${taskError.message}`);
+
+            return ok({
+                success: true,
+                team_run_id: runRecord.id,
+                team_id: triggerRecord.team_id,
+                status: runRecord.status,
+                message: 'Team run created and queued for execution.',
+            });
+        } else {
+            // Agent trigger → create a tasks row (existing behaviour)
+            const { data: task, error: taskError } = await supabase
+                .from('tasks')
+                .insert({
+                    title: taskTitle,
+                    description: taskDescription,
+                    workspace_id: triggerRecord.workspace_id,
+                    assigned_agent_id: triggerRecord.agent_id,
+                    created_by: ownerId,
+                    status: 'pending',
+                    priority: 'medium',
+                    metadata: {
+                        source: 'webhook_trigger',
+                        trigger_id: triggerRecord.id,
+                        webhook_payload: payload,
+                    },
+                })
+                .select('id, title, status, created_at')
+                .single();
+
+            if (taskError) {
+                await supabase.from('trigger_log').insert({
+                    trigger_id: triggerRecord.id,
+                    status: 'failed',
+                    error: taskError.message,
+                });
+                return serverError(`Failed to create task: ${taskError.message}`);
+            }
+
+            // Update trigger last_fired_at
+            await supabase
+                .from('agent_triggers')
+                .update({ last_fired_at: new Date().toISOString() })
+                .eq('id', triggerRecord.id);
+
+            const taskRecord = task as { id: string; title: string; status: string; created_at: string };
+            await supabase.from('trigger_log').insert({
+                trigger_id: triggerRecord.id,
+                task_id: taskRecord.id,
+                status: 'fired',
+            });
+
+            return ok({
+                success: true,
+                task_id: taskRecord.id,
+                task_title: taskRecord.title,
+                task_status: taskRecord.status,
+                message: 'Task created and queued for agent execution.',
+            });
         }
-
-        // ── Update trigger last_fired_at ────────────────────────────────
-        await supabase
-            .from('agent_triggers')
-            .update({ last_fired_at: new Date().toISOString() })
-            .eq('id', triggerRecord.id);
-
-        // ── Log success ─────────────────────────────────────────────────
-        const taskRecord = task as { id: string; title: string; status: string; created_at: string };
-        await supabase.from('trigger_log').insert({
-            trigger_id: triggerRecord.id,
-            task_id: taskRecord.id,
-            status: 'fired',
-        });
-
-        return ok({
-            success: true,
-            task_id: taskRecord.id,
-            task_title: taskRecord.title,
-            task_status: taskRecord.status,
-            message: `Task created and queued for agent execution.`,
-        });
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return serverError(message);
     }
 });
+
