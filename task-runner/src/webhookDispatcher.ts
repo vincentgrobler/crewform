@@ -9,7 +9,7 @@ interface OutputRoute {
     id: string;
     workspace_id: string;
     name: string;
-    destination_type: 'http' | 'slack' | 'discord' | 'telegram' | 'teams';
+    destination_type: 'http' | 'slack' | 'discord' | 'telegram' | 'teams' | 'asana';
     config: Record<string, unknown>;
     events: string[];
     is_active: boolean;
@@ -241,6 +241,8 @@ async function deliver(
             return deliverTelegram(route, payload);
         case 'teams':
             return deliverTeams(route, payload);
+        case 'asana':
+            return deliverAsana(route, payload);
         default:
             throw new Error(`Unknown destination type: ${route.destination_type}`);
     }
@@ -492,6 +494,52 @@ async function deliverTeams(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(teamsBody),
+        signal: AbortSignal.timeout(10000),
+    });
+
+    return { ok: resp.ok, statusCode: resp.status };
+}
+
+// ── Asana ────────────────────────────────────────────────────────────────────
+
+async function deliverAsana(
+    route: OutputRoute,
+    payload: WebhookPayload,
+): Promise<{ ok: boolean; statusCode: number }> {
+    const pat = route.config.pat as string;
+    const projectGid = route.config.project_gid as string;
+
+    const emoji = payload.status === 'completed' ? '✅' : '❌';
+
+    // Build task notes with event details
+    let notes = `${emoji} ${payload.event.replace('.', ' ').replace(/_/g, ' ')}\n\n`;
+    notes += `Task: ${payload.task_title}\n`;
+    notes += `Agent: ${payload.agent_name}\n`;
+    notes += `Status: ${payload.status}\n`;
+    notes += `Time: ${payload.timestamp}\n`;
+
+    if (payload.result_preview) {
+        notes += `\n--- Result Preview ---\n${payload.result_preview.substring(0, 5000)}`;
+    }
+    if (payload.error) {
+        notes += `\n⚠️ Error: ${payload.error}`;
+    }
+
+    const asanaBody = {
+        data: {
+            name: `[CrewForm] ${payload.task_title} — ${payload.status}`,
+            notes,
+            projects: [projectGid],
+        },
+    };
+
+    const resp = await fetch('https://app.asana.com/api/1.0/tasks', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${pat}`,
+        },
+        body: JSON.stringify(asanaBody),
         signal: AbortSignal.timeout(10000),
     });
 
