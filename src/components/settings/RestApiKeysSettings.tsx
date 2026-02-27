@@ -21,7 +21,10 @@ export function RestApiKeysSettings() {
     const [newKeyName, setNewKeyName] = useState('')
     const [showNewKey, setShowNewKey] = useState<string | null>(null)
     const [copied, setCopied] = useState(false)
+    const [copiedUrl, setCopiedUrl] = useState(false)
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
+    const apiUrl = `${import.meta.env.VITE_SUPABASE_URL as string}/functions/v1`
 
     const handleCreate = async () => {
         if (!newKeyName.trim() || !user) return
@@ -83,6 +86,33 @@ export function RestApiKeysSettings() {
                 <p className="mt-1 text-sm text-gray-400">
                     API keys for external integrations like Zapier, scripts, and third-party tools.
                     Keys are hashed — the raw key is only shown once at creation.
+                </p>
+            </div>
+
+            {/* API URL */}
+            <div className="rounded-lg border border-border bg-card p-4">
+                <label className="mb-2 block text-sm font-medium text-gray-300">
+                    API URL
+                </label>
+                <div className="flex items-center gap-2">
+                    <code className="flex-1 rounded bg-gray-900 px-3 py-2 font-mono text-sm text-gray-300 select-all">
+                        {apiUrl}
+                    </code>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            void navigator.clipboard.writeText(apiUrl)
+                            setCopiedUrl(true)
+                            setTimeout(() => setCopiedUrl(false), 2000)
+                        }}
+                        className="rounded-md bg-gray-700 p-2 text-gray-300 hover:bg-gray-600"
+                        title="Copy API URL"
+                    >
+                        {copiedUrl ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+                    </button>
+                </div>
+                <p className="mt-1.5 text-xs text-gray-500">
+                    Use this URL with your API key to connect Zapier or other integrations.
                 </p>
             </div>
 
