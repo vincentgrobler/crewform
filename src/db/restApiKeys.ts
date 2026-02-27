@@ -55,7 +55,7 @@ export async function createRestApiKey(
     // Store prefix for display
     const keyPrefix = rawKey.substring(0, 11) // "cf_abcd1234"
 
-    const { data, error } = await supabase
+    const result: { data: unknown; error: { message: string } | null } = await supabase
         .from('rest_api_keys')
         .insert({
             workspace_id: workspaceId,
@@ -67,8 +67,8 @@ export async function createRestApiKey(
         .select()
         .single()
 
-    if (error) throw error
-    return { rawKey, record: data as RestApiKey }
+    if (result.error) throw new Error(result.error.message)
+    return { rawKey, record: result.data as RestApiKey }
 }
 
 /** Delete a REST API key */
