@@ -8,7 +8,8 @@ export type TriggerLogStatus = 'fired' | 'failed'
 
 export interface AgentTrigger {
     id: string
-    agent_id: string
+    agent_id: string | null
+    team_id: string | null
     workspace_id: string
     trigger_type: TriggerType
     cron_expression: string | null
@@ -52,11 +53,54 @@ export async function fetchTriggers(agentId: string): Promise<AgentTrigger[]> {
     return result.data as AgentTrigger[]
 }
 
-/** Create a new trigger */
+/** Fetch all triggers for a team */
+export async function fetchTeamTriggers(teamId: string): Promise<AgentTrigger[]> {
+    const result = await supabase
+        .from('agent_triggers')
+        .select('*')
+        .eq('team_id', teamId)
+        .order('created_at', { ascending: false })
+
+    if (result.error) throw result.error
+    return result.data as AgentTrigger[]
+}
+
+/** Create a new trigger for an agent */
 export async function createTrigger(input: CreateTriggerInput): Promise<AgentTrigger> {
     // Generate a webhook token if webhook type
     const data = {
         ...input,
+        webhook_token: input.trigger_type === 'webhook'
+            ? crypto.randomUUID()
+            : null,
+    }
+
+    const result = await supabase
+        .from('agent_triggers')
+        .insert(data)
+        .select()
+        .single()
+
+    if (result.error) throw result.error
+    return result.data as AgentTrigger
+}
+
+export interface CreateTeamTriggerInput {
+    team_id: string
+    workspace_id: string
+    trigger_type: TriggerType
+    cron_expression?: string | null
+    webhook_token?: string | null
+    task_title_template: string
+    task_description_template?: string
+    enabled?: boolean
+}
+
+/** Create a new trigger for a team */
+export async function createTeamTrigger(input: CreateTeamTriggerInput): Promise<AgentTrigger> {
+    const data = {
+        ...input,
+        agent_id: null,
         webhook_token: input.trigger_type === 'webhook'
             ? crypto.randomUUID()
             : null,

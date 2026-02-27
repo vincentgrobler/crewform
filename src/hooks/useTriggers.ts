@@ -3,10 +3,10 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-    fetchTriggers, createTrigger, updateTriggerEnabled,
-    deleteTrigger, fetchTriggerLog,
+    fetchTriggers, fetchTeamTriggers, createTrigger, createTeamTrigger,
+    updateTriggerEnabled, deleteTrigger, fetchTriggerLog,
 } from '@/db/triggers'
-import type { AgentTrigger, CreateTriggerInput, TriggerLogEntry } from '@/db/triggers'
+import type { AgentTrigger, CreateTriggerInput, CreateTeamTriggerInput, TriggerLogEntry } from '@/db/triggers'
 
 /** Fetch all triggers for an agent */
 export function useTriggers(agentId: string | undefined) {
@@ -20,7 +20,19 @@ export function useTriggers(agentId: string | undefined) {
     })
 }
 
-/** Create a new trigger */
+/** Fetch all triggers for a team */
+export function useTeamTriggers(teamId: string | undefined) {
+    return useQuery<AgentTrigger[]>({
+        queryKey: ['teamTriggers', teamId],
+        queryFn: () => {
+            if (!teamId) throw new Error('Missing teamId')
+            return fetchTeamTriggers(teamId)
+        },
+        enabled: !!teamId,
+    })
+}
+
+/** Create a new trigger for an agent */
 export function useCreateTrigger() {
     const queryClient = useQueryClient()
 
@@ -32,14 +44,27 @@ export function useCreateTrigger() {
     })
 }
 
+/** Create a new trigger for a team */
+export function useCreateTeamTrigger() {
+    const queryClient = useQueryClient()
+
+    return useMutation<AgentTrigger, Error, CreateTeamTriggerInput>({
+        mutationFn: (input) => createTeamTrigger(input),
+        onSuccess: (trigger) => {
+            void queryClient.invalidateQueries({ queryKey: ['teamTriggers', trigger.team_id] })
+        },
+    })
+}
+
 /** Toggle trigger enabled/disabled */
 export function useToggleTrigger() {
     const queryClient = useQueryClient()
 
-    return useMutation<AgentTrigger, Error, { id: string; enabled: boolean; agentId: string }>({
+    return useMutation<AgentTrigger, Error, { id: string; enabled: boolean; agentId?: string; teamId?: string }>({
         mutationFn: ({ id, enabled }) => updateTriggerEnabled(id, enabled),
-        onSuccess: (_data, { agentId }) => {
-            void queryClient.invalidateQueries({ queryKey: ['triggers', agentId] })
+        onSuccess: (_data, { agentId, teamId }) => {
+            if (agentId) void queryClient.invalidateQueries({ queryKey: ['triggers', agentId] })
+            if (teamId) void queryClient.invalidateQueries({ queryKey: ['teamTriggers', teamId] })
         },
     })
 }
@@ -48,13 +73,14 @@ export function useToggleTrigger() {
 export function useDeleteTrigger() {
     const queryClient = useQueryClient()
 
-    return useMutation<undefined, Error, { id: string; agentId: string }>({
+    return useMutation<undefined, Error, { id: string; agentId?: string; teamId?: string }>({
         mutationFn: async ({ id }) => {
             await deleteTrigger(id)
             return undefined
         },
-        onSuccess: (_data, { agentId }) => {
-            void queryClient.invalidateQueries({ queryKey: ['triggers', agentId] })
+        onSuccess: (_data, { agentId, teamId }) => {
+            if (agentId) void queryClient.invalidateQueries({ queryKey: ['triggers', agentId] })
+            if (teamId) void queryClient.invalidateQueries({ queryKey: ['teamTriggers', teamId] })
         },
     })
 }
@@ -70,3 +96,4 @@ export function useTriggerLog(triggerId: string | undefined) {
         enabled: !!triggerId,
     })
 }
+
