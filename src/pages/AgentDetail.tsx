@@ -3,13 +3,14 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, Trash2, Activity, Settings2, AlertCircle, Loader2, History, Zap } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, Upload, Activity, Settings2, AlertCircle, Loader2, History, Zap } from 'lucide-react'
 import { useAgent } from '@/hooks/useAgent'
 import { useUpdateAgent } from '@/hooks/useUpdateAgent'
 import { useDeleteAgent } from '@/hooks/useDeleteAgent'
 import { DeleteAgentDialog } from '@/components/agents/DeleteAgentDialog'
 import { PromptHistoryPanel } from '@/components/agents/PromptHistoryPanel'
 import { TriggersPanel } from '@/components/agents/TriggersPanel'
+import { PublishAgentModal } from '@/components/marketplace/PublishAgentModal'
 import { StatusIndicator } from '@/components/ui/StatusIndicator'
 import { agentSchema, MODEL_OPTIONS, getActiveModelOptions, mergeModelOptions, inferProviderFromModel } from '@/lib/agentSchema'
 import { useOpenRouterModels } from '@/hooks/useOpenRouterModels'
@@ -41,6 +42,7 @@ export function AgentDetail() {
 
     const [activeTab, setActiveTab] = useState<TabKey>('config')
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+    const [showPublishModal, setShowPublishModal] = useState(false)
     const [formData, setFormData] = useState<AgentFormData | null>(null)
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
     const [hasChanges, setHasChanges] = useState(false)
@@ -207,6 +209,16 @@ export function AgentDetail() {
                         {saveSuccess ? 'Saved!' : 'Save'}
                     </button>
 
+                    {/* Publish button */}
+                    <button
+                        type="button"
+                        onClick={() => setShowPublishModal(true)}
+                        className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-surface-elevated hover:text-brand-primary"
+                    >
+                        <Upload className="h-4 w-4" />
+                        Publish
+                    </button>
+
                     {/* Delete button */}
                     <button
                         type="button"
@@ -272,6 +284,14 @@ export function AgentDetail() {
             )}
 
             {activeTab === 'activity' && <ActivityTab />}
+
+            {/* Publish modal */}
+            {showPublishModal && (
+                <PublishAgentModal
+                    agent={agent}
+                    onClose={() => setShowPublishModal(false)}
+                />
+            )}
 
             {/* Delete dialog */}
             {showDeleteDialog && (
