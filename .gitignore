@@ -46,3 +46,5 @@ crewform-docs/
 
 # Landing page (private, separate repo)
 crewform-landing/
+zapier-app/node_modules/
+zapier-app/.env
