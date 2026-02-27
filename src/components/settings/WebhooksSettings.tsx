@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import {
     Globe, MessageSquare, Send, Hash, Plus, Trash2, Power, PowerOff,
-    CheckCircle2, XCircle, ChevronDown, ChevronUp, Loader2, Zap,
+    CheckCircle2, XCircle, ChevronDown, ChevronUp, Loader2, Zap, CheckSquare,
 } from 'lucide-react'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useWebhooks, useCreateWebhook, useUpdateWebhook, useDeleteWebhook, useWebhookLogs } from '@/hooks/useWebhooks'
@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-type DestinationType = 'http' | 'slack' | 'discord' | 'telegram' | 'teams'
+type DestinationType = 'http' | 'slack' | 'discord' | 'telegram' | 'teams' | 'asana'
 
 const DESTINATION_META: Record<DestinationType, { label: string; icon: typeof Globe; color: string; bgColor: string }> = {
     http: { label: 'HTTP Webhook', icon: Globe, color: 'text-blue-400', bgColor: 'bg-blue-500/10' },
@@ -22,6 +22,7 @@ const DESTINATION_META: Record<DestinationType, { label: string; icon: typeof Gl
     discord: { label: 'Discord', icon: MessageSquare, color: 'text-indigo-400', bgColor: 'bg-indigo-500/10' },
     telegram: { label: 'Telegram', icon: Send, color: 'text-sky-400', bgColor: 'bg-sky-500/10' },
     teams: { label: 'Teams', icon: MessageSquare, color: 'text-violet-400', bgColor: 'bg-violet-500/10' },
+    asana: { label: 'Asana', icon: CheckSquare, color: 'text-rose-400', bgColor: 'bg-rose-500/10' },
 }
 
 const EVENT_OPTIONS = [
@@ -366,6 +367,41 @@ function DestinationConfigFields({
                     <p className="mt-1 text-xs text-gray-600">
                         Create an Incoming Webhook connector in your Teams channel settings.
                     </p>
+                </div>
+            )
+
+        case 'asana':
+            return (
+                <div className="space-y-3">
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-400">Personal Access Token</label>
+                        <input
+                            type="password"
+                            value={config.pat ?? ''}
+                            onChange={(e) => updateField('pat', e.target.value)}
+                            placeholder="0/1234567890abcdef..."
+                            className={inputClass}
+                        />
+                        <p className="mt-1 text-xs text-gray-600">
+                            Generate one at{' '}
+                            <a href="https://app.asana.com/0/developer-console" target="_blank" rel="noopener noreferrer" className="text-rose-400 hover:underline">
+                                Asana Developer Console
+                            </a>
+                        </p>
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-400">Project GID</label>
+                        <input
+                            type="text"
+                            value={config.project_gid ?? ''}
+                            onChange={(e) => updateField('project_gid', e.target.value)}
+                            placeholder="1234567890123456"
+                            className={inputClass}
+                        />
+                        <p className="mt-1 text-xs text-gray-600">
+                            Find it in the URL when viewing a project: app.asana.com/0/<strong>PROJECT_GID</strong>/...
+                        </p>
+                    </div>
                 </div>
             )
     }
