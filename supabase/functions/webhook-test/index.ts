@@ -108,50 +108,145 @@ Deno.serve(async (req: Request) => {
         };
 
         // ── Deliver based on destination type ───────────────────────────
-        let url: string;
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        let resp: Response;
 
         switch (routeRecord.destination_type) {
-            case 'http':
-                url = routeRecord.config.url as string;
+            case 'http': {
+                const url = routeRecord.config.url as string;
+                if (!url) return badRequest('Destination URL not configured');
+                resp = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testPayload),
+                    signal: AbortSignal.timeout(10000),
+                });
                 break;
-            case 'slack':
-            case 'discord':
-            case 'teams':
-                url = routeRecord.config.webhook_url as string;
+            }
+            case 'slack': {
+                const url = routeRecord.config.webhook_url as string;
+                if (!url) return badRequest('Slack webhook URL not configured');
+                const slackBody = {
+                    text: '✅ *CrewForm Webhook Test*\n\nThis is a test message to verify your Slack webhook is working correctly.',
+                };
+                resp = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(slackBody),
+                    signal: AbortSignal.timeout(10000),
+                });
                 break;
+            }
+            case 'discord': {
+                const url = routeRecord.config.webhook_url as string;
+                if (!url) return badRequest('Discord webhook URL not configured');
+                const discordBody = {
+                    embeds: [{
+                        title: '✅ CrewForm Webhook Test',
+                        description: 'This is a test message to verify your Discord webhook is working correctly.',
+                        color: 0x22c55e,
+                        fields: [
+                            { name: 'Agent', value: 'CrewForm Test', inline: true },
+                            { name: 'Status', value: 'test', inline: true },
+                        ],
+                        timestamp: new Date().toISOString(),
+                    }],
+                };
+                resp = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(discordBody),
+                    signal: AbortSignal.timeout(10000),
+                });
+                break;
+            }
             case 'telegram': {
                 const botToken = routeRecord.config.bot_token as string;
                 const chatId = routeRecord.config.chat_id as string;
-                url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-                const resp = await fetch(url, {
+                const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
+                resp = await fetch(telegramUrl, {
                     method: 'POST',
-                    headers,
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         chat_id: chatId,
-                        text: '✅ *CrewForm Webhook Test*\n\nThis is a test message to verify your Telegram webhook is working correctly.',
+                        text: '✅ *CrewForm Webhook Test*\n\nThis is a test message to verify your Telegram webhook is working correctly\\.',
                         parse_mode: 'MarkdownV2',
                     }),
                     signal: AbortSignal.timeout(10000),
                 });
-                return ok({ ok: resp.ok, status_code: resp.status });
+                break;
+            }
+            case 'teams': {
+                const url = routeRecord.config.webhook_url as string;
+                if (!url) return badRequest('Teams webhook URL not configured');
+                const teamsBody = {
+                    type: 'message',
+                    attachments: [{
+                        contentType: 'application/vnd.microsoft.card.adaptive',
+                        content: {
+                            $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+                            type: 'AdaptiveCard',
+                            version: '1.4',
+                            body: [{
+                                type: 'TextBlock',
+                                size: 'Medium',
+                                weight: 'Bolder',
+                                text: '✅ CrewForm Webhook Test',
+                                color: 'Good',
+                            }, {
+                                type: 'TextBlock',
+                                text: 'This is a test message to verify your Teams webhook is working correctly.',
+                                wrap: true,
+                            }],
+                        },
+                    }],
+                };
+                resp = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(teamsBody),
+                    signal: AbortSignal.timeout(10000),
+                });
+                break;
+            }
+            case 'asana': {
+                const pat = routeRecord.config.pat as string;
+                const projectGid = routeRecord.config.project_gid as string;
+                if (!pat || !projectGid) return badRequest('Asana PAT and Project GID are required');
+                const asanaBody = {
+                    data: {
+                        name: '[CrewForm] Webhook Test',
+                        notes: '✅ This is a test task created by CrewForm to verify your Asana integration is working correctly.',
+                        projects: [projectGid],
+                    },
+                };
+                resp = await fetch('https://app.asana.com/api/1.0/tasks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${pat}`,
+                    },
+                    body: JSON.stringify(asanaBody),
+                    signal: AbortSignal.timeout(10000),
+                });
+                break;
             }
             default:
                 return badRequest(`Unsupported destination type: ${routeRecord.destination_type}`);
         }
 
-        if (!url) {
-            return badRequest('Destination URL not configured');
+        // Return result with response body for debugging
+        let respBody = '';
+        try {
+            respBody = await resp.text();
+        } catch {
+            // ignore
         }
 
-        const resp = await fetch(url, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(testPayload),
-            signal: AbortSignal.timeout(10000),
-        });
-
-        return ok({ ok: resp.ok, status_code: resp.status });
+        if (resp.ok) {
+            return ok({ ok: true, status_code: resp.status });
+        } else {
+            return ok({ ok: false, status_code: resp.status, error: respBody.substring(0, 500) });
+        }
 
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
