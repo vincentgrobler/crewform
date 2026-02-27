@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, Trash2, Upload, DownloadCloud, Activity, Settings2, AlertCircle, Loader2, History, Zap } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, Upload, DownloadCloud, Activity, Settings2, AlertCircle, Loader2, History, Zap, Plus, Pencil } from 'lucide-react'
 import { useAgent } from '@/hooks/useAgent'
 import { useUpdateAgent } from '@/hooks/useUpdateAgent'
 import { useDeleteAgent } from '@/hooks/useDeleteAgent'
@@ -11,15 +11,18 @@ import { DeleteAgentDialog } from '@/components/agents/DeleteAgentDialog'
 import { PromptHistoryPanel } from '@/components/agents/PromptHistoryPanel'
 import { TriggersPanel } from '@/components/agents/TriggersPanel'
 import { PublishAgentModal } from '@/components/marketplace/PublishAgentModal'
+import { CustomToolEditor } from '@/components/agents/CustomToolEditor'
 import { unpublishAgent } from '@/db/marketplace'
 import { StatusIndicator } from '@/components/ui/StatusIndicator'
 import { agentSchema, MODEL_OPTIONS, BUILT_IN_TOOLS, getActiveModelOptions, mergeModelOptions, inferProviderFromModel } from '@/lib/agentSchema'
 import { useOpenRouterModels } from '@/hooks/useOpenRouterModels'
 import { useApiKeys } from '@/hooks/useApiKeys'
 import { useWorkspace } from '@/hooks/useWorkspace'
+import { useCustomTools, useCreateCustomTool, useUpdateCustomTool, useDeleteCustomTool } from '@/hooks/useCustomTools'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import type { AgentFormData } from '@/lib/agentSchema'
+import type { CustomTool } from '@/types'
 import type { ZodError } from 'zod'
 
 type TabKey = 'config' | 'history' | 'triggers' | 'activity'
@@ -284,12 +287,13 @@ export function AgentDetail() {
             )}
 
             {/* Tab content */}
-            {activeTab === 'config' && formData && (
+            {activeTab === 'config' && formData && workspaceId && (
                 <ConfigurationTab
                     formData={formData}
                     fieldErrors={fieldErrors}
                     onUpdateField={updateField}
                     modelOptions={dynamicModelOptions}
+                    workspaceId={workspaceId}
                 />
             )}
 
@@ -338,9 +342,18 @@ interface ConfigTabProps {
     fieldErrors: Record<string, string>
     onUpdateField: <K extends keyof AgentFormData>(key: K, value: AgentFormData[K]) => void
     modelOptions: typeof MODEL_OPTIONS
+    workspaceId: string
 }
 
-function ConfigurationTab({ formData, fieldErrors, onUpdateField, modelOptions }: ConfigTabProps) {
+function ConfigurationTab({ formData, fieldErrors, onUpdateField, modelOptions, workspaceId }: ConfigTabProps) {
+    const { customTools } = useCustomTools(workspaceId)
+    const createToolMutation = useCreateCustomTool()
+    const updateToolMutation = useUpdateCustomTool()
+    const deleteToolMutation = useDeleteCustomTool()
+
+    const [showToolEditor, setShowToolEditor] = useState(false)
+    const [editingTool, setEditingTool] = useState<CustomTool | undefined>()
+
     return (
         <div className="mx-auto max-w-2xl space-y-6">
             {/* Name */}
@@ -446,14 +459,14 @@ function ConfigurationTab({ formData, fieldErrors, onUpdateField, modelOptions }
                 </div>
             </div>
 
-            {/* Tools */}
+            {/* Built-in Tools */}
             <div>
                 <div className="mb-1.5 flex items-center justify-between">
                     <label className="text-sm font-medium text-gray-300">
-                        Tools
+                        Built-in Tools
                     </label>
                     <span className="text-xs text-gray-500">
-                        {formData.tools.length} enabled
+                        {formData.tools.filter(t => !t.startsWith('custom:')).length} enabled
                     </span>
                 </div>
                 <p className="mb-3 text-xs text-gray-500">
@@ -505,6 +518,128 @@ function ConfigurationTab({ formData, fieldErrors, onUpdateField, modelOptions }
                     })}
                 </div>
             </div>
+
+            {/* Custom Tools */}
+            <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-300">
+                        Custom Tools
+                    </label>
+                    <button
+                        type="button"
+                        onClick={() => { setEditingTool(undefined); setShowToolEditor(true) }}
+                        className="flex items-center gap-1 text-xs text-brand-primary hover:text-brand-primary/80"
+                    >
+                        <Plus className="h-3 w-3" />
+                        Create Tool
+                    </button>
+                </div>
+                <p className="mb-3 text-xs text-gray-500">
+                    Create webhook-backed tools. When the LLM calls a custom tool, arguments are POSTed to your endpoint.
+                </p>
+                {customTools.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-border py-6 text-center">
+                        <p className="text-xs text-gray-600">No custom tools yet. Click &quot;Create Tool&quot; to add one.</p>
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {customTools.map((ct) => {
+                            const toolKey = `custom:${ct.id}`
+                            const isEnabled = formData.tools.includes(toolKey)
+                            return (
+                                <div
+                                    key={ct.id}
+                                    className={cn(
+                                        'flex w-full items-center gap-3 rounded-lg border p-3 transition-colors',
+                                        isEnabled
+                                            ? 'border-brand-primary bg-brand-muted/20'
+                                            : 'border-border',
+                                    )}
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const newTools = isEnabled
+                                                ? formData.tools.filter(t => t !== toolKey)
+                                                : [...formData.tools, toolKey]
+                                            onUpdateField('tools', newTools)
+                                        }}
+                                        className="flex flex-1 items-center gap-3 text-left"
+                                    >
+                                        <span className="text-lg">🔧</span>
+                                        <div className="min-w-0 flex-1">
+                                            <span className={cn(
+                                                'text-sm font-medium',
+                                                isEnabled ? 'text-brand-primary' : 'text-gray-300',
+                                            )}>
+                                                {ct.name}
+                                            </span>
+                                            <p className="text-xs text-gray-500">{ct.description}</p>
+                                            <p className="mt-0.5 text-[10px] text-gray-600 truncate">{ct.webhook_url}</p>
+                                        </div>
+                                        <div className={cn(
+                                            'flex h-5 w-9 items-center rounded-full p-0.5 transition-colors',
+                                            isEnabled ? 'bg-brand-primary' : 'bg-gray-700',
+                                        )}>
+                                            <div className={cn(
+                                                'h-4 w-4 rounded-full bg-white transition-transform',
+                                                isEnabled ? 'translate-x-4' : 'translate-x-0',
+                                            )} />
+                                        </div>
+                                    </button>
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => { setEditingTool(ct); setShowToolEditor(true) }}
+                                            className="rounded p-1 text-gray-600 hover:text-gray-300"
+                                        >
+                                            <Pencil className="h-3 w-3" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (confirm(`Delete custom tool "${ct.name}"?`)) {
+                                                    deleteToolMutation.mutate(ct.id)
+                                                    // Remove from agent's tools if present
+                                                    const newTools = formData.tools.filter(t => t !== toolKey)
+                                                    if (newTools.length !== formData.tools.length) {
+                                                        onUpdateField('tools', newTools)
+                                                    }
+                                                }
+                                            }}
+                                            className="rounded p-1 text-gray-600 hover:text-red-400"
+                                        >
+                                            <Trash2 className="h-3 w-3" />
+                                        </button>
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                )}
+            </div>
+
+            {/* Custom Tool Editor Modal */}
+            {showToolEditor && (
+                <CustomToolEditor
+                    tool={editingTool}
+                    isSaving={createToolMutation.isPending || updateToolMutation.isPending}
+                    onClose={() => { setShowToolEditor(false); setEditingTool(undefined) }}
+                    onSave={(data) => {
+                        if (editingTool) {
+                            updateToolMutation.mutate(
+                                { id: editingTool.id, input: data },
+                                { onSuccess: () => { setShowToolEditor(false); setEditingTool(undefined) } },
+                            )
+                        } else {
+                            createToolMutation.mutate(
+                                { ...data, workspace_id: workspaceId },
+                                { onSuccess: () => { setShowToolEditor(false); setEditingTool(undefined) } },
+                            )
+                        }
+                    }}
+                />
+            )}
         </div>
     )
 }

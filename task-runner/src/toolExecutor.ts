@@ -22,16 +22,51 @@ export interface ToolDefinition {
     };
 }
 
+// ─── Custom Tool Support ─────────────────────────────────────────────────────
+
+export interface CustomToolConfig {
+    id: string;
+    name: string;
+    description: string;
+    parameters: {
+        properties: Record<string, { type: string; description: string }>;
+        required: string[];
+    };
+    webhook_url: string;
+    webhook_headers: Record<string, string>;
+}
+
 /**
  * Returns OpenAI-compatible tool definitions for the given tool names.
+ * Merges built-in tools with custom tools (prefixed with "custom:").
  */
-export function getToolDefinitions(toolNames: string[]): ToolDefinition[] {
+export function getToolDefinitions(toolNames: string[], customTools?: CustomToolConfig[]): ToolDefinition[] {
     const defs: ToolDefinition[] = [];
 
     for (const name of toolNames) {
-        const def = TOOL_REGISTRY[name];
-        if (def) {
-            defs.push(def);
+        if (name.startsWith('custom:')) {
+            // Look up custom tool by ID
+            const customId = name.replace('custom:', '');
+            const ct = customTools?.find(t => t.id === customId);
+            if (ct) {
+                defs.push({
+                    type: 'function',
+                    function: {
+                        name: `custom_${ct.name}`,
+                        description: ct.description,
+                        parameters: {
+                            type: 'object',
+                            properties: ct.parameters.properties,
+                            required: ct.parameters.required,
+                        },
+                    },
+                });
+            }
+        } else {
+            const def = TOOL_REGISTRY[name];
+            if (def) {
+                defs.push(def);
+            }
         }
     }
 
@@ -111,8 +146,9 @@ interface ToolCall {
 
 /**
  * Execute a single tool call and return the result string.
+ * Supports both built-in tools and custom webhook-backed tools.
  */
-export async function executeToolCall(toolCall: ToolCall): Promise<string> {
+export async function executeToolCall(toolCall: ToolCall, customTools?: CustomToolConfig[]): Promise<string> {
     const { name, arguments: argsStr } = toolCall.function;
 
     let args: Record<string, unknown>;
@@ -123,6 +159,16 @@ export async function executeToolCall(toolCall: ToolCall): Promise<string> {
     }
 
     try {
+        // Check for custom tool (prefixed with custom_)
+        if (name.startsWith('custom_')) {
+            const toolName = name.replace('custom_', '');
+            const ct = customTools?.find(t => t.name === toolName);
+            if (ct) {
+                return await executeCustomToolWebhook(ct, args);
+            }
+            return `Error: Custom tool "${toolName}" not found`;
+        }
+
         switch (name) {
             case 'web_search':
                 return await executeWebSearch(args.query as string);
@@ -244,6 +290,35 @@ async function executeReadFile(url: string): Promise<string> {
     return text.length > 8000 ? text.slice(0, 8000) + '\n... (truncated)' : text;
 }
 
+// ─── Custom Tool Webhook Execution ───────────────────────────────────────────
+
+async function executeCustomToolWebhook(
+    tool: CustomToolConfig,
+    args: Record<string, unknown>,
+): Promise<string> {
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'CrewForm-Agent/1.0',
+        ...tool.webhook_headers,
+    };
+
+    const response = await fetch(tool.webhook_url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(args),
+    });
+
+    const text = await response.text();
+    const statusInfo = `HTTP ${response.status.toString()} ${response.statusText}`;
+
+    if (!response.ok) {
+        return `Custom tool webhook error: ${statusInfo}\n\n${text.slice(0, 2000)}`;
+    }
+
+    const truncated = text.length > 4000 ? text.slice(0, 4000) + '\n... (truncated)' : text;
+    return truncated;
+}
+
 // ─── Tool-Use Loop (OpenAI-compatible) ───────────────────────────────────────
 
 interface ToolUseMessage {
@@ -275,8 +350,9 @@ export async function executeWithToolLoop(
     systemPrompt: string,
     userPrompt: string,
     toolNames: string[],
+    customTools?: CustomToolConfig[],
 ): Promise<ToolUseResult> {
-    const tools = getToolDefinitions(toolNames);
+    const tools = getToolDefinitions(toolNames, customTools);
     const messages: ToolUseMessage[] = [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -323,7 +399,7 @@ export async function executeWithToolLoop(
         for (const toolCall of assistantMessage.tool_calls) {
             toolCallsMade++;
             console.log(`[ToolExecutor] Executing tool: ${toolCall.function.name} (round ${(round + 1).toString()}, call #${toolCallsMade.toString()})`);
-            const result = await executeToolCall(toolCall);
+            const result = await executeToolCall(toolCall, customTools);
             messages.push({
                 role: 'tool',
                 tool_call_id: toolCall.id,

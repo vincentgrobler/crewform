@@ -395,3 +395,30 @@ export type UsageRecordRow = UsageRecord
 export type AuditLogRow = AuditLog
 export type AgentInstallRow = AgentInstall
 export type AgentReviewRow = AgentReview
+
+// ─── Custom Tools ─────────────────────────────────────────────────────────────
+
+export interface CustomToolParameter {
+  name: string
+  type: 'string' | 'number' | 'boolean'
+  description: string
+  required: boolean
+}
+
+export interface CustomTool {
+  id: string
+  workspace_id: string
+  name: string
+  description: string
+  parameters: {
+    properties: Record<string, { type: string; description: string }>
+    required: string[]
+  }
+  webhook_url: string
+  webhook_headers: Record<string, string>
+  created_at: string
+  updated_at: string
+}
+
+export type CustomToolRow = CustomTool
+
