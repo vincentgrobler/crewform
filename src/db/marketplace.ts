@@ -365,3 +365,43 @@ export async function fetchCreatorStats(userId: string): Promise<CreatorStats> {
 
     return { publishedCount, totalInstalls, avgRating, submissions }
 }
+
+// ─── Unpublish / Admin Removal ──────────────────────────────────────────────
+
+/** Unpublish an agent from the marketplace (owner or admin) */
+export async function unpublishAgent(agentId: string): Promise<void> {
+    const result = await supabase
+        .from('agents')
+        .update({ is_published: false })
+        .eq('id', agentId)
+
+    if (result.error) throw result.error
+}
+
+/** Fetch all published agents (admin view) */
+export async function fetchPublishedAgents(): Promise<Array<{
+    id: string
+    name: string
+    provider: string
+    model: string
+    install_count: number
+    rating_avg: number
+    workspace_id: string
+}>> {
+    const result = await supabase
+        .from('agents')
+        .select('id, name, provider, model, install_count, rating_avg, workspace_id')
+        .eq('is_published', true)
+        .order('install_count', { ascending: false })
+
+    if (result.error) throw result.error
+    return result.data as Array<{
+        id: string
+        name: string
+        provider: string
+        model: string
+        install_count: number
+        rating_avg: number
+        workspace_id: string
+    }>
+}
