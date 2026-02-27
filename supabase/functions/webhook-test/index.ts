@@ -12,6 +12,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { handleCors } from '../_shared/cors.ts';
+import { authenticateRequest } from '../_shared/auth.ts';
 import { ok, badRequest, notFound, unauthorized, serverError, methodNotAllowed } from '../_shared/response.ts';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -37,25 +38,8 @@ Deno.serve(async (req: Request) => {
     }
 
     try {
-        // ── Auth ────────────────────────────────────────────────────────
-        const authHeader = req.headers.get('Authorization');
-        if (!authHeader) {
-            return unauthorized('Missing Authorization header');
-        }
-
-        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-        // Verify user JWT
-        const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-            global: { headers: { Authorization: authHeader } },
-        });
-
-        const { data: { user }, error: authError } = await userClient.auth.getUser();
-        if (authError || !user) {
-            return unauthorized('Invalid token');
-        }
+        // ── Auth (shared helper — supports JWT + API key) ────────────
+        const auth = await authenticateRequest(req);
 
         // ── Parse body ──────────────────────────────────────────────────
         const body = (await req.json()) as { route_id?: string };
@@ -63,13 +47,16 @@ Deno.serve(async (req: Request) => {
             return badRequest('Missing route_id');
         }
 
-        // ── Fetch route (service role to bypass RLS for validation) ──────
+        // ── Fetch route using service role ──────────────────────────────
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
         const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
 
         const { data: route, error: routeError } = await serviceClient
             .from('output_routes')
             .select('*')
             .eq('id', body.route_id)
+            .eq('workspace_id', auth.workspaceId)
             .single();
 
         if (routeError || !route) {
@@ -77,22 +64,6 @@ Deno.serve(async (req: Request) => {
         }
 
         const routeRecord = route as OutputRoute;
-
-        // ── Verify user owns the workspace ──────────────────────────────
-        const { data: workspace, error: wsError } = await serviceClient
-            .from('workspaces')
-            .select('owner_id')
-            .eq('id', routeRecord.workspace_id)
-            .single();
-
-        if (wsError || !workspace) {
-            return notFound('Workspace');
-        }
-
-        const ownerId = (workspace as { owner_id: string }).owner_id;
-        if (ownerId !== user.id) {
-            return unauthorized('You do not own this workspace');
-        }
 
         // ── Build test payload ──────────────────────────────────────────
         const testPayload = {
