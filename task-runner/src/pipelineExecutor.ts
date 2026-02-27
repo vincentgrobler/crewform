@@ -244,12 +244,36 @@ async function executeStep(input: StepInput): Promise<StepResult | null> {
             let executionResult;
             const provider = agent.provider.toLowerCase();
 
+            // Base URL map for OpenAI-compatible providers
+            const baseURLMap: Record<string, string> = {
+                openrouter: 'https://openrouter.ai/api/v1',
+                groq: 'https://api.groq.com/openai/v1',
+                mistral: 'https://api.mistral.ai/v1',
+                cohere: 'https://api.cohere.com/compatibility/v1',
+                together: 'https://api.together.xyz/v1',
+                nvidia: 'https://integrate.api.nvidia.com/v1',
+                huggingface: 'https://api-inference.huggingface.co/v1',
+                venice: 'https://api.venice.ai/api/v1',
+                minimax: 'https://api.minimaxi.chat/v1',
+                moonshot: 'https://api.moonshot.cn/v1',
+                perplexity: 'https://api.perplexity.ai',
+            };
+
+            // Strip provider prefix from model name if needed
+            let effectiveModel = agent.model;
+            if (provider === 'openrouter') {
+                effectiveModel = agent.model.replace(/^openrouter\//, '');
+            } else if (provider === 'groq') {
+                effectiveModel = agent.model.replace(/^groq\//, '');
+            }
+
             if (provider === 'anthropic') {
-                executionResult = await executeAnthropic(rawKey, agent.model, systemPrompt, userPrompt, noopStream);
-            } else if (provider === 'openai') {
-                executionResult = await executeOpenAI(rawKey, agent.model, systemPrompt, userPrompt, noopStream);
+                executionResult = await executeAnthropic(rawKey, effectiveModel, systemPrompt, userPrompt, noopStream);
             } else if (provider === 'google') {
-                executionResult = await executeGoogle(rawKey, agent.model, systemPrompt, userPrompt, noopStream);
+                executionResult = await executeGoogle(rawKey, effectiveModel, systemPrompt, userPrompt, noopStream);
+            } else if (provider === 'openai' || baseURLMap[provider]) {
+                const baseURL = baseURLMap[provider];
+                executionResult = await executeOpenAI(rawKey, effectiveModel, systemPrompt, userPrompt, noopStream, baseURL);
             } else {
                 throw new Error(`Provider "${provider}" is not supported.`);
             }
