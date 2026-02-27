@@ -17,13 +17,24 @@ interface OutputRoute {
 
 interface WebhookPayload {
     event: string;
-    task_id: string;
+    task_id: string | null;
+    team_run_id: string | null;
     task_title: string;
     agent_name: string;
     status: string;
     result_preview: string | null;
     error: string | null;
     timestamp: string;
+}
+
+interface TeamRunInfo {
+    id: string;
+    team_id: string;
+    workspace_id: string;
+    status: string;
+    input_task: string;
+    output?: string | null;
+    error_message?: string | null;
 }
 
 interface TaskInfo {
@@ -65,6 +76,7 @@ export async function dispatchWebhooks(
         const payload: WebhookPayload = {
             event,
             task_id: task.id,
+            team_run_id: null,
             task_title: task.title,
             agent_name: agent.name,
             status: task.status,
@@ -81,6 +93,46 @@ export async function dispatchWebhooks(
     } catch (err: unknown) {
         // Never let webhook errors bubble up
         console.error('[Webhooks] Dispatch error:', err instanceof Error ? err.message : String(err));
+    }
+}
+
+/**
+ * Fire webhooks for a team run event (team_run.completed, team_run.failed).
+ * Never throws — failures are logged but never block the run flow.
+ */
+export async function dispatchTeamRunWebhooks(
+    teamRun: TeamRunInfo,
+    teamName: string,
+    event: string,
+): Promise<void> {
+    try {
+        const { data: routes, error } = await supabase
+            .from('output_routes')
+            .select('*')
+            .eq('workspace_id', teamRun.workspace_id)
+            .eq('is_active', true)
+            .contains('events', [event]);
+
+        if (error || !routes || routes.length === 0) return;
+
+        const payload: WebhookPayload = {
+            event,
+            task_id: null,
+            team_run_id: teamRun.id,
+            task_title: teamRun.input_task,
+            agent_name: teamName,
+            status: teamRun.status,
+            result_preview: teamRun.output ? teamRun.output.substring(0, 500) : null,
+            error: teamRun.error_message ?? null,
+            timestamp: new Date().toISOString(),
+        };
+
+        const promises = (routes as OutputRoute[]).map((route) =>
+            deliverWithRetry(route, teamRun.id, event, payload),
+        );
+        await Promise.allSettled(promises);
+    } catch (err: unknown) {
+        console.error('[Webhooks] Team run dispatch error:', err instanceof Error ? err.message : String(err));
     }
 }
 

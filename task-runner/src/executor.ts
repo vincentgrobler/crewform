@@ -110,6 +110,13 @@ export async function processTask(task: Task) {
         const systemPrompt = agent.system_prompt || 'You are a helpful AI assistant.';
         const userPrompt = `Task Title: ${task.title}\n\nTask Description:\n${task.description}`;
 
+        // 3b. Fire task.started webhook (fire-and-forget)
+        void dispatchWebhooks(
+            { id: task.id, title: task.title, workspace_id: task.workspace_id, status: 'running' },
+            { name: agent.name },
+            'task.started',
+        );
+
         // Throttle DB updates to avoid rate limits (every ~500ms at most)
         let lastUpdate = 0;
         const updateResultStream = async (text: string) => {
