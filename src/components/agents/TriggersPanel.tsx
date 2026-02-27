@@ -279,7 +279,8 @@ function TriggerCard({
 
     function copyWebhookUrl() {
         if (!trigger.webhook_token) return
-        const url = `${window.location.origin}/api/triggers/webhook/${trigger.webhook_token}`
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+        const url = `${supabaseUrl}/functions/v1/webhook-trigger?token=${trigger.webhook_token}`
         void navigator.clipboard.writeText(url)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
