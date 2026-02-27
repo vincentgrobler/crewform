@@ -9,7 +9,7 @@ interface OutputRoute {
     id: string;
     workspace_id: string;
     name: string;
-    destination_type: 'http' | 'slack' | 'discord' | 'telegram';
+    destination_type: 'http' | 'slack' | 'discord' | 'telegram' | 'teams';
     config: Record<string, unknown>;
     events: string[];
     is_active: boolean;
@@ -135,6 +135,8 @@ async function deliver(
             return deliverDiscord(route, payload);
         case 'telegram':
             return deliverTelegram(route, payload);
+        case 'teams':
+            return deliverTeams(route, payload);
         default:
             throw new Error(`Unknown destination type: ${route.destination_type}`);
     }
@@ -318,6 +320,78 @@ async function deliverTelegram(
 
 function escapeMarkdown(text: string): string {
     return text.replace(/([_*[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
+}
+
+// ── Microsoft Teams ─────────────────────────────────────────────────────────
+
+async function deliverTeams(
+    route: OutputRoute,
+    payload: WebhookPayload,
+): Promise<{ ok: boolean; statusCode: number }> {
+    const url = route.config.webhook_url as string;
+    const emoji = payload.status === 'completed' ? '✅' : '❌';
+
+    // Build Adaptive Card payload for Teams Incoming Webhook
+    const teamsBody = {
+        type: 'message',
+        attachments: [
+            {
+                contentType: 'application/vnd.microsoft.card.adaptive',
+                content: {
+                    $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+                    type: 'AdaptiveCard',
+                    version: '1.4',
+                    body: [
+                        {
+                            type: 'TextBlock',
+                            size: 'Medium',
+                            weight: 'Bolder',
+                            text: `${emoji} Task ${payload.status}`,
+                            color: payload.status === 'completed' ? 'Good' : 'Attention',
+                        },
+                        {
+                            type: 'FactSet',
+                            facts: [
+                                { title: 'Task', value: payload.task_title },
+                                { title: 'Agent', value: payload.agent_name },
+                                { title: 'Status', value: payload.status },
+                            ],
+                        },
+                        ...(payload.result_preview
+                            ? [
+                                {
+                                    type: 'TextBlock',
+                                    text: payload.result_preview.substring(0, 1000),
+                                    wrap: true,
+                                    fontType: 'Monospace',
+                                    size: 'Small',
+                                },
+                            ]
+                            : []),
+                        ...(payload.error
+                            ? [
+                                {
+                                    type: 'TextBlock',
+                                    text: `⚠️ Error: ${payload.error}`,
+                                    color: 'Attention',
+                                    wrap: true,
+                                },
+                            ]
+                            : []),
+                    ],
+                },
+            },
+        ],
+    };
+
+    const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(teamsBody),
+        signal: AbortSignal.timeout(10000),
+    });
+
+    return { ok: resp.ok, statusCode: resp.status };
 }
 
 // ─── Logging ────────────────────────────────────────────────────────────────

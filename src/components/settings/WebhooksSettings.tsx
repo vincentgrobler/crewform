@@ -13,13 +13,14 @@ import { cn } from '@/lib/utils'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-type DestinationType = 'http' | 'slack' | 'discord' | 'telegram'
+type DestinationType = 'http' | 'slack' | 'discord' | 'telegram' | 'teams'
 
 const DESTINATION_META: Record<DestinationType, { label: string; icon: typeof Globe; color: string; bgColor: string }> = {
     http: { label: 'HTTP Webhook', icon: Globe, color: 'text-blue-400', bgColor: 'bg-blue-500/10' },
     slack: { label: 'Slack', icon: Hash, color: 'text-purple-400', bgColor: 'bg-purple-500/10' },
     discord: { label: 'Discord', icon: MessageSquare, color: 'text-indigo-400', bgColor: 'bg-indigo-500/10' },
     telegram: { label: 'Telegram', icon: Send, color: 'text-sky-400', bgColor: 'bg-sky-500/10' },
+    teams: { label: 'Teams', icon: MessageSquare, color: 'text-violet-400', bgColor: 'bg-violet-500/10' },
 }
 
 const EVENT_OPTIONS = [
@@ -162,7 +163,7 @@ function CreateWebhookForm({
             {/* Destination Type */}
             <div>
                 <label className="mb-2 block text-sm font-medium text-gray-400">Destination</label>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                     {(Object.keys(DESTINATION_META) as DestinationType[]).map((type) => {
                         const meta = DESTINATION_META[type]
                         const Icon = meta.icon
@@ -344,6 +345,23 @@ function DestinationConfigFields({
                             Use <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">@userinfobot</a> to find your chat ID
                         </p>
                     </div>
+                </div>
+            )
+
+        case 'teams':
+            return (
+                <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-400">Teams Incoming Webhook URL</label>
+                    <input
+                        type="url"
+                        value={config.webhook_url ?? ''}
+                        onChange={(e) => updateField('webhook_url', e.target.value)}
+                        placeholder="https://outlook.office.com/webhook/..."
+                        className={inputClass}
+                    />
+                    <p className="mt-1 text-xs text-gray-600">
+                        Create an Incoming Webhook connector in your Teams channel settings.
+                    </p>
                 </div>
             )
     }
