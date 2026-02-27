@@ -238,7 +238,7 @@ Deno.serve(async (req: Request) => {
         let respBody = '';
         try {
             respBody = await resp.text();
-        } catch {
+        } catch (_e) {
             // ignore
         }
 
