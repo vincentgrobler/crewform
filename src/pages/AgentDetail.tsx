@@ -13,7 +13,7 @@ import { TriggersPanel } from '@/components/agents/TriggersPanel'
 import { PublishAgentModal } from '@/components/marketplace/PublishAgentModal'
 import { unpublishAgent } from '@/db/marketplace'
 import { StatusIndicator } from '@/components/ui/StatusIndicator'
-import { agentSchema, MODEL_OPTIONS, getActiveModelOptions, mergeModelOptions, inferProviderFromModel } from '@/lib/agentSchema'
+import { agentSchema, MODEL_OPTIONS, BUILT_IN_TOOLS, getActiveModelOptions, mergeModelOptions, inferProviderFromModel } from '@/lib/agentSchema'
 import { useOpenRouterModels } from '@/hooks/useOpenRouterModels'
 import { useApiKeys } from '@/hooks/useApiKeys'
 import { useWorkspace } from '@/hooks/useWorkspace'
@@ -443,6 +443,66 @@ function ConfigurationTab({ formData, fieldErrors, onUpdateField, modelOptions }
                 <div className="mt-1 flex justify-between text-xs text-gray-600">
                     <span>Precise</span>
                     <span>Creative</span>
+                </div>
+            </div>
+
+            {/* Tools */}
+            <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-300">
+                        Tools
+                    </label>
+                    <span className="text-xs text-gray-500">
+                        {formData.tools.length} enabled
+                    </span>
+                </div>
+                <p className="mb-3 text-xs text-gray-500">
+                    Enable built-in tools to give this agent access to external capabilities during task execution.
+                </p>
+                <div className="space-y-2">
+                    {BUILT_IN_TOOLS.map((tool) => {
+                        const isEnabled = formData.tools.includes(tool.name)
+                        return (
+                            <button
+                                key={tool.name}
+                                type="button"
+                                onClick={() => {
+                                    const newTools = isEnabled
+                                        ? formData.tools.filter(t => t !== tool.name)
+                                        : [...formData.tools, tool.name]
+                                    onUpdateField('tools', newTools)
+                                }}
+                                className={cn(
+                                    'flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors',
+                                    isEnabled
+                                        ? 'border-brand-primary bg-brand-muted/20'
+                                        : 'border-border hover:border-gray-600',
+                                )}
+                            >
+                                <span className="text-lg">{tool.icon}</span>
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className={cn(
+                                            'text-sm font-medium',
+                                            isEnabled ? 'text-brand-primary' : 'text-gray-300',
+                                        )}>
+                                            {tool.label}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-gray-500">{tool.description}</p>
+                                </div>
+                                <div className={cn(
+                                    'flex h-5 w-9 items-center rounded-full p-0.5 transition-colors',
+                                    isEnabled ? 'bg-brand-primary' : 'bg-gray-700',
+                                )}>
+                                    <div className={cn(
+                                        'h-4 w-4 rounded-full bg-white transition-transform',
+                                        isEnabled ? 'translate-x-4' : 'translate-x-0',
+                                    )} />
+                                </div>
+                            </button>
+                        )
+                    })}
                 </div>
             </div>
         </div>
