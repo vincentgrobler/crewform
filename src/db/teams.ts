@@ -2,7 +2,7 @@
 // Copyright (C) 2026 CrewForm
 
 import { supabase } from '@/lib/supabase'
-import type { Team, TeamMember, TeamMode, PipelineConfig } from '@/types'
+import type { Team, TeamMember, TeamMode, PipelineConfig, OrchestratorConfig, CollaborationConfig } from '@/types'
 
 /**
  * Supabase data access layer for teams and team members.
@@ -40,7 +40,7 @@ export interface CreateTeamInput {
     name: string
     description: string
     mode: TeamMode
-    config: PipelineConfig
+    config: PipelineConfig | OrchestratorConfig | CollaborationConfig
 }
 
 export async function createTeam(input: CreateTeamInput): Promise<Team> {
@@ -57,7 +57,7 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
 /** Update a team's details */
 export async function updateTeam(
     id: string,
-    updates: Partial<Pick<Team, 'name' | 'description' | 'config'>>,
+    updates: Partial<Pick<Team, 'name' | 'description' | 'config' | 'mode'>>,
 ): Promise<Team> {
     const result = await supabase
         .from('teams')

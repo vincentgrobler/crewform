@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 CrewForm
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
     ArrowLeft,
@@ -13,6 +13,7 @@ import {
     Check,
     X,
     Play,
+    ChevronDown,
 } from 'lucide-react'
 import { useTeam } from '@/hooks/useTeam'
 import { useAgents } from '@/hooks/useAgents'
@@ -21,11 +22,12 @@ import { useUpdateTeam } from '@/hooks/useUpdateTeam'
 import { useDeleteTeam } from '@/hooks/useDeleteTeam'
 import { useTeamRuns } from '@/hooks/useTeamRuns'
 import { PipelineConfigPanel } from '@/components/teams/PipelineConfigPanel'
+import { OrchestratorConfigPanel } from '@/components/teams/OrchestratorConfig'
 import { RunTeamModal } from '@/components/teams/RunTeamModal'
 import { TeamRunCard } from '@/components/teams/TeamRunCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
-import type { PipelineConfig } from '@/types'
+import type { PipelineConfig, OrchestratorConfig, TeamMode } from '@/types'
 
 const MODE_BADGE: Record<string, { label: string; className: string }> = {
     pipeline: { label: 'Pipeline', className: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
@@ -33,9 +35,14 @@ const MODE_BADGE: Record<string, { label: string; className: string }> = {
     collaboration: { label: 'Collaboration', className: 'bg-amber-500/10 text-amber-400 border-amber-500/30' },
 }
 
+const SWITCHABLE_MODES: { value: TeamMode; label: string }[] = [
+    { value: 'pipeline', label: 'Pipeline' },
+    { value: 'orchestrator', label: 'Orchestrator' },
+]
+
 /**
  * Team detail/configuration page.
- * Header with inline-editable name, PipelineConfigPanel as main content.
+ * Header with inline-editable name, mode-specific config panel as main content.
  */
 export function TeamDetail() {
     const { id } = useParams<{ id: string }>()
@@ -53,10 +60,24 @@ export function TeamDetail() {
     const [editDesc, setEditDesc] = useState('')
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showRunModal, setShowRunModal] = useState(false)
+    const [showModeDropdown, setShowModeDropdown] = useState(false)
 
     const { runs, isLoading: isLoadingRuns } = useTeamRuns(id ?? null)
-    const pipelineConfig = team?.config as PipelineConfig | undefined
+    const pipelineConfig = team?.mode === 'pipeline' ? (team.config as PipelineConfig) : undefined
+    const orchestratorConfig = team?.mode === 'orchestrator' ? (team.config as OrchestratorConfig) : undefined
     const stepCount = pipelineConfig?.steps.length ?? 0
+
+    // Close mode dropdown on outside click
+    const modeDropdownRef = useRef<HTMLDivElement>(null)
+    useEffect(() => {
+        function handleClickOutside(e: MouseEvent) {
+            if (modeDropdownRef.current && !modeDropdownRef.current.contains(e.target as Node)) {
+                setShowModeDropdown(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     function startEditName() {
         if (!team) return
@@ -91,6 +112,25 @@ export function TeamDetail() {
         deleteMutation.mutate(
             { id: team.id, workspaceId: team.workspace_id },
             { onSuccess: () => navigate('/teams') },
+        )
+    }
+
+    function handleModeSwitch(newMode: TeamMode) {
+        if (!team || newMode === team.mode) {
+            setShowModeDropdown(false)
+            return
+        }
+        if (!confirm(`Switch this team from ${MODE_BADGE[team.mode].label} to ${MODE_BADGE[newMode].label}? This will reset the team configuration.`)) {
+            setShowModeDropdown(false)
+            return
+        }
+        const defaultConfig = newMode === 'orchestrator'
+            ? { brain_agent_id: '', quality_threshold: 0.7, routing_strategy: 'auto', planner_enabled: false, max_delegation_depth: 3 }
+            : { steps: [], auto_handoff: true }
+
+        updateMutation.mutate(
+            { id: team.id, updates: { mode: newMode, config: defaultConfig as PipelineConfig | OrchestratorConfig } },
+            { onSuccess: () => setShowModeDropdown(false) },
         )
     }
 
@@ -167,14 +207,39 @@ export function TeamDetail() {
                                         </div>
                                     )}
 
-                                    {/* Mode badge */}
+                                    {/* Mode badge (clickable to switch) */}
                                     {badge && (
-                                        <span className={cn(
-                                            'mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium',
-                                            badge.className,
-                                        )}>
-                                            {badge.label}
-                                        </span>
+                                        <div className="relative mt-1" ref={modeDropdownRef}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowModeDropdown(!showModeDropdown)}
+                                                className={cn(
+                                                    'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors hover:opacity-80',
+                                                    badge.className,
+                                                )}
+                                            >
+                                                {badge.label}
+                                                <ChevronDown className="h-2.5 w-2.5" />
+                                            </button>
+                                            {showModeDropdown && (
+                                                <div className="absolute left-0 top-full z-10 mt-1 w-40 rounded-lg border border-border bg-surface-card py-1 shadow-lg">
+                                                    {SWITCHABLE_MODES.map((m) => (
+                                                        <button
+                                                            key={m.value}
+                                                            type="button"
+                                                            onClick={() => handleModeSwitch(m.value)}
+                                                            className={cn(
+                                                                'flex w-full items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-surface-elevated',
+                                                                m.value === team.mode ? 'text-brand-primary font-medium' : 'text-gray-400',
+                                                            )}
+                                                        >
+                                                            {m.value === team.mode && <Check className="h-3 w-3" />}
+                                                            {m.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -185,7 +250,7 @@ export function TeamDetail() {
                                 <button
                                     type="button"
                                     onClick={() => setShowRunModal(true)}
-                                    disabled={stepCount === 0}
+                                    disabled={team.mode === 'pipeline' && stepCount === 0}
                                     className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <Play className="h-4 w-4" />
@@ -268,6 +333,34 @@ export function TeamDetail() {
                         </div>
                     )}
 
+                    {/* Orchestrator configuration */}
+                    {team.mode === 'orchestrator' && orchestratorConfig && (
+                        <div className="rounded-xl border border-border bg-surface-card p-6">
+                            <OrchestratorConfigPanel
+                                agents={agents}
+                                config={{
+                                    brain_agent_id: orchestratorConfig.brain_agent_id,
+                                    worker_agent_ids: [],
+                                    quality_threshold: orchestratorConfig.quality_threshold,
+                                    max_delegation_depth: orchestratorConfig.max_delegation_depth,
+                                }}
+                                onChange={(newConfig) => {
+                                    updateMutation.mutate({
+                                        id: team.id,
+                                        updates: {
+                                            config: {
+                                                ...orchestratorConfig,
+                                                brain_agent_id: newConfig.brain_agent_id,
+                                                quality_threshold: newConfig.quality_threshold,
+                                                max_delegation_depth: newConfig.max_delegation_depth,
+                                            },
+                                        },
+                                    })
+                                }}
+                            />
+                        </div>
+                    )}
+
                     {/* Recent Runs */}
                     <div className="mt-8">
                         <h2 className="mb-4 text-lg font-semibold text-gray-200">Recent Runs</h2>
@@ -286,7 +379,7 @@ export function TeamDetail() {
                             <div className="rounded-lg border border-dashed border-border py-8 text-center">
                                 <Play className="mx-auto mb-2 h-6 w-6 text-gray-600" />
                                 <p className="text-sm text-gray-500">No runs yet</p>
-                                <p className="text-xs text-gray-600 mt-1">Click "Run Team" to start your first pipeline run.</p>
+                                <p className="text-xs text-gray-600 mt-1">Click &quot;Run Team&quot; to start your first run.</p>
                             </div>
                         )}
                     </div>

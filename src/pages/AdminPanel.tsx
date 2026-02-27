@@ -252,11 +252,19 @@ function MarketplaceTab() {
     useEffect(() => { void loadAgents() }, [])
 
     async function handleRemove(agentId: string, agentName: string) {
-        if (!confirm(`Remove "${agentName}" from the marketplace? This will unpublish it.`)) return
+        const reason = prompt(
+            `Remove "${agentName}" from the marketplace?\n\nPlease provide a reason for removal (this will be communicated to the agent owner):`,
+        )
+        if (reason === null) return // cancelled
+        if (!reason.trim()) {
+            alert('A removal reason is required.')
+            return
+        }
         setRemoving(agentId)
         try {
             await unpublishAgent(agentId)
             setAgents(prev => prev.filter(a => a.id !== agentId))
+            alert(`"${agentName}" has been removed from the marketplace.\n\nReason: ${reason.trim()}`)
         } catch {
             alert('Failed to remove agent.')
         } finally {
