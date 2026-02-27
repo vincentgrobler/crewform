@@ -28,7 +28,7 @@ const getConnectionLabel = (z, bundle) => {
     return `${bundle.inputData.workspace_name} (${bundle.inputData.email || bundle.inputData.id})`;
 };
 
-module.exports = {
+const authentication = {
     type: 'custom',
 
     fields: [
@@ -45,26 +45,24 @@ module.exports = {
             type: 'string',
             required: true,
             helpText: 'Your CrewForm Supabase URL (e.g. https://your-project.supabase.co/functions/v1)',
-            default: '',
         },
     ],
 
     test: test,
     connectionLabel: getConnectionLabel,
-
-    // Include the API key in all requests automatically
-    beforeRequest: [
-        (request, z, bundle) => {
-            // Use the user-provided API URL as base
-            if (bundle.authData.api_url) {
-                // Replace BASE_URL references (the env var is for local dev)
-                request.url = request.url.replace(BASE_URL || 'CREWFORM_API_URL', bundle.authData.api_url);
-            }
-
-            request.headers = request.headers || {};
-            request.headers['X-API-Key'] = bundle.authData.api_key;
-            request.headers['Content-Type'] = 'application/json';
-            return request;
-        },
-    ],
 };
+
+// Middleware — injected into every request at the app level (index.js)
+const addApiKeyHeader = (request, z, bundle) => {
+    if (bundle.authData.api_url) {
+        request.url = request.url.replace(BASE_URL || 'CREWFORM_API_URL', bundle.authData.api_url);
+    }
+
+    request.headers = request.headers || {};
+    request.headers['X-API-Key'] = bundle.authData.api_key;
+    request.headers['Content-Type'] = 'application/json';
+    return request;
+};
+
+module.exports = { authentication, addApiKeyHeader };
+

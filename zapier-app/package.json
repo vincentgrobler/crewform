@@ -15,7 +15,7 @@
         "npm": ">=6.14.0"
     },
     "dependencies": {
-        "zapier-platform-core": "15.*"
+        "zapier-platform-core": "18.2.2"
     },
     "devDependencies": {
         "jest": "^29.7.0"
