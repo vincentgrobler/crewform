@@ -236,6 +236,16 @@ export const MODEL_OPTIONS = [
             { value: 'moonshot-v1-8k', label: 'Moonshot V1 8K' },
         ],
     },
+    {
+        provider: 'Perplexity',
+        models: [
+            { value: 'sonar-deep-research', label: 'Sonar Deep Research' },
+            { value: 'sonar-reasoning-pro', label: 'Sonar Reasoning Pro' },
+            { value: 'sonar-reasoning', label: 'Sonar Reasoning' },
+            { value: 'sonar-pro', label: 'Sonar Pro' },
+            { value: 'sonar', label: 'Sonar' },
+        ],
+    },
 ]
 
 export type ModelGroup = typeof MODEL_OPTIONS[number]
