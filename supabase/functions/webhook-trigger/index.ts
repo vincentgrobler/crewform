@@ -141,6 +141,19 @@ Deno.serve(async (req: Request) => {
                 : `**Webhook Payload:**\n\`\`\`json\n${payloadSummary}\n\`\`\``;
         }
 
+        // ── Resolve workspace owner as created_by ────────────────────────
+        const { data: workspace, error: wsError } = await supabase
+            .from('workspaces')
+            .select('owner_id')
+            .eq('id', triggerRecord.workspace_id)
+            .single();
+
+        if (wsError || !workspace) {
+            return serverError('Could not resolve workspace owner');
+        }
+
+        const ownerId = (workspace as { owner_id: string }).owner_id;
+
         // ── Create the task ─────────────────────────────────────────────
         const { data: task, error: taskError } = await supabase
             .from('tasks')
@@ -149,6 +162,7 @@ Deno.serve(async (req: Request) => {
                 description: taskDescription,
                 workspace_id: triggerRecord.workspace_id,
                 assigned_agent_id: triggerRecord.agent_id,
+                created_by: ownerId,
                 status: 'pending',
                 priority: 'medium',
                 metadata: {
