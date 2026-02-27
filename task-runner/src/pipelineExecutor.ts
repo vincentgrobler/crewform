@@ -4,6 +4,7 @@ import { executeOpenAI } from './providers/openai';
 import { executeGoogle } from './providers/google';
 import { decryptApiKey } from './crypto';
 import { writeTeamRunUsageRecord } from './usageWriter';
+import { dispatchTeamRunWebhooks } from './webhookDispatcher';
 import type { TeamRun, Agent, ApiKey, PipelineConfig, PipelineStep, TeamHandoffContext, TokenUsage } from './types';
 
 /**
@@ -110,6 +111,13 @@ export async function processPipelineRun(run: TeamRun): Promise<void> {
 
         console.log(`[PipelineExecutor] Run ${run.id} completed (${steps.length} steps, ${totalTokens} tokens, $${totalCost.toFixed(4)})`);
 
+        // Fire team_run.completed webhook (fire-and-forget)
+        void dispatchTeamRunWebhooks(
+            { id: run.id, team_id: run.team_id, workspace_id: run.workspace_id, status: 'completed', input_task: run.input_task, output: finalOutput },
+            `Pipeline Team ${run.team_id}`,
+            'team_run.completed',
+        );
+
     } catch (error: unknown) {
         const errMsg = error instanceof Error ? error.message : String(error);
         console.error(`[PipelineExecutor] Run ${run.id} failed:`, errMsg);
@@ -124,6 +132,13 @@ export async function processPipelineRun(run: TeamRun): Promise<void> {
                 completed_at: new Date().toISOString(),
             })
             .eq('id', run.id);
+
+        // Fire team_run.failed webhook (fire-and-forget)
+        void dispatchTeamRunWebhooks(
+            { id: run.id, team_id: run.team_id, workspace_id: run.workspace_id, status: 'failed', input_task: run.input_task, error_message: errMsg },
+            `Pipeline Team ${run.team_id}`,
+            'team_run.failed',
+        );
     }
 }
 

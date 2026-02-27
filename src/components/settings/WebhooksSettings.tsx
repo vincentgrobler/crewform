@@ -4,11 +4,12 @@
 import { useState } from 'react'
 import {
     Globe, MessageSquare, Send, Hash, Plus, Trash2, Power, PowerOff,
-    CheckCircle2, XCircle, ChevronDown, ChevronUp, Loader2,
+    CheckCircle2, XCircle, ChevronDown, ChevronUp, Loader2, Zap,
 } from 'lucide-react'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useWebhooks, useCreateWebhook, useUpdateWebhook, useDeleteWebhook, useWebhookLogs } from '@/hooks/useWebhooks'
 import type { OutputRoute, CreateRouteInput } from '@/db/webhooks'
+import { testRoute } from '@/db/webhooks'
 import { cn } from '@/lib/utils'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -24,8 +25,11 @@ const DESTINATION_META: Record<DestinationType, { label: string; icon: typeof Gl
 }
 
 const EVENT_OPTIONS = [
+    { value: 'task.started', label: 'Task Started' },
     { value: 'task.completed', label: 'Task Completed' },
     { value: 'task.failed', label: 'Task Failed' },
+    { value: 'team_run.completed', label: 'Team Run Completed' },
+    { value: 'team_run.failed', label: 'Team Run Failed' },
 ]
 
 // ─── Main Component ─────────────────────────────────────────────────────────
@@ -400,6 +404,23 @@ function WebhookCard({
         deleteMutation.mutate({ id: route.id, workspaceId })
     }
 
+    const [isTesting, setIsTesting] = useState(false)
+    const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
+
+    async function handleSendTest() {
+        setIsTesting(true)
+        setTestResult(null)
+        try {
+            const result = await testRoute(route.id)
+            setTestResult({ ok: result.ok, message: result.ok ? `✓ ${result.status_code ?? 200}` : result.error ?? 'Failed' })
+        } catch {
+            setTestResult({ ok: false, message: 'Request failed' })
+        } finally {
+            setIsTesting(false)
+            setTimeout(() => setTestResult(null), 4000)
+        }
+    }
+
     return (
         <div className="rounded-lg border border-border bg-surface-card">
             <div className="flex items-center gap-4 p-4">
@@ -428,6 +449,23 @@ function WebhookCard({
 
                 {/* Actions */}
                 <div className="flex items-center gap-1">
+                    {testResult && (
+                        <span className={cn(
+                            'text-xs font-medium px-2 py-0.5 rounded-full',
+                            testResult.ok ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400',
+                        )}>
+                            {testResult.message}
+                        </span>
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => void handleSendTest()}
+                        disabled={isTesting}
+                        title="Send test webhook"
+                        className="rounded-lg p-2 text-gray-500 hover:bg-amber-500/10 hover:text-amber-400 disabled:opacity-50"
+                    >
+                        {isTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                    </button>
                     <button
                         type="button"
                         onClick={() => onToggleLogs(route.id)}

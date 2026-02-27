@@ -7,6 +7,7 @@
 import { supabase } from './supabase';
 import { executeLLMCall } from './llmHelper';
 import { writeTeamRunUsageRecord } from './usageWriter';
+import { dispatchTeamRunWebhooks } from './webhookDispatcher';
 import type { TeamRun, Agent, OrchestratorConfig, Delegation, TokenUsage } from './types';
 
 // ─── Tool Definitions ────────────────────────────────────────────────────────
@@ -238,6 +239,13 @@ export async function processOrchestratorRun(run: TeamRun): Promise<void> {
 
         console.log(`[Orchestrator] Completed run ${run.id} (${loopCount} loops, ${totalTokens} tokens)`);
 
+        // Fire team_run.completed webhook (fire-and-forget)
+        void dispatchTeamRunWebhooks(
+            { id: run.id, team_id: run.team_id, workspace_id: run.workspace_id, status: 'completed', input_task: run.input_task },
+            `Orchestrator Team ${run.team_id}`,
+            'team_run.completed',
+        );
+
     } catch (error: unknown) {
         const errMsg = error instanceof Error ? error.message : String(error);
         console.error(`[Orchestrator] Failed run ${run.id}:`, errMsg);
@@ -252,6 +260,13 @@ export async function processOrchestratorRun(run: TeamRun): Promise<void> {
                 cost_estimate_usd: totalCost,
             })
             .eq('id', run.id);
+
+        // Fire team_run.failed webhook (fire-and-forget)
+        void dispatchTeamRunWebhooks(
+            { id: run.id, team_id: run.team_id, workspace_id: run.workspace_id, status: 'failed', input_task: run.input_task, error_message: errMsg },
+            `Orchestrator Team ${run.team_id}`,
+            'team_run.failed',
+        );
     }
 }
 

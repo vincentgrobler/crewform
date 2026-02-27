@@ -101,3 +101,17 @@ export async function fetchWebhookLogs(routeId: string, limit = 20): Promise<Web
     if (result.error) throw result.error
     return result.data as WebhookLog[]
 }
+
+/** Send a test payload to verify a webhook route is working */
+export async function testRoute(routeId: string): Promise<{ ok: boolean; status_code?: number; error?: string }> {
+    const response: { data: unknown; error: { message: string } | null } = await supabase.functions.invoke('webhook-test', {
+        body: { route_id: routeId },
+    })
+
+    if (response.error) {
+        return { ok: false, error: response.error.message }
+    }
+
+    const result = response.data as { ok: boolean; status_code?: number; error?: string } | null
+    return result ?? { ok: false, error: 'Empty response' }
+}
