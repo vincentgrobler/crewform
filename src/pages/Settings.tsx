@@ -4,6 +4,7 @@
 import { useState } from 'react'
 import { KeyRound, User, Building2, Webhook, Users, ScrollText, CreditCard } from 'lucide-react'
 import { ApiKeysSettings } from '@/components/settings/ApiKeysSettings'
+import { RestApiKeysSettings } from '@/components/settings/RestApiKeysSettings'
 import { WebhooksSettings } from '@/components/settings/WebhooksSettings'
 import { MembersSettings } from '@/components/settings/MembersSettings'
 import { WorkspaceSettings } from '@/components/settings/WorkspaceSettings'
@@ -53,7 +54,13 @@ export function Settings() {
 
       {/* Tab content */}
       <div className={cn('mx-auto', activeTab === 'billing' ? 'max-w-4xl' : 'max-w-2xl')}>
-        {activeTab === 'api-keys' && <ApiKeysSettings />}
+        {activeTab === 'api-keys' && (
+          <>
+            <ApiKeysSettings />
+            <hr className="my-8 border-border" />
+            <RestApiKeysSettings />
+          </>
+        )}
 
         {activeTab === 'webhooks' && <WebhooksSettings />}
 

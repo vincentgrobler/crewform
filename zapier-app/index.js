@@ -8,7 +8,7 @@
  * - Actions: Create Task, Run Team
  */
 
-const authentication = require('./authentication');
+const { authentication, addApiKeyHeader } = require('./authentication');
 
 const taskStartedTrigger = require('./triggers/task_started');
 const taskCompletedTrigger = require('./triggers/task_completed');
@@ -24,6 +24,9 @@ module.exports = {
     platformVersion: require('zapier-platform-core').version,
 
     authentication: authentication,
+
+    // Middleware — inject API key header into every outgoing request
+    beforeRequest: [addApiKeyHeader],
 
     // Zapier will automatically register/deregister webhooks via these REST hooks.
     triggers: {
