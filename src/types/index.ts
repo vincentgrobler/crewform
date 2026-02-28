@@ -236,6 +236,7 @@ export interface TeamRun {
   input_task: string
   output: string | null
   current_step_idx: number | null
+  delegation_depth: number | null
   tokens_total: number
   cost_estimate_usd: number
   started_at: string | null

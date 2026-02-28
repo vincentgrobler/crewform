@@ -13,15 +13,18 @@ import {
     Loader2,
     Bot,
     Cog,
+    Brain,
+    GitBranch,
 } from 'lucide-react'
 import { useTeamRun } from '@/hooks/useTeamRun'
 import { useTeam } from '@/hooks/useTeam'
 import { useAgents } from '@/hooks/useAgents'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { PipelineProgressRail } from '@/components/teams/PipelineProgressRail'
+import { DelegationTree } from '@/components/teams/DelegationTree'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
-import type { PipelineConfig, TeamMessage } from '@/types'
+import type { PipelineConfig, OrchestratorConfig, TeamMessage } from '@/types'
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
     pending: { label: 'Pending', className: 'bg-gray-500/10 text-gray-400 border-gray-500/30' },
@@ -37,11 +40,15 @@ const MESSAGE_ICON: Record<string, typeof Bot> = {
     result: Bot,
     system: AlertCircle,
     handoff: ArrowLeft,
+    brain: Brain,
+    worker_result: Bot,
+    revision_request: GitBranch,
+    accepted: CheckCircle2,
 }
 
 /**
  * Team run detail page.
- * Left: PipelineProgressRail. Right: Activity timeline + output.
+ * Detects team mode (pipeline vs orchestrator) and shows appropriate progress display.
  * Real-time updates via useTeamRun (Supabase Realtime).
  */
 export function TeamRunDetail() {
@@ -52,13 +59,17 @@ export function TeamRunDetail() {
     const { agents } = useAgents(workspaceId)
     const { run, messages, isLoading, error } = useTeamRun(runId ?? null)
 
-    const config = team?.config as PipelineConfig | undefined
-    const steps = config?.steps ?? []
+    const isOrchestrator = team?.mode === 'orchestrator'
+    const config = team?.config as PipelineConfig | OrchestratorConfig | undefined
+    const steps = !isOrchestrator && config ? (config as PipelineConfig).steps ?? [] : []
+    const orchConfig = isOrchestrator ? (config as OrchestratorConfig) : null
     const badge = run ? STATUS_BADGE[run.status] : null
 
     const elapsed = run?.started_at
         ? getElapsed(run.started_at, run.completed_at ?? new Date().toISOString())
         : '—'
+
+    const runTitle = isOrchestrator ? 'Orchestrator Run' : 'Pipeline Run'
 
     return (
         <div className="p-6 lg:p-8">
@@ -96,7 +107,7 @@ export function TeamRunDetail() {
                     {/* Header */}
                     <div className="mb-6">
                         <div className="flex items-center gap-3 mb-2">
-                            <h1 className="text-xl font-semibold text-gray-100">Pipeline Run</h1>
+                            <h1 className="text-xl font-semibold text-gray-100">{runTitle}</h1>
                             {badge && (
                                 <span className={cn(
                                     'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium',
@@ -113,10 +124,18 @@ export function TeamRunDetail() {
                                 <Clock className="h-3.5 w-3.5" />
                                 {elapsed}
                             </span>
-                            <span className="flex items-center gap-1.5">
-                                <Hash className="h-3.5 w-3.5" />
-                                Step {run.current_step_idx !== null ? run.current_step_idx + 1 : 0} of {steps.length}
-                            </span>
+                            {!isOrchestrator && (
+                                <span className="flex items-center gap-1.5">
+                                    <Hash className="h-3.5 w-3.5" />
+                                    Step {run.current_step_idx !== null ? run.current_step_idx + 1 : 0} of {steps.length}
+                                </span>
+                            )}
+                            {isOrchestrator && run.delegation_depth != null && run.delegation_depth > 0 && (
+                                <span className="flex items-center gap-1.5">
+                                    <GitBranch className="h-3.5 w-3.5" />
+                                    {run.delegation_depth} loop{run.delegation_depth !== 1 ? 's' : ''}
+                                </span>
+                            )}
                             {run.tokens_total > 0 && (
                                 <span className="flex items-center gap-1.5">
                                     {run.tokens_total.toLocaleString()} tokens
@@ -137,20 +156,34 @@ export function TeamRunDetail() {
                         <p className="text-sm text-gray-300 whitespace-pre-wrap">{run.input_task}</p>
                     </div>
 
-                    {/* Main content: progress rail + activity timeline */}
-                    <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
-                        {/* Left: Progress rail */}
-                        <div className="rounded-lg border border-border bg-surface-card p-4">
-                            <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500">Progress</h3>
-                            <PipelineProgressRail
-                                steps={steps}
-                                currentStepIdx={run.current_step_idx}
-                                runStatus={run.status}
-                                agents={agents}
-                            />
-                        </div>
+                    {/* Main content: progress + activity timeline */}
+                    <div className={cn(
+                        'grid gap-6',
+                        isOrchestrator ? 'lg:grid-cols-1' : 'lg:grid-cols-[240px_1fr]',
+                    )}>
+                        {/* Left: Progress rail (pipeline) or Delegation tree (orchestrator) */}
+                        {isOrchestrator && orchConfig ? (
+                            <div className="rounded-lg border border-border bg-surface-card p-4">
+                                <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500">Delegation Tree</h3>
+                                <DelegationTree
+                                    teamRunId={run.id}
+                                    brainAgentId={orchConfig.brain_agent_id}
+                                    agents={agents}
+                                />
+                            </div>
+                        ) : (
+                            <div className="rounded-lg border border-border bg-surface-card p-4">
+                                <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500">Progress</h3>
+                                <PipelineProgressRail
+                                    steps={steps}
+                                    currentStepIdx={run.current_step_idx}
+                                    runStatus={run.status}
+                                    agents={agents}
+                                />
+                            </div>
+                        )}
 
-                        {/* Right: Activity timeline + output */}
+                        {/* Activity timeline + output */}
                         <div className="space-y-4">
                             {/* Activity timeline */}
                             <div className="rounded-lg border border-border bg-surface-card p-4">
@@ -198,7 +231,11 @@ export function TeamRunDetail() {
                                     <Loader2 className="h-5 w-5 animate-spin text-blue-400" />
                                     <div>
                                         <p className="text-sm font-medium text-blue-400">Running</p>
-                                        <p className="text-xs text-gray-500">Pipeline is executing. Updates appear in real-time.</p>
+                                        <p className="text-xs text-gray-500">
+                                            {isOrchestrator
+                                                ? 'Orchestrator is delegating to workers. Updates appear in real-time.'
+                                                : 'Pipeline is executing. Updates appear in real-time.'}
+                                        </p>
                                     </div>
                                 </div>
                             )}
