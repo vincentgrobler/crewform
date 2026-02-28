@@ -20,15 +20,12 @@ interface OrchestratorConfigProps {
 export function OrchestratorConfigPanel({ agents, config, onChange }: OrchestratorConfigProps) {
     const [workerSearch, setWorkerSearch] = useState('')
 
-    // Defensive: existing DB records may not have worker_agent_ids yet
-    const workerIds = config.worker_agent_ids ?? []
-
     const brainAgent = agents.find((a) => a.id === config.brain_agent_id)
-    const workerAgents = agents.filter((a) => workerIds.includes(a.id))
+    const workerAgents = agents.filter((a) => config.worker_agent_ids.includes(a.id))
     const availableWorkers = agents.filter(
         (a) =>
             a.id !== config.brain_agent_id &&
-            !workerIds.includes(a.id) &&
+            !config.worker_agent_ids.includes(a.id) &&
             a.name.toLowerCase().includes(workerSearch.toLowerCase()),
     )
 
@@ -87,7 +84,7 @@ export function OrchestratorConfigPanel({ agents, config, onChange }: Orchestrat
                                 onClick={() =>
                                     onChange({
                                         ...config,
-                                        worker_agent_ids: workerIds.filter((id) => id !== agent.id),
+                                        worker_agent_ids: config.worker_agent_ids.filter((id) => id !== agent.id),
                                     })
                                 }
                                 style={{ cursor: 'pointer', background: 'none', border: 'none', fontSize: '0.75rem' }}
@@ -114,7 +111,7 @@ export function OrchestratorConfigPanel({ agents, config, onChange }: Orchestrat
                                 onClick={() => {
                                     onChange({
                                         ...config,
-                                        worker_agent_ids: [...workerIds, agent.id],
+                                        worker_agent_ids: [...config.worker_agent_ids, agent.id],
                                     })
                                     setWorkerSearch('')
                                 }}
