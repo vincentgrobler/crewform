@@ -9,6 +9,7 @@ import {
 import { useTriggers, useCreateTrigger, useToggleTrigger, useDeleteTrigger, useTriggerLog } from '@/hooks/useTriggers'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { cn } from '@/lib/utils'
+import { WebhookExample } from '@/components/triggers/WebhookExample'
 import type { AgentTrigger, TriggerType } from '@/db/triggers'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -363,6 +364,15 @@ function TriggerCard({
                     </button>
                 </div>
             </div>
+
+            {/* Webhook POST example */}
+            {trigger.trigger_type === 'webhook' && trigger.webhook_token && (
+                <WebhookExample
+                    webhookToken={trigger.webhook_token}
+                    inputField="task_input"
+                    inputExample="Write a summary of today's meeting notes"
+                />
+            )}
 
             {/* Trigger log */}
             {isExpanded && <TriggerLogPanel triggerId={trigger.id} />}
