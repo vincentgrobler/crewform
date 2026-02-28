@@ -268,13 +268,14 @@ function TriggerCard({
         toggleMutation.mutate({
             id: trigger.id,
             enabled: !trigger.enabled,
-            agentId: trigger.agent_id,
+            agentId: trigger.agent_id ?? undefined,
+            teamId: trigger.team_id ?? undefined,
         })
     }
 
     function handleDelete() {
         if (!confirm('Delete this trigger? This cannot be undone.')) return
-        deleteMutation.mutate({ id: trigger.id, agentId: trigger.agent_id })
+        deleteMutation.mutate({ id: trigger.id, agentId: trigger.agent_id ?? undefined, teamId: trigger.team_id ?? undefined })
     }
 
     function copyWebhookUrl() {

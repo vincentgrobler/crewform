@@ -25,6 +25,7 @@ import { PipelineConfigPanel } from '@/components/teams/PipelineConfigPanel'
 import { OrchestratorConfigPanel } from '@/components/teams/OrchestratorConfig'
 import { RunTeamModal } from '@/components/teams/RunTeamModal'
 import { TeamRunCard } from '@/components/teams/TeamRunCard'
+import { TeamTriggersPanel } from '@/components/teams/TeamTriggersPanel'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import type { PipelineConfig, OrchestratorConfig, TeamMode } from '@/types'
@@ -360,6 +361,11 @@ export function TeamDetail() {
                             />
                         </div>
                     )}
+
+                    {/* Triggers */}
+                    <div className="mt-8">
+                        <TeamTriggersPanel teamId={team.id} />
+                    </div>
 
                     {/* Recent Runs */}
                     <div className="mt-8">
