@@ -156,7 +156,7 @@ export async function processOrchestratorRun(run: TeamRun): Promise<void> {
         const userPrompt = `Task to orchestrate:\n\n${run.input_task}`;
 
         // 4. Record initial brain message
-        await recordMessage(run.id, config.brain_agent_id, 'brain', `Orchestrating task: ${run.input_task}`);
+        await recordMessage(run.id, config.brain_agent_id, 'system', `Orchestrating task: ${run.input_task}`);
 
         // 5. Orchestrator tool-use loop
         // We simulate the tool-use loop by calling the brain agent iteratively.
@@ -363,7 +363,7 @@ async function executeToolCall(
                 delegation.status = 'completed';
                 delegations.set(delegation.id, delegation);
 
-                await recordMessage(run.id, agentId, 'worker_result', `Worker "${worker.name}" result: ${workerResult.result.substring(0, 500)}...`);
+                await recordMessage(run.id, agentId, 'result', `Worker "${worker.name}" result: ${workerResult.result.substring(0, 500)}...`);
 
                 return {
                     result: `Worker "${worker.name}" completed. Delegation ID: ${delegation.id}\n\nResult:\n${workerResult.result}`,
@@ -434,7 +434,7 @@ async function executeToolCall(
                 delegation.revision_count += 1;
                 delegations.set(delegationId, delegation);
 
-                await recordMessage(run.id, delegation.worker_agent_id, 'worker_result', `Worker "${workerName}" revised result: ${workerResult.result.substring(0, 500)}...`);
+                await recordMessage(run.id, delegation.worker_agent_id, 'result', `Worker "${workerName}" revised result: ${workerResult.result.substring(0, 500)}...`);
 
                 return {
                     result: `Worker "${workerName}" revised output (revision ${delegation.revision_count}). Delegation ID: ${delegationId}\n\nRevised Result:\n${workerResult.result}`,
@@ -460,7 +460,7 @@ async function executeToolCall(
                 .update({ status: 'completed', quality_score: config.quality_threshold })
                 .eq('id', delegationId);
 
-            await recordMessage(run.id, delegation.worker_agent_id, 'accepted', `Brain accepted delegation ${delegationId}`);
+            await recordMessage(run.id, delegation.worker_agent_id, 'system', `Brain accepted delegation ${delegationId}`);
 
             return {
                 result: `Delegation ${delegationId} accepted.`,
@@ -592,9 +592,9 @@ async function recordMessage(
     content: string,
 ): Promise<void> {
     await supabase.from('team_messages').insert({
-        team_run_id: runId,
-        agent_id: agentId,
-        role: messageType,
+        run_id: runId,
+        sender_agent_id: agentId,
+        message_type: messageType,
         content: content.substring(0, 10000), // Cap message length
     });
 }
