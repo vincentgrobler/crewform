@@ -61,7 +61,7 @@ export function TeamRunDetail() {
 
     const isOrchestrator = team?.mode === 'orchestrator'
     const config = team?.config as PipelineConfig | OrchestratorConfig | undefined
-    const steps = !isOrchestrator && config ? (config as PipelineConfig).steps ?? [] : []
+    const steps = (!isOrchestrator && config ? (config as PipelineConfig).steps : undefined) ?? []
     const orchConfig = isOrchestrator ? (config as OrchestratorConfig) : null
     const badge = run ? STATUS_BADGE[run.status] : null
 
