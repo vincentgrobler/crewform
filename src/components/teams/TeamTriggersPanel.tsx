@@ -7,6 +7,7 @@ import { useWorkspace } from '@/hooks/useWorkspace'
 import { useTeamTriggers, useCreateTeamTrigger, useToggleTrigger, useDeleteTrigger, useTriggerLog } from '@/hooks/useTriggers'
 import type { AgentTrigger, TriggerType } from '@/db/triggers'
 import { cn } from '@/lib/utils'
+import { WebhookExample } from '@/components/triggers/WebhookExample'
 
 const TRIGGER_TYPE_META: Record<TriggerType, { label: string; icon: typeof Clock; color: string }> = {
     cron: { label: 'Schedule', icon: Clock, color: 'text-blue-400' },
@@ -316,15 +317,13 @@ function TeamTriggerCard({
                 </div>
             </div>
 
-            {/* Webhook URL display */}
+            {/* Webhook URL display + POST example */}
             {trigger.webhook_token && (
-                <div className="border-t border-border px-4 py-2">
-                    <div className="flex items-center gap-2">
-                        <code className="flex-1 truncate rounded bg-surface-raised px-2 py-1 text-xs text-gray-400">
-                            POST {import.meta.env.VITE_SUPABASE_URL as string}/functions/v1/webhook-trigger?token={trigger.webhook_token}
-                        </code>
-                    </div>
-                </div>
+                <WebhookExample
+                    webhookToken={trigger.webhook_token}
+                    inputField="input_task"
+                    inputExample="Summarize the latest quarterly report"
+                />
             )}
 
             {/* Log panel */}
