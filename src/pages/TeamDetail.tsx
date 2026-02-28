@@ -341,7 +341,7 @@ export function TeamDetail() {
                                 agents={agents}
                                 config={{
                                     brain_agent_id: orchestratorConfig.brain_agent_id,
-                                    worker_agent_ids: [],
+                                    worker_agent_ids: orchestratorConfig.worker_agent_ids ?? [],
                                     quality_threshold: orchestratorConfig.quality_threshold,
                                     max_delegation_depth: orchestratorConfig.max_delegation_depth,
                                 }}
@@ -352,6 +352,7 @@ export function TeamDetail() {
                                             config: {
                                                 ...orchestratorConfig,
                                                 brain_agent_id: newConfig.brain_agent_id,
+                                                worker_agent_ids: newConfig.worker_agent_ids,
                                                 quality_threshold: newConfig.quality_threshold,
                                                 max_delegation_depth: newConfig.max_delegation_depth,
                                             },

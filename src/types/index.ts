@@ -152,6 +152,7 @@ export interface PipelineStep {
 
 export interface OrchestratorConfig {
   brain_agent_id: string
+  worker_agent_ids: string[]
   quality_threshold: number
   routing_strategy: string
   planner_enabled: boolean
