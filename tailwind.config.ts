@@ -17,6 +17,7 @@ export default {
         surface: {
           primary: '#0D1117',
           card: '#161B22',
+          raised: '#1C2128',
           elevated: '#1C2128',
           overlay: '#21262D',
         },
