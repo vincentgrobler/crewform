@@ -80,15 +80,37 @@ function buildBrainSystemPrompt(workers: Agent[], config: OrchestratorConfig): s
 AVAILABLE WORKERS:
 ${workerList}
 
+HOW TO USE TOOLS:
+You MUST invoke tools by outputting a JSON code block with a "tool" field and an "arguments" field. Do NOT just describe what you want to do — you must output the JSON.
+
+To delegate a task to a worker:
+\`\`\`json
+{"tool": "delegate_to_worker", "arguments": {"agent_id": "<WORKER_ID>", "instruction": "<WHAT_TO_DO>"}}
+\`\`\`
+
+To request a revision:
+\`\`\`json
+{"tool": "request_revision", "arguments": {"delegation_id": "<DELEGATION_ID>", "feedback": "<WHAT_TO_IMPROVE>"}}
+\`\`\`
+
+To accept a satisfactory result:
+\`\`\`json
+{"tool": "accept_result", "arguments": {"delegation_id": "<DELEGATION_ID>"}}
+\`\`\`
+
+To submit your final synthesized answer (call this when ALL work is done):
+\`\`\`json
+{"tool": "final_answer", "arguments": {"output": "<YOUR_FINAL_OUTPUT>"}}
+\`\`\`
+
 RULES:
+- You MUST output a JSON tool call block for every action you take
 - You can delegate to multiple workers sequentially
 - Maximum ${config.max_delegation_depth} revision rounds per delegation
 - Always evaluate worker output before accepting
 - Call "final_answer" when you have a complete, high-quality result
 - Be specific in your delegation instructions
-- Provide constructive feedback when requesting revisions
-
-Use the provided tools to manage the workflow.`;
+- Provide constructive feedback when requesting revisions`;
 }
 
 // ─── Main Orchestrator Loop ──────────────────────────────────────────────────
@@ -154,7 +176,7 @@ export async function processOrchestratorRun(run: TeamRun): Promise<void> {
             const brainResult = await executeLLMCall({
                 workspaceId: run.workspace_id,
                 agentId: config.brain_agent_id,
-                systemPrompt: brainSystemPrompt + '\n\nAvailable tools:\n' + JSON.stringify(ORCHESTRATOR_TOOLS, null, 2),
+                systemPrompt: brainSystemPrompt,
                 userPrompt: buildConversationPrompt(conversationHistory),
             });
 
@@ -460,28 +482,91 @@ async function executeToolCall(
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function parseToolCall(brainOutput: string): { name: string; arguments: Record<string, unknown> } | null {
-    // Look for JSON tool call patterns in the brain's response
-    // Supports formats: {"tool": "name", "arguments": {...}} or ```json\n{...}\n```
-    const patterns = [
-        /\{[\s\S]*?"(?:tool|name|function)"[\s\S]*?"(delegate_to_worker|request_revision|accept_result|final_answer)"[\s\S]*?\}/,
-        /```json\s*(\{[\s\S]*?\})\s*```/,
-    ];
+    // Strategy 1: Look for explicit tool call format: {"tool": "name", ...}
+    const explicitPattern = /\{[\s\S]*?"(?:tool|name|function)"\s*:\s*"(delegate_to_worker|request_revision|accept_result|final_answer)"[\s\S]*?\}/;
+    const explicitMatch = brainOutput.match(explicitPattern);
+    if (explicitMatch) {
+        try {
+            const parsed = JSON.parse(explicitMatch[0]) as Record<string, unknown>;
+            const name = (parsed.tool ?? parsed.name ?? parsed.function) as string;
+            const args = (parsed.arguments ?? parsed.params ?? parsed) as Record<string, unknown>;
+            if (['delegate_to_worker', 'request_revision', 'accept_result', 'final_answer'].includes(name)) {
+                return { name, arguments: args };
+            }
+        } catch {
+            // Failed, try next strategy
+        }
+    }
 
-    for (const pattern of patterns) {
-        const match = brainOutput.match(pattern);
-        if (match) {
-            try {
-                const jsonStr = match[1] ?? match[0];
-                const parsed = JSON.parse(jsonStr) as Record<string, unknown>;
+    // Strategy 2: Look for JSON code blocks and infer tool name from surrounding text
+    const codeBlockPattern = /```(?:json)?\s*(\{[\s\S]*?\})\s*```/g;
+    let codeMatch: RegExpExecArray | null;
+    while ((codeMatch = codeBlockPattern.exec(brainOutput)) !== null) {
+        try {
+            const parsed = JSON.parse(codeMatch[1]) as Record<string, unknown>;
 
-                const name = (parsed.tool ?? parsed.name ?? parsed.function) as string;
+            // Check if this JSON block itself names the tool
+            const toolName = (parsed.tool ?? parsed.name ?? parsed.function) as string | undefined;
+            if (toolName && ['delegate_to_worker', 'request_revision', 'accept_result', 'final_answer'].includes(toolName)) {
                 const args = (parsed.arguments ?? parsed.params ?? parsed) as Record<string, unknown>;
+                return { name: toolName, arguments: args };
+            }
 
-                if (['delegate_to_worker', 'request_revision', 'accept_result', 'final_answer'].includes(name)) {
-                    return { name, arguments: args };
-                }
+            // Infer tool from the JSON shape and surrounding text
+            if (parsed.agent_id && parsed.instruction) {
+                return { name: 'delegate_to_worker', arguments: parsed };
+            }
+            if (parsed.delegation_id && parsed.feedback) {
+                return { name: 'request_revision', arguments: parsed };
+            }
+            if (parsed.delegation_id && !parsed.feedback) {
+                return { name: 'accept_result', arguments: parsed };
+            }
+            if (parsed.output) {
+                return { name: 'final_answer', arguments: parsed };
+            }
+        } catch {
+            // JSON parse failed, try next match
+        }
+    }
+
+    // Strategy 3: Look for bare JSON objects (not in code blocks) with known shapes
+    const bareJsonPattern = /\{[^{}]*"agent_id"\s*:\s*"[^"]+"\s*,\s*"instruction"\s*:\s*"[^"]*(?:\\.[^"]*)*"[^{}]*\}/;
+    const bareMatch = brainOutput.match(bareJsonPattern);
+    if (bareMatch) {
+        try {
+            const parsed = JSON.parse(bareMatch[0]) as Record<string, unknown>;
+            return { name: 'delegate_to_worker', arguments: parsed };
+        } catch {
+            // Failed
+        }
+    }
+
+    // Strategy 4: Check if text mentions a tool name followed by any JSON
+    const textToolPattern = /(?:delegate_to_worker|delegate|Delegate)\b[\s\S]*?(\{[\s\S]*?\})/i;
+    const textMatch = brainOutput.match(textToolPattern);
+    if (textMatch) {
+        try {
+            const parsed = JSON.parse(textMatch[1]) as Record<string, unknown>;
+            if (parsed.agent_id || parsed.instruction) {
+                return { name: 'delegate_to_worker', arguments: parsed };
+            }
+        } catch {
+            // Failed
+        }
+    }
+
+    // Strategy 5: Check for final_answer intent without JSON
+    const finalPattern = /final.?answer/i;
+    if (finalPattern.test(brainOutput) && brainOutput.includes('"output"')) {
+        const jsonPattern = /\{[\s\S]*?"output"\s*:\s*"[\s\S]*?"\s*\}/;
+        const finalMatch = brainOutput.match(jsonPattern);
+        if (finalMatch) {
+            try {
+                const parsed = JSON.parse(finalMatch[0]) as Record<string, unknown>;
+                return { name: 'final_answer', arguments: parsed };
             } catch {
-                // JSON parse failed, try next pattern
+                // Failed
             }
         }
     }
