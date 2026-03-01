@@ -6,6 +6,7 @@ import { decryptApiKey } from './crypto';
 import { writeTaskUsageRecord } from './usageWriter';
 import { dispatchWebhooks } from './webhookDispatcher';
 import { executeWithToolLoop, getToolDefinitions } from './toolExecutor';
+import { loadInputFiles, buildFileContext, extractAndSaveArtifacts } from './fileAttachments';
 import type { CustomToolConfig } from './toolExecutor';
 import type { Task, Agent, ApiKey, TokenUsage } from './types';
 
@@ -107,9 +108,17 @@ export async function processTask(task: Task) {
 
         const rawKey = decryptApiKey(apiKeyData.encrypted_key);
 
-        // 3. Prepare Prompt
+        // 3. Prepare Prompt (with attached files)
         const systemPrompt = agent.system_prompt || 'You are a helpful AI assistant.';
-        const userPrompt = `Task Title: ${task.title}\n\nTask Description:\n${task.description}`;
+        let userPrompt = `Task Title: ${task.title}\n\nTask Description:\n${task.description}`;
+
+        // Load input file attachments
+        const inputFiles = await loadInputFiles(task.id, null);
+        if (inputFiles.length > 0) {
+            const { textBlock } = buildFileContext(inputFiles, agent.model);
+            if (textBlock) userPrompt += textBlock;
+            console.log(`[TaskRunner] Loaded ${inputFiles.length} input file(s) for task ${task.id}`);
+        }
 
         // 3b. Fire task.started webhook (fire-and-forget)
         void dispatchWebhooks(
@@ -248,6 +257,9 @@ export async function processTask(task: Task) {
         });
 
         console.log(`[TaskRunner] Completed task ${task.id} successfully.`);
+
+        // 7b. Extract output file artifacts (fire-and-forget)
+        void extractAndSaveArtifacts(task.workspace_id, task.id, null, executionResult.result);
 
         // 8. Fire webhooks (fire-and-forget)
         void dispatchWebhooks(

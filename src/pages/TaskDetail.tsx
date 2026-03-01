@@ -8,7 +8,9 @@ import { useAgents } from '@/hooks/useAgents'
 import { useTask } from '@/hooks/useTask'
 import { useCancelTask } from '@/hooks/useCancelTask'
 import { useRerunTask } from '@/hooks/useRerunTask'
+import { useTaskAttachments } from '@/hooks/useAttachments'
 import { TaskStatusBadge, TaskPriorityBadge } from '@/components/tasks/TaskStatusBadge'
+import { FileAttachmentsList } from '@/components/shared/FileAttachmentsList'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Loader2, Ban, Terminal, Clock, User, Bot, RefreshCw } from 'lucide-react'
 
@@ -22,6 +24,7 @@ export function TaskDetail() {
     const { workspaceId } = useWorkspace()
     const { agents } = useAgents(workspaceId)
     const { task, isLoading, error } = useTask(id ?? null)
+    const { data: attachments } = useTaskAttachments(id ?? undefined)
     const cancelMutation = useCancelTask()
     const rerunMutation = useRerunTask()
 
@@ -164,6 +167,18 @@ export function TaskDetail() {
                             </div>
                         )}
                     </div>
+
+                    {/* Attachments */}
+                    {attachments && attachments.length > 0 && (
+                        <div className="mb-6">
+                            <h3 className="mb-2 text-sm font-medium text-gray-400">Files</h3>
+                            <FileAttachmentsList
+                                attachments={attachments}
+                                canDelete
+                                queryKey={['attachments', 'task', id]}
+                            />
+                        </div>
+                    )}
 
                     {/* Usage */}
                     <div>

@@ -7,6 +7,8 @@ import { useWorkspace } from '@/hooks/useWorkspace'
 import { useAuth } from '@/hooks/useAuth'
 import { useCreateTeamRun } from '@/hooks/useCreateTeamRun'
 import { SpeechToTextButton } from '@/components/shared/SpeechToTextButton'
+import { FileUploadZone } from '@/components/shared/FileUploadZone'
+import { uploadAttachments } from '@/db/attachments'
 
 interface RunTeamModalProps {
     teamId: string
@@ -26,6 +28,8 @@ export function RunTeamModal({ teamId, teamName, onClose, onCreated }: RunTeamMo
 
     const [inputTask, setInputTask] = useState('')
     const [error, setError] = useState('')
+    const [files, setFiles] = useState<File[]>([])
+    const [isUploading, setIsUploading] = useState(false)
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
@@ -45,8 +49,27 @@ export function RunTeamModal({ teamId, teamName, onClose, onCreated }: RunTeamMo
             },
             {
                 onSuccess: (run) => {
-                    onClose()
-                    onCreated(run.id)
+                    void (async () => {
+                        // Upload attached files (non-blocking — run is created even if upload fails)
+                        if (files.length > 0 && workspaceId) {
+                            setIsUploading(true)
+                            try {
+                                await uploadAttachments({
+                                    workspaceId,
+                                    teamRunId: run.id,
+                                    direction: 'input',
+                                    files,
+                                    userId: user?.id,
+                                })
+                            } catch (err) {
+                                console.error('[RunTeam] File upload error:', err)
+                            } finally {
+                                setIsUploading(false)
+                            }
+                        }
+                        onClose()
+                        onCreated(run.id)
+                    })()
                 },
             },
         )
@@ -95,6 +118,18 @@ export function RunTeamModal({ teamId, teamName, onClose, onCreated }: RunTeamMo
                             autoFocus
                         />
                         {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+                    </div>
+
+                    {/* File Attachments */}
+                    <div>
+                        <label className="mb-1.5 block text-sm font-medium text-gray-300">
+                            Attachments <span className="text-gray-600">(optional)</span>
+                        </label>
+                        <FileUploadZone
+                            files={files}
+                            onChange={setFiles}
+                            disabled={createMutation.isPending || isUploading}
+                        />
                     </div>
 
                     {createMutation.isError && (
