@@ -23,12 +23,13 @@ import { useDeleteTeam } from '@/hooks/useDeleteTeam'
 import { useTeamRuns } from '@/hooks/useTeamRuns'
 import { PipelineConfigPanel } from '@/components/teams/PipelineConfigPanel'
 import { OrchestratorConfigPanel } from '@/components/teams/OrchestratorConfig'
+import { CollaborationConfigPanel } from '@/components/teams/CollaborationConfigPanel'
 import { RunTeamModal } from '@/components/teams/RunTeamModal'
 import { TeamRunCard } from '@/components/teams/TeamRunCard'
 import { TeamTriggersPanel } from '@/components/teams/TeamTriggersPanel'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
-import type { PipelineConfig, OrchestratorConfig, TeamMode } from '@/types'
+import type { PipelineConfig, OrchestratorConfig, CollaborationConfig, TeamMode } from '@/types'
 
 const MODE_BADGE: Record<string, { label: string; className: string }> = {
     pipeline: { label: 'Pipeline', className: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
@@ -39,6 +40,7 @@ const MODE_BADGE: Record<string, { label: string; className: string }> = {
 const SWITCHABLE_MODES: { value: TeamMode; label: string }[] = [
     { value: 'pipeline', label: 'Pipeline' },
     { value: 'orchestrator', label: 'Orchestrator' },
+    { value: 'collaboration', label: 'Collaboration' },
 ]
 
 /**
@@ -66,6 +68,7 @@ export function TeamDetail() {
     const { runs, isLoading: isLoadingRuns } = useTeamRuns(id ?? null)
     const pipelineConfig = team?.mode === 'pipeline' ? (team.config as PipelineConfig) : undefined
     const orchestratorConfig = team?.mode === 'orchestrator' ? (team.config as OrchestratorConfig) : undefined
+    const collaborationConfig = team?.mode === 'collaboration' ? (team.config as CollaborationConfig) : undefined
     const stepCount = pipelineConfig?.steps.length ?? 0
 
     // Close mode dropdown on outside click
@@ -127,10 +130,12 @@ export function TeamDetail() {
         }
         const defaultConfig = newMode === 'orchestrator'
             ? { brain_agent_id: '', quality_threshold: 0.7, routing_strategy: 'auto', planner_enabled: false, max_delegation_depth: 3 }
-            : { steps: [], auto_handoff: true }
+            : newMode === 'collaboration'
+                ? { agent_ids: [], speaker_selection: 'round_robin', max_turns: 10, termination_condition: 'max_turns', consensus_phrase: 'I agree with the consensus' }
+                : { steps: [], auto_handoff: true }
 
         updateMutation.mutate(
-            { id: team.id, updates: { mode: newMode, config: defaultConfig as PipelineConfig | OrchestratorConfig } },
+            { id: team.id, updates: { mode: newMode, config: defaultConfig as PipelineConfig | OrchestratorConfig | CollaborationConfig } },
             { onSuccess: () => setShowModeDropdown(false) },
         )
     }
@@ -357,6 +362,22 @@ export function TeamDetail() {
                                                 max_delegation_depth: newConfig.max_delegation_depth,
                                             },
                                         },
+                                    })
+                                }}
+                            />
+                        </div>
+                    )}
+
+                    {/* Collaboration configuration */}
+                    {team.mode === 'collaboration' && collaborationConfig && (
+                        <div className="rounded-xl border border-border bg-surface-card p-6">
+                            <CollaborationConfigPanel
+                                agents={agents}
+                                config={collaborationConfig}
+                                onChange={(newConfig) => {
+                                    updateMutation.mutate({
+                                        id: team.id,
+                                        updates: { config: newConfig },
                                     })
                                 }}
                             />

@@ -92,9 +92,21 @@ export interface OrchestratorConfig {
     max_delegation_depth: number;
 }
 
+export type SpeakerSelection = 'round_robin' | 'llm_select' | 'facilitator';
+export type TerminationCondition = 'consensus' | 'max_turns' | 'facilitator_decision';
+
+export interface CollaborationConfig {
+    agent_ids: string[];
+    speaker_selection: SpeakerSelection;
+    max_turns: number;
+    termination_condition: TerminationCondition;
+    consensus_phrase: string;
+    facilitator_agent_id?: string;
+}
+
 export interface TeamConfig {
     mode: 'pipeline' | 'orchestrator' | 'collaboration';
-    config: PipelineConfig | OrchestratorConfig;
+    config: PipelineConfig | OrchestratorConfig | CollaborationConfig;
 }
 
 export interface TeamHandoffContext {
