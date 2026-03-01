@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { processTask } from './executor';
 import { processPipelineRun } from './pipelineExecutor';
 import { processOrchestratorRun } from './orchestratorExecutor';
+import { processCollaborationRun } from './collaborationExecutor';
 import { registerRunner, deregisterRunner, getRunnerId, getInstanceName, runRecoverySweep, RECOVERY_INTERVAL_MS } from './runnerRegistry';
 import { evaluateTriggers, TRIGGER_EVAL_INTERVAL_MS } from './triggerScheduler';
 import type { Task, TeamRun } from './types';
@@ -76,6 +77,10 @@ async function poll() {
             if (teamMode === 'orchestrator') {
                 processOrchestratorRun(claimedRun).catch((err: unknown) => {
                     logError(`Unhandled outer error processing orchestrator run ${claimedRun.id}:`, err);
+                });
+            } else if (teamMode === 'collaboration') {
+                processCollaborationRun(claimedRun).catch((err: unknown) => {
+                    logError(`Unhandled outer error processing collaboration run ${claimedRun.id}:`, err);
                 });
             } else {
                 processPipelineRun(claimedRun).catch((err: unknown) => {

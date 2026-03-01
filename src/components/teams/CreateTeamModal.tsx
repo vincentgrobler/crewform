@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { X, Loader2, GitBranch, Lock } from 'lucide-react'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useCreateTeam } from '@/hooks/useCreateTeam'
-import type { TeamMode, PipelineConfig, OrchestratorConfig } from '@/types'
+import type { TeamMode, PipelineConfig, OrchestratorConfig, CollaborationConfig } from '@/types'
 
 interface CreateTeamModalProps {
     onClose: () => void
@@ -32,7 +32,7 @@ const MODES: { value: TeamMode; label: string; icon: typeof GitBranch; descripti
         label: 'Collaboration',
         icon: GitBranch,
         description: 'Agents discuss and converge on a consensus output.',
-        available: false,
+        available: true,
     },
 ]
 
@@ -71,10 +71,18 @@ export function CreateTeamModal({ onClose }: CreateTeamModalProps) {
                 planner_enabled: false,
                 max_delegation_depth: 3,
             }
-            : {
-                steps: [] as PipelineConfig['steps'],
-                auto_handoff: true,
-            }
+            : mode === 'collaboration'
+                ? {
+                    agent_ids: [] as string[],
+                    speaker_selection: 'round_robin',
+                    max_turns: 10,
+                    termination_condition: 'max_turns',
+                    consensus_phrase: 'I agree with the consensus',
+                } as CollaborationConfig
+                : {
+                    steps: [] as PipelineConfig['steps'],
+                    auto_handoff: true,
+                }
 
         createMutation.mutate(
             {
@@ -82,7 +90,7 @@ export function CreateTeamModal({ onClose }: CreateTeamModalProps) {
                 name: trimmed,
                 description: description.trim(),
                 mode,
-                config: defaultConfig as PipelineConfig | OrchestratorConfig,
+                config: defaultConfig as PipelineConfig | OrchestratorConfig | CollaborationConfig,
             },
             {
                 onSuccess: (team) => {

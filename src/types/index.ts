@@ -160,6 +160,7 @@ export interface OrchestratorConfig {
 }
 
 export interface CollaborationConfig {
+  agent_ids: string[]
   speaker_selection: string
   max_turns: number
   termination_condition: string
