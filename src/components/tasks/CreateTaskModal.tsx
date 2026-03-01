@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useCreateTask } from '@/hooks/useCreateTask'
 import { taskSchema } from '@/lib/taskSchema'
 import { cn } from '@/lib/utils'
+import { SpeechToTextButton } from '@/components/shared/SpeechToTextButton'
 import type { TaskPriority } from '@/types'
 import type { ZodError } from 'zod'
 
@@ -125,9 +126,16 @@ export function CreateTaskModal({ onClose, initialDate }: CreateTaskModalProps) 
 
                     {/* Description */}
                     <div>
-                        <label htmlFor="task-desc" className="mb-1.5 block text-sm font-medium text-gray-300">
-                            Description
-                        </label>
+                        <div className="mb-1.5 flex items-center gap-1.5">
+                            <label htmlFor="task-desc" className="text-sm font-medium text-gray-300">
+                                Description
+                            </label>
+                            <SpeechToTextButton
+                                onTranscript={(text) => {
+                                    setDescription((prev) => prev ? `${prev} ${text}` : text)
+                                }}
+                            />
+                        </div>
                         <textarea
                             id="task-desc"
                             value={description}
