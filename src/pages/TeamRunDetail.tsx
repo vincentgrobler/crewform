@@ -20,9 +20,11 @@ import { useTeamRun } from '@/hooks/useTeamRun'
 import { useTeam } from '@/hooks/useTeam'
 import { useAgents } from '@/hooks/useAgents'
 import { useWorkspace } from '@/hooks/useWorkspace'
+import { useTeamRunAttachments } from '@/hooks/useAttachments'
 import { PipelineProgressRail } from '@/components/teams/PipelineProgressRail'
 import { DelegationTree } from '@/components/teams/DelegationTree'
 import { CollaborationChatView } from '@/components/teams/CollaborationChatView'
+import { FileAttachmentsList } from '@/components/shared/FileAttachmentsList'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import type { PipelineConfig, OrchestratorConfig, TeamMessage } from '@/types'
@@ -60,6 +62,7 @@ export function TeamRunDetail() {
     const { team } = useTeam(teamId ?? null)
     const { agents } = useAgents(workspaceId)
     const { run, messages, isLoading, error } = useTeamRun(runId ?? null)
+    const { data: attachments } = useTeamRunAttachments(runId ?? undefined)
 
     const isOrchestrator = team?.mode === 'orchestrator'
     const isCollaboration = team?.mode === 'collaboration'
@@ -259,6 +262,18 @@ export function TeamRunDetail() {
                                                     : 'Pipeline is executing. Updates appear in real-time.'}
                                         </p>
                                     </div>
+                                </div>
+                            )}
+
+                            {/* Attachments */}
+                            {attachments && attachments.length > 0 && (
+                                <div>
+                                    <h3 className="text-sm font-medium text-gray-400 mb-2">Files</h3>
+                                    <FileAttachmentsList
+                                        attachments={attachments}
+                                        canDelete
+                                        queryKey={['attachments', 'team_run', runId]}
+                                    />
                                 </div>
                             )}
                         </div>

@@ -10,6 +10,8 @@ import { useCreateTask } from '@/hooks/useCreateTask'
 import { taskSchema } from '@/lib/taskSchema'
 import { cn } from '@/lib/utils'
 import { SpeechToTextButton } from '@/components/shared/SpeechToTextButton'
+import { FileUploadZone } from '@/components/shared/FileUploadZone'
+import { uploadAttachments } from '@/db/attachments'
 import type { TaskPriority } from '@/types'
 import type { ZodError } from 'zod'
 
@@ -35,6 +37,8 @@ export function CreateTaskModal({ onClose, initialDate }: CreateTaskModalProps) 
     const [description, setDescription] = useState('')
     const [agentId, setAgentId] = useState('')
     const [priority, setPriority] = useState<TaskPriority>('medium')
+    const [files, setFiles] = useState<File[]>([])
+    const [isUploading, setIsUploading] = useState(false)
     const [scheduledFor, setScheduledFor] = useState(() => {
         if (initialDate) {
             // From calendar: use the selected date at 09:00 local time
@@ -70,7 +74,28 @@ export function CreateTaskModal({ onClose, initialDate }: CreateTaskModalProps) 
                     created_by: user.id,
                     scheduled_for: scheduledFor ? new Date(scheduledFor).toISOString() : null,
                 },
-                { onSuccess: () => onClose() },
+                {
+                    onSuccess: async (created) => {
+                        // Upload attached files (non-blocking — task is created even if upload fails)
+                        if (files.length > 0) {
+                            setIsUploading(true)
+                            try {
+                                await uploadAttachments({
+                                    workspaceId,
+                                    taskId: created.id,
+                                    direction: 'input',
+                                    files,
+                                    userId: user.id,
+                                })
+                            } catch (err) {
+                                console.error('[CreateTask] File upload error:', err)
+                            } finally {
+                                setIsUploading(false)
+                            }
+                        }
+                        onClose()
+                    },
+                },
             )
         } catch (err) {
             const zodError = err as ZodError
@@ -145,6 +170,18 @@ export function CreateTaskModal({ onClose, initialDate }: CreateTaskModalProps) 
                             className="w-full rounded-lg border border-border bg-surface-primary px-4 py-2.5 text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
                         />
                         {fieldErrors.description && <p className="mt-1 text-xs text-red-400">{fieldErrors.description}</p>}
+                    </div>
+
+                    {/* File Attachments */}
+                    <div>
+                        <label className="mb-1.5 block text-sm font-medium text-gray-300">
+                            Attachments <span className="text-gray-600">(optional)</span>
+                        </label>
+                        <FileUploadZone
+                            files={files}
+                            onChange={setFiles}
+                            disabled={createMutation.isPending || isUploading}
+                        />
                     </div>
 
                     {/* Agent */}

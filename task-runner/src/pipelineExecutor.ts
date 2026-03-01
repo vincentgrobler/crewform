@@ -5,6 +5,7 @@ import { executeGoogle } from './providers/google';
 import { decryptApiKey } from './crypto';
 import { writeTeamRunUsageRecord } from './usageWriter';
 import { dispatchTeamRunWebhooks } from './webhookDispatcher';
+import { loadInputFiles, buildFileContext, extractAndSaveArtifacts } from './fileAttachments';
 import type { TeamRun, Agent, ApiKey, PipelineConfig, PipelineStep, TeamHandoffContext, TokenUsage } from './types';
 
 /**
@@ -49,7 +50,23 @@ export async function processPipelineRun(run: TeamRun): Promise<void> {
             throw new Error('Pipeline has no steps configured.');
         }
 
-        // 2. Execute each step sequentially
+        // 2. Load input files for the team run
+        const inputFiles = await loadInputFiles(null, run.id);
+        let fileContextBlock = '';
+        if (inputFiles.length > 0) {
+            // Peek at first step's agent model to determine multimodal support
+            const { data: firstAgent } = await supabase
+                .from('agents')
+                .select('model')
+                .eq('id', steps[0].agent_id)
+                .single();
+            const model = (firstAgent as { model: string } | null)?.model ?? '';
+            const { textBlock } = buildFileContext(inputFiles, model);
+            fileContextBlock = textBlock;
+            console.log(`[PipelineExecutor] Loaded ${inputFiles.length} input file(s) for run ${run.id}`);
+        }
+
+        // 3. Execute each step sequentially
         const accumulatedOutputs: string[] = [];
         let previousOutput: string | null = null;
 
@@ -62,6 +79,7 @@ export async function processPipelineRun(run: TeamRun): Promise<void> {
                 inputTask: run.input_task,
                 previousOutput,
                 accumulatedOutputs,
+                fileContextBlock: i === 0 ? fileContextBlock : '',
             });
 
             if (stepOutput !== null) {
@@ -111,6 +129,9 @@ export async function processPipelineRun(run: TeamRun): Promise<void> {
 
         console.log(`[PipelineExecutor] Run ${run.id} completed (${steps.length} steps, ${totalTokens} tokens, $${totalCost.toFixed(4)})`);
 
+        // Extract output file artifacts (fire-and-forget)
+        void extractAndSaveArtifacts(run.workspace_id, null, run.id, finalOutput);
+
         // Fire team_run.completed webhook (fire-and-forget)
         void dispatchTeamRunWebhooks(
             { id: run.id, team_id: run.team_id, workspace_id: run.workspace_id, status: 'completed', input_task: run.input_task, output: finalOutput },
@@ -151,6 +172,7 @@ interface StepInput {
     inputTask: string;
     previousOutput: string | null;
     accumulatedOutputs: string[];
+    fileContextBlock?: string;
 }
 
 interface StepResult {
@@ -161,7 +183,7 @@ interface StepResult {
 }
 
 async function executeStep(input: StepInput): Promise<StepResult | null> {
-    const { run, step, stepIndex, inputTask, previousOutput, accumulatedOutputs } = input;
+    const { run, step, stepIndex, inputTask, previousOutput, accumulatedOutputs, fileContextBlock } = input;
     let attempts = 0;
     const maxAttempts = step.on_failure === 'retry' ? step.max_retries + 1 : 1;
 
@@ -237,7 +259,12 @@ async function executeStep(input: StepInput): Promise<StepResult | null> {
 
             // Build prompt with handoff context
             const systemPrompt = agent.system_prompt || 'You are a helpful AI assistant.';
-            const userPrompt = buildStepPrompt(step, handoffContext);
+            let userPrompt = buildStepPrompt(step, handoffContext);
+
+            // Append file context for the first step
+            if (fileContextBlock) {
+                userPrompt += fileContextBlock;
+            }
 
             // Execute LLM — no streaming for pipeline steps (results captured atomically)
             const noopStream = async () => { /* no streaming for pipeline steps */ };

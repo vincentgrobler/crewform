@@ -26,6 +26,15 @@ interface WebhookPayload {
     result_full: string | null;
     error: string | null;
     timestamp: string;
+    attachments: WebhookAttachment[];
+}
+
+interface WebhookAttachment {
+    name: string;
+    type: string;
+    size: number;
+    url: string;
+    direction: 'input' | 'output';
 }
 
 interface TeamRunInfo {
@@ -51,6 +60,65 @@ interface AgentInfo {
     name: string;
 }
 
+// ─── Attachment loader for webhook payloads ──────────────────────────────────
+
+const ATTACHMENT_BUCKET = 'attachments';
+
+interface AttachmentRecord {
+    file_name: string;
+    file_type: string;
+    file_size: number;
+    storage_path: string;
+    direction: string;
+}
+
+/**
+ * Load file attachments for a task or team run and generate signed download URLs.
+ * Returns an empty array if no attachments exist (never throws).
+ */
+async function loadAttachmentsForPayload(
+    taskId: string | null,
+    teamRunId: string | null,
+): Promise<WebhookAttachment[]> {
+    try {
+        let query = supabase
+            .from('file_attachments')
+            .select('file_name, file_type, file_size, storage_path, direction');
+
+        if (taskId) {
+            query = query.eq('task_id', taskId);
+        } else if (teamRunId) {
+            query = query.eq('team_run_id', teamRunId);
+        } else {
+            return [];
+        }
+
+        const { data: records, error } = await query;
+        if (error || !records || records.length === 0) return [];
+
+        const results: WebhookAttachment[] = [];
+        for (const record of records as AttachmentRecord[]) {
+            const { data: urlData, error: urlError } = await supabase.storage
+                .from(ATTACHMENT_BUCKET)
+                .createSignedUrl(record.storage_path, 86400); // 24 hours
+
+            if (urlError || !urlData) continue;
+
+            results.push({
+                name: record.file_name,
+                type: record.file_type,
+                size: record.file_size,
+                url: urlData.signedUrl,
+                direction: record.direction as 'input' | 'output',
+            });
+        }
+        return results;
+    } catch {
+        console.error('[Webhooks] Failed to load attachments for payload');
+        return [];
+    }
+}
+
 // ─── Main dispatcher ────────────────────────────────────────────────────────
 
 /**
@@ -74,6 +142,7 @@ export async function dispatchWebhooks(
         if (error || !routes || routes.length === 0) return;
 
         // 2. Build payload
+        const attachments = await loadAttachmentsForPayload(task.id, null);
         const payload: WebhookPayload = {
             event,
             task_id: task.id,
@@ -85,6 +154,7 @@ export async function dispatchWebhooks(
             result_full: task.result ?? null,
             error: task.error ?? null,
             timestamp: new Date().toISOString(),
+            attachments,
         };
 
         // 3. Dispatch to each route (fire-and-forget, parallel)
@@ -120,6 +190,7 @@ export async function dispatchTeamRunWebhooks(
 
         if (error || !routes || routes.length === 0) return;
 
+        const attachments = await loadAttachmentsForPayload(null, teamRun.id);
         const payload: WebhookPayload = {
             event,
             task_id: null,
@@ -131,6 +202,7 @@ export async function dispatchTeamRunWebhooks(
             result_full: teamRun.output ?? null,
             error: teamRun.error_message ?? null,
             timestamp: new Date().toISOString(),
+            attachments,
         };
 
         const promises = (routes as OutputRoute[]).map((route) =>
