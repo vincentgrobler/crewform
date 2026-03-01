@@ -12,26 +12,42 @@ export interface DailyCompletion {
     total: number
 }
 
-/** Fetch daily task completion counts between start and end dates */
+/** Fetch daily task + team run completion counts between start and end dates */
 export async function fetchCompletionOverTime(
     workspaceId: string,
     startDate: string,
     endDate: string,
 ): Promise<DailyCompletion[]> {
-    const { data, error } = await supabase
-        .from('agent_tasks')
-        .select('status, completed_at')
-        .eq('workspace_id', workspaceId)
-        .gte('completed_at', startDate)
-        .lte('completed_at', endDate)
-        .in('status', ['completed', 'failed'])
+    const [taskResult, teamResult] = await Promise.all([
+        supabase
+            .from('agent_tasks')
+            .select('status, completed_at')
+            .eq('workspace_id', workspaceId)
+            .gte('completed_at', startDate)
+            .lte('completed_at', endDate)
+            .in('status', ['completed', 'failed']),
+        supabase
+            .from('team_runs')
+            .select('status, completed_at')
+            .eq('workspace_id', workspaceId)
+            .gte('completed_at', startDate)
+            .lte('completed_at', endDate)
+            .in('status', ['completed', 'failed']),
+    ])
 
-    if (error) throw error
+    if (taskResult.error) throw taskResult.error
+    if (teamResult.error) throw teamResult.error
+
+    // Merge both sources
+    const allRows = [
+        ...(taskResult.data as Array<{ status: string; completed_at: string }>),
+        ...(teamResult.data as Array<{ status: string; completed_at: string }>),
+    ]
 
     // Group by day
     const dayMap = new Map<string, DailyCompletion>()
 
-    for (const row of data as Array<{ status: string; completed_at: string }>) {
+    for (const row of allRows) {
         if (!row.completed_at) continue
         const day = row.completed_at.slice(0, 10) // 'YYYY-MM-DD'
 
@@ -67,13 +83,13 @@ export interface AgentCost {
     cost: number
 }
 
-/** Fetch total cost per agent in the date range */
+/** Fetch total cost per agent in the date range (tasks + team runs via usage_records) */
 export async function fetchCostByAgent(
     workspaceId: string,
     startDate: string,
     endDate: string,
 ): Promise<AgentCost[]> {
-    const [taskResult, agentResult] = await Promise.all([
+    const [taskResult, usageResult, agentResult] = await Promise.all([
         supabase
             .from('agent_tasks')
             .select('agent_id, cost_estimate_usd')
@@ -81,12 +97,21 @@ export async function fetchCostByAgent(
             .gte('created_at', startDate)
             .lte('created_at', endDate),
         supabase
+            .from('usage_records')
+            .select('agent_id, cost_usd')
+            .eq('workspace_id', workspaceId)
+            .eq('event_type', 'team_run')
+            .gte('recorded_at', startDate)
+            .lte('recorded_at', endDate)
+            .not('agent_id', 'is', null),
+        supabase
             .from('agents')
             .select('id, name')
             .eq('workspace_id', workspaceId),
     ])
 
     if (taskResult.error) throw taskResult.error
+    if (usageResult.error) throw usageResult.error
     if (agentResult.error) throw agentResult.error
 
     const agentMap = new Map<string, string>()
@@ -95,9 +120,18 @@ export async function fetchCostByAgent(
     }
 
     const costMap = new Map<string, number>()
+
+    // Task costs
     for (const row of taskResult.data as Array<{ agent_id: string; cost_estimate_usd: number }>) {
         const prev = costMap.get(row.agent_id) ?? 0
         costMap.set(row.agent_id, prev + row.cost_estimate_usd)
+    }
+
+    // Team run costs (from usage_records)
+    for (const row of usageResult.data as Array<{ agent_id: string; cost_usd: number }>) {
+        if (!row.agent_id) continue
+        const prev = costMap.get(row.agent_id) ?? 0
+        costMap.set(row.agent_id, prev + row.cost_usd)
     }
 
     return Array.from(costMap.entries())
@@ -123,25 +157,40 @@ const STATUS_COLORS: Record<string, string> = {
     pending: '#6b7280',
     dispatched: '#06b6d4',
     cancelled: '#64748b',
+    paused: '#eab308',
 }
 
-/** Fetch task count per status in the date range */
+/** Fetch task + team run count per status in the date range */
 export async function fetchStatusDistribution(
     workspaceId: string,
     startDate: string,
     endDate: string,
 ): Promise<StatusCount[]> {
-    const { data, error } = await supabase
-        .from('tasks')
-        .select('status')
-        .eq('workspace_id', workspaceId)
-        .gte('created_at', startDate)
-        .lte('created_at', endDate)
+    const [taskResult, teamResult] = await Promise.all([
+        supabase
+            .from('tasks')
+            .select('status')
+            .eq('workspace_id', workspaceId)
+            .gte('created_at', startDate)
+            .lte('created_at', endDate),
+        supabase
+            .from('team_runs')
+            .select('status')
+            .eq('workspace_id', workspaceId)
+            .gte('created_at', startDate)
+            .lte('created_at', endDate),
+    ])
 
-    if (error) throw error
+    if (taskResult.error) throw taskResult.error
+    if (teamResult.error) throw teamResult.error
+
+    const allRows = [
+        ...(taskResult.data as Array<{ status: string }>),
+        ...(teamResult.data as Array<{ status: string }>),
+    ]
 
     const countMap = new Map<string, number>()
-    for (const row of data as Array<{ status: string }>) {
+    for (const row of allRows) {
         countMap.set(row.status, (countMap.get(row.status) ?? 0) + 1)
     }
 
@@ -162,29 +211,54 @@ export interface ModelUsage {
     tokens: number
 }
 
-/** Fetch usage count per model in the date range */
+/** Fetch usage count per model in the date range (tasks + team run usage_records) */
 export async function fetchTopModels(
     workspaceId: string,
     startDate: string,
     endDate: string,
 ): Promise<ModelUsage[]> {
-    const { data, error } = await supabase
-        .from('agent_tasks')
-        .select('model_used, tokens_used')
-        .eq('workspace_id', workspaceId)
-        .gte('created_at', startDate)
-        .lte('created_at', endDate)
-        .not('model_used', 'is', null)
+    const [taskResult, usageResult] = await Promise.all([
+        supabase
+            .from('agent_tasks')
+            .select('model_used, tokens_used')
+            .eq('workspace_id', workspaceId)
+            .gte('created_at', startDate)
+            .lte('created_at', endDate)
+            .not('model_used', 'is', null),
+        supabase
+            .from('usage_records')
+            .select('tokens_used, metadata')
+            .eq('workspace_id', workspaceId)
+            .eq('event_type', 'team_run')
+            .gte('recorded_at', startDate)
+            .lte('recorded_at', endDate),
+    ])
 
-    if (error) throw error
+    if (taskResult.error) throw taskResult.error
+    if (usageResult.error) throw usageResult.error
 
     const modelMap = new Map<string, ModelUsage>()
-    for (const row of data as Array<{ model_used: string; tokens_used: number }>) {
+
+    // From tasks
+    for (const row of taskResult.data as Array<{ model_used: string; tokens_used: number }>) {
         if (!row.model_used) continue
         let entry = modelMap.get(row.model_used)
         if (!entry) {
             entry = { model: row.model_used, count: 0, tokens: 0 }
             modelMap.set(row.model_used, entry)
+        }
+        entry.count++
+        entry.tokens += row.tokens_used
+    }
+
+    // From team run usage_records (model stored in metadata.model)
+    for (const row of usageResult.data as Array<{ tokens_used: number; metadata: Record<string, unknown> }>) {
+        const model = row.metadata.model as string | undefined
+        if (!model) continue
+        let entry = modelMap.get(model)
+        if (!entry) {
+            entry = { model, count: 0, tokens: 0 }
+            modelMap.set(model, entry)
         }
         entry.count++
         entry.tokens += row.tokens_used
@@ -202,30 +276,50 @@ export interface DailyCost {
     cumulative: number
 }
 
-/** Fetch daily cost time-series between start and end dates */
+/** Fetch daily cost time-series between start and end dates (tasks + team runs) */
 export async function fetchCostOverTime(
     workspaceId: string,
     startDate: string,
     endDate: string,
 ): Promise<DailyCost[]> {
-    const { data, error } = await supabase
-        .from('agent_tasks')
-        .select('cost_estimate_usd, tokens_used, completed_at')
-        .eq('workspace_id', workspaceId)
-        .gte('completed_at', startDate)
-        .lte('completed_at', endDate)
-        .in('status', ['completed', 'failed'])
+    const [taskResult, teamResult] = await Promise.all([
+        supabase
+            .from('agent_tasks')
+            .select('cost_estimate_usd, tokens_used, completed_at')
+            .eq('workspace_id', workspaceId)
+            .gte('completed_at', startDate)
+            .lte('completed_at', endDate)
+            .in('status', ['completed', 'failed']),
+        supabase
+            .from('team_runs')
+            .select('cost_estimate_usd, tokens_total, completed_at')
+            .eq('workspace_id', workspaceId)
+            .gte('completed_at', startDate)
+            .lte('completed_at', endDate)
+            .in('status', ['completed', 'failed']),
+    ])
 
-    if (error) throw error
+    if (taskResult.error) throw taskResult.error
+    if (teamResult.error) throw teamResult.error
 
     // Group by day
     const dayMap = new Map<string, { cost: number; tokens: number }>()
-    for (const row of data as Array<{ cost_estimate_usd: number | null; tokens_used: number | null; completed_at: string }>) {
+
+    for (const row of taskResult.data as Array<{ cost_estimate_usd: number | null; tokens_used: number | null; completed_at: string }>) {
         if (!row.completed_at) continue
         const day = row.completed_at.slice(0, 10)
         const entry = dayMap.get(day) ?? { cost: 0, tokens: 0 }
         entry.cost += row.cost_estimate_usd ?? 0
         entry.tokens += row.tokens_used ?? 0
+        dayMap.set(day, entry)
+    }
+
+    for (const row of teamResult.data as Array<{ cost_estimate_usd: number | null; tokens_total: number | null; completed_at: string }>) {
+        if (!row.completed_at) continue
+        const day = row.completed_at.slice(0, 10)
+        const entry = dayMap.get(day) ?? { cost: 0, tokens: 0 }
+        entry.cost += row.cost_estimate_usd ?? 0
+        entry.tokens += row.tokens_total ?? 0
         dayMap.set(day, entry)
     }
 
@@ -256,28 +350,45 @@ export interface TimeSavedData {
     avgSecondsPerTask: number
 }
 
-/** Estimate time saved by agents compared to manual work */
+/** Estimate time saved by agents compared to manual work (tasks + team runs) */
 export async function fetchTimeSaved(
     workspaceId: string,
     startDate: string,
     endDate: string,
 ): Promise<TimeSavedData> {
-    const { data, error } = await supabase
-        .from('agent_tasks')
-        .select('started_at, completed_at')
-        .eq('workspace_id', workspaceId)
-        .eq('status', 'completed')
-        .gte('completed_at', startDate)
-        .lte('completed_at', endDate)
-        .not('started_at', 'is', null)
-        .not('completed_at', 'is', null)
+    const [taskResult, teamResult] = await Promise.all([
+        supabase
+            .from('agent_tasks')
+            .select('started_at, completed_at')
+            .eq('workspace_id', workspaceId)
+            .eq('status', 'completed')
+            .gte('completed_at', startDate)
+            .lte('completed_at', endDate)
+            .not('started_at', 'is', null)
+            .not('completed_at', 'is', null),
+        supabase
+            .from('team_runs')
+            .select('started_at, completed_at')
+            .eq('workspace_id', workspaceId)
+            .eq('status', 'completed')
+            .gte('completed_at', startDate)
+            .lte('completed_at', endDate)
+            .not('started_at', 'is', null)
+            .not('completed_at', 'is', null),
+    ])
 
-    if (error) throw error
+    if (taskResult.error) throw taskResult.error
+    if (teamResult.error) throw teamResult.error
+
+    const allRows = [
+        ...(taskResult.data as Array<{ started_at: string; completed_at: string }>),
+        ...(teamResult.data as Array<{ started_at: string; completed_at: string }>),
+    ]
 
     let totalSeconds = 0
     let count = 0
 
-    for (const row of data as Array<{ started_at: string; completed_at: string }>) {
+    for (const row of allRows) {
         const start = new Date(row.started_at).getTime()
         const end = new Date(row.completed_at).getTime()
         const duration = (end - start) / 1000
@@ -298,9 +409,11 @@ export async function fetchTimeSaved(
 // ─── CSV Export ──────────────────────────────────────────────────────────────
 
 export interface TaskExportRow {
+    type: string          // 'task' or 'team_run'
     date: string
     task_title: string
     agent_name: string
+    team_name: string
     status: string
     model: string
     tokens: number
@@ -308,13 +421,13 @@ export interface TaskExportRow {
     duration_seconds: number
 }
 
-/** Fetch all task data for CSV export */
+/** Fetch all task + team run data for CSV export */
 export async function fetchTasksForExport(
     workspaceId: string,
     startDate: string,
     endDate: string,
 ): Promise<TaskExportRow[]> {
-    const [taskResult, agentResult] = await Promise.all([
+    const [taskResult, teamRunResult, agentResult, teamResult] = await Promise.all([
         supabase
             .from('agent_tasks')
             .select('task_id, agent_id, status, model_used, tokens_used, cost_estimate_usd, started_at, completed_at')
@@ -322,17 +435,34 @@ export async function fetchTasksForExport(
             .gte('created_at', startDate)
             .lte('created_at', endDate),
         supabase
+            .from('team_runs')
+            .select('id, team_id, status, tokens_total, cost_estimate_usd, started_at, completed_at, input_task')
+            .eq('workspace_id', workspaceId)
+            .gte('created_at', startDate)
+            .lte('created_at', endDate),
+        supabase
             .from('agents')
+            .select('id, name')
+            .eq('workspace_id', workspaceId),
+        supabase
+            .from('teams')
             .select('id, name')
             .eq('workspace_id', workspaceId),
     ])
 
     if (taskResult.error) throw taskResult.error
+    if (teamRunResult.error) throw teamRunResult.error
     if (agentResult.error) throw agentResult.error
+    if (teamResult.error) throw teamResult.error
 
     const agentMap = new Map<string, string>()
     for (const a of agentResult.data as Array<{ id: string; name: string }>) {
         agentMap.set(a.id, a.name)
+    }
+
+    const teamMap = new Map<string, string>()
+    for (const t of teamResult.data as Array<{ id: string; name: string }>) {
+        teamMap.set(t.id, t.name)
     }
 
     // Fetch task titles
@@ -352,7 +482,8 @@ export async function fetchTasksForExport(
         }
     }
 
-    return (taskResult.data as Array<{
+    // Task rows
+    const taskRows: TaskExportRow[] = (taskResult.data as Array<{
         task_id: string; agent_id: string; status: string;
         model_used: string | null; tokens_used: number | null; cost_estimate_usd: number | null;
         started_at: string | null; completed_at: string | null
@@ -361,14 +492,42 @@ export async function fetchTasksForExport(
             ? new Date(row.completed_at).getTime() - new Date(row.started_at).getTime()
             : 0
         return {
+            type: 'task',
             date: row.completed_at?.slice(0, 10) ?? '',
             task_title: titleMap.get(row.task_id) ?? 'Unknown',
             agent_name: agentMap.get(row.agent_id) ?? 'Unknown',
+            team_name: '',
             status: row.status,
             model: row.model_used ?? '',
             tokens: row.tokens_used ?? 0,
             cost_usd: row.cost_estimate_usd ?? 0,
             duration_seconds: Math.round(durationMs / 1000),
         }
-    }).sort((a, b) => a.date.localeCompare(b.date))
+    })
+
+    // Team run rows
+    const teamRunRows: TaskExportRow[] = (teamRunResult.data as Array<{
+        id: string; team_id: string; status: string;
+        tokens_total: number | null; cost_estimate_usd: number | null;
+        started_at: string | null; completed_at: string | null;
+        input_task: string
+    }>).map(row => {
+        const durationMs = row.started_at && row.completed_at
+            ? new Date(row.completed_at).getTime() - new Date(row.started_at).getTime()
+            : 0
+        return {
+            type: 'team_run',
+            date: row.completed_at?.slice(0, 10) ?? '',
+            task_title: row.input_task.slice(0, 100),
+            agent_name: '',
+            team_name: teamMap.get(row.team_id) ?? 'Unknown',
+            status: row.status,
+            model: '',
+            tokens: row.tokens_total ?? 0,
+            cost_usd: row.cost_estimate_usd ?? 0,
+            duration_seconds: Math.round(durationMs / 1000),
+        }
+    })
+
+    return [...taskRows, ...teamRunRows].sort((a, b) => a.date.localeCompare(b.date))
 }

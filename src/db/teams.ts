@@ -2,6 +2,7 @@
 // Copyright (C) 2026 CrewForm
 
 import { supabase } from '@/lib/supabase'
+import { writeAuditLog } from '@/db/members'
 import type { Team, TeamMember, TeamMode, PipelineConfig, OrchestratorConfig, CollaborationConfig } from '@/types'
 
 /**
@@ -51,7 +52,17 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
         .single()
 
     if (result.error) throw result.error
-    return result.data as Team
+    const team = result.data as Team
+
+    // Audit log (fire-and-forget)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+        writeAuditLog(input.workspace_id, user.id, 'team_created', {
+            team_name: team.name, mode: team.mode,
+        }).catch(() => { /* ignore audit failures */ })
+    }
+
+    return team
 }
 
 /** Update a team's details */
@@ -67,17 +78,37 @@ export async function updateTeam(
         .single()
 
     if (result.error) throw result.error
-    return result.data as Team
+    const team = result.data as Team
+
+    // Audit log (fire-and-forget)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+        writeAuditLog(team.workspace_id, user.id, 'team_updated', {
+            team_name: team.name, fields: Object.keys(updates).join(', '),
+        }).catch(() => { /* ignore audit failures */ })
+    }
+
+    return team
 }
 
 /** Delete a team */
-export async function deleteTeam(id: string): Promise<void> {
+export async function deleteTeam(id: string, workspaceId?: string): Promise<void> {
     const result = await supabase
         .from('teams')
         .delete()
         .eq('id', id)
 
     if (result.error) throw result.error
+
+    // Audit log (fire-and-forget)
+    if (workspaceId) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+            writeAuditLog(workspaceId, user.id, 'team_deleted', {
+                team_id: id,
+            }).catch(() => { /* ignore audit failures */ })
+        }
+    }
 }
 
 // ─── Team Members ────────────────────────────────────────────────────────────

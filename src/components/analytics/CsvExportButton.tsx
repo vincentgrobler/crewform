@@ -13,14 +13,16 @@ interface CsvExportButtonProps {
 }
 
 function toCsv(rows: TaskExportRow[]): string {
-    const headers = ['Date', 'Task', 'Agent', 'Status', 'Model', 'Tokens', 'Cost (USD)', 'Duration (s)']
+    const headers = ['Type', 'Date', 'Task', 'Agent', 'Team', 'Status', 'Model', 'Tokens', 'Cost (USD)', 'Duration (s)']
     const lines = [headers.join(',')]
 
     for (const row of rows) {
         lines.push([
+            row.type,
             row.date,
             `"${row.task_title.replace(/"/g, '""')}"`,
             `"${row.agent_name.replace(/"/g, '""')}"`,
+            `"${row.team_name.replace(/"/g, '""')}"`,
             row.status,
             row.model,
             row.tokens.toString(),

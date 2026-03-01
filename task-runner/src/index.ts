@@ -3,6 +3,7 @@ import { processTask } from './executor';
 import { processPipelineRun } from './pipelineExecutor';
 import { processOrchestratorRun } from './orchestratorExecutor';
 import { processCollaborationRun } from './collaborationExecutor';
+import { writeTeamRunAudit } from './auditWriter';
 import { registerRunner, deregisterRunner, getRunnerId, getInstanceName, runRecoverySweep, RECOVERY_INTERVAL_MS } from './runnerRegistry';
 import { evaluateTriggers, TRIGGER_EVAL_INTERVAL_MS } from './triggerScheduler';
 import type { Task, TeamRun } from './types';
@@ -65,6 +66,11 @@ async function poll() {
             const claimedRun = teamRunData[0];
             log(`Claimed team run ${claimedRun.id}`);
 
+            // Audit: team run started
+            void writeTeamRunAudit(claimedRun.workspace_id, claimedRun.created_by, 'team_run_started', {
+                team_id: claimedRun.team_id, run_id: claimedRun.id,
+            });
+
             // Determine team mode to route to correct executor
             const teamResponse = await supabase
                 .from('teams')
@@ -75,16 +81,37 @@ async function poll() {
             const teamMode = (teamResponse.data as { mode: string } | null)?.mode ?? 'pipeline';
 
             if (teamMode === 'orchestrator') {
-                processOrchestratorRun(claimedRun).catch((err: unknown) => {
+                processOrchestratorRun(claimedRun).then(() => {
+                    void writeTeamRunAudit(claimedRun.workspace_id, claimedRun.created_by, 'team_run_completed', {
+                        team_id: claimedRun.team_id, run_id: claimedRun.id,
+                    });
+                }).catch((err: unknown) => {
                     logError(`Unhandled outer error processing orchestrator run ${claimedRun.id}:`, err);
+                    void writeTeamRunAudit(claimedRun.workspace_id, claimedRun.created_by, 'team_run_failed', {
+                        team_id: claimedRun.team_id, run_id: claimedRun.id,
+                    });
                 });
             } else if (teamMode === 'collaboration') {
-                processCollaborationRun(claimedRun).catch((err: unknown) => {
+                processCollaborationRun(claimedRun).then(() => {
+                    void writeTeamRunAudit(claimedRun.workspace_id, claimedRun.created_by, 'team_run_completed', {
+                        team_id: claimedRun.team_id, run_id: claimedRun.id,
+                    });
+                }).catch((err: unknown) => {
                     logError(`Unhandled outer error processing collaboration run ${claimedRun.id}:`, err);
+                    void writeTeamRunAudit(claimedRun.workspace_id, claimedRun.created_by, 'team_run_failed', {
+                        team_id: claimedRun.team_id, run_id: claimedRun.id,
+                    });
                 });
             } else {
-                processPipelineRun(claimedRun).catch((err: unknown) => {
+                processPipelineRun(claimedRun).then(() => {
+                    void writeTeamRunAudit(claimedRun.workspace_id, claimedRun.created_by, 'team_run_completed', {
+                        team_id: claimedRun.team_id, run_id: claimedRun.id,
+                    });
+                }).catch((err: unknown) => {
                     logError(`Unhandled outer error processing team run ${claimedRun.id}:`, err);
+                    void writeTeamRunAudit(claimedRun.workspace_id, claimedRun.created_by, 'team_run_failed', {
+                        team_id: claimedRun.team_id, run_id: claimedRun.id,
+                    });
                 });
             }
 
