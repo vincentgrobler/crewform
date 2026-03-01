@@ -18,7 +18,7 @@ import type { FileAttachment } from '@/db/attachments'
 export function useTaskAttachments(taskId: string | undefined) {
     return useQuery<FileAttachment[]>({
         queryKey: ['attachments', 'task', taskId],
-        queryFn: () => fetchTaskAttachments(taskId!),
+        queryFn: () => fetchTaskAttachments(taskId ?? ''),
         enabled: !!taskId,
     })
 }
@@ -27,7 +27,7 @@ export function useTaskAttachments(taskId: string | undefined) {
 export function useTeamRunAttachments(teamRunId: string | undefined) {
     return useQuery<FileAttachment[]>({
         queryKey: ['attachments', 'team_run', teamRunId],
-        queryFn: () => fetchTeamRunAttachments(teamRunId!),
+        queryFn: () => fetchTeamRunAttachments(teamRunId ?? ''),
         enabled: !!teamRunId,
     })
 }

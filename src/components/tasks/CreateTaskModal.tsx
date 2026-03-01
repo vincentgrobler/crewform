@@ -75,25 +75,27 @@ export function CreateTaskModal({ onClose, initialDate }: CreateTaskModalProps) 
                     scheduled_for: scheduledFor ? new Date(scheduledFor).toISOString() : null,
                 },
                 {
-                    onSuccess: async (created) => {
-                        // Upload attached files (non-blocking — task is created even if upload fails)
-                        if (files.length > 0) {
-                            setIsUploading(true)
-                            try {
-                                await uploadAttachments({
-                                    workspaceId,
-                                    taskId: created.id,
-                                    direction: 'input',
-                                    files,
-                                    userId: user.id,
-                                })
-                            } catch (err) {
-                                console.error('[CreateTask] File upload error:', err)
-                            } finally {
-                                setIsUploading(false)
+                    onSuccess: (created) => {
+                        void (async () => {
+                            // Upload attached files (non-blocking — task is created even if upload fails)
+                            if (files.length > 0) {
+                                setIsUploading(true)
+                                try {
+                                    await uploadAttachments({
+                                        workspaceId,
+                                        taskId: created.id,
+                                        direction: 'input',
+                                        files,
+                                        userId: user.id,
+                                    })
+                                } catch (err) {
+                                    console.error('[CreateTask] File upload error:', err)
+                                } finally {
+                                    setIsUploading(false)
+                                }
                             }
-                        }
-                        onClose()
+                            onClose()
+                        })()
                     },
                 },
             )

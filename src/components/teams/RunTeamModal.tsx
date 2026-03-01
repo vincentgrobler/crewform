@@ -48,26 +48,28 @@ export function RunTeamModal({ teamId, teamName, onClose, onCreated }: RunTeamMo
                 created_by: user?.id ?? '',
             },
             {
-                onSuccess: async (run) => {
-                    // Upload attached files (non-blocking — run is created even if upload fails)
-                    if (files.length > 0 && workspaceId) {
-                        setIsUploading(true)
-                        try {
-                            await uploadAttachments({
-                                workspaceId,
-                                teamRunId: run.id,
-                                direction: 'input',
-                                files,
-                                userId: user?.id,
-                            })
-                        } catch (err) {
-                            console.error('[RunTeam] File upload error:', err)
-                        } finally {
-                            setIsUploading(false)
+                onSuccess: (run) => {
+                    void (async () => {
+                        // Upload attached files (non-blocking — run is created even if upload fails)
+                        if (files.length > 0 && workspaceId) {
+                            setIsUploading(true)
+                            try {
+                                await uploadAttachments({
+                                    workspaceId,
+                                    teamRunId: run.id,
+                                    direction: 'input',
+                                    files,
+                                    userId: user?.id,
+                                })
+                            } catch (err) {
+                                console.error('[RunTeam] File upload error:', err)
+                            } finally {
+                                setIsUploading(false)
+                            }
                         }
-                    }
-                    onClose()
-                    onCreated(run.id)
+                        onClose()
+                        onCreated(run.id)
+                    })()
                 },
             },
         )

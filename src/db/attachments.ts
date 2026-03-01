@@ -97,7 +97,7 @@ export async function uploadAttachment({
     if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`)
 
     // 2. Insert DB record
-    const { data, error: dbError } = await supabase
+    const result = await supabase
         .from('file_attachments')
         .insert({
             workspace_id: workspaceId,
@@ -113,13 +113,13 @@ export async function uploadAttachment({
         .select()
         .single()
 
-    if (dbError) {
+    if (result.error) {
         // Cleanup uploaded file on DB error
         await supabase.storage.from(BUCKET).remove([storagePath])
-        throw dbError
+        throw result.error
     }
 
-    return data as FileAttachment
+    return result.data as FileAttachment
 }
 
 /** Upload multiple files */
