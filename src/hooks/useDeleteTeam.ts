@@ -16,8 +16,8 @@ export function useDeleteTeam() {
     const queryClient = useQueryClient()
 
     return useMutation<undefined, Error, DeleteTeamInput>({
-        mutationFn: async ({ id }) => {
-            await deleteTeam(id)
+        mutationFn: async ({ id, workspaceId }) => {
+            await deleteTeam(id, workspaceId)
             return undefined
         },
         onSuccess: (_data, variables) => {
