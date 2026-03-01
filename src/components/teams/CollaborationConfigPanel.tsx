@@ -140,10 +140,18 @@ export function CollaborationConfigPanel({ agents, config, onChange }: Collabora
                     <select
                         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                         value={config.facilitator_agent_id ?? ''}
-                        onChange={(e) => onChange({ ...config, facilitator_agent_id: e.target.value || undefined })}
+                        onChange={(e) => {
+                            const agentId = e.target.value || undefined
+                            const updates: CollaborationConfig = { ...config, facilitator_agent_id: agentId }
+                            // Auto-add facilitator to participants if not already included
+                            if (agentId && !config.agent_ids.includes(agentId)) {
+                                updates.agent_ids = [...config.agent_ids, agentId]
+                            }
+                            onChange(updates)
+                        }}
                     >
                         <option value="">Select facilitator...</option>
-                        {selectedAgents.map((agent) => (
+                        {agents.map((agent) => (
                             <option key={agent.id} value={agent.id}>
                                 {agent.name} ({agent.model})
                             </option>
