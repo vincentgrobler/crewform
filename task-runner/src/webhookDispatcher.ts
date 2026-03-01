@@ -23,6 +23,7 @@ interface WebhookPayload {
     agent_name: string;
     status: string;
     result_preview: string | null;
+    result_full: string | null;
     error: string | null;
     timestamp: string;
 }
@@ -81,6 +82,7 @@ export async function dispatchWebhooks(
             agent_name: agent.name,
             status: task.status,
             result_preview: task.result ? task.result.substring(0, 500) : null,
+            result_full: task.result ?? null,
             error: task.error ?? null,
             timestamp: new Date().toISOString(),
         };
@@ -126,6 +128,7 @@ export async function dispatchTeamRunWebhooks(
             agent_name: teamName,
             status: teamRun.status,
             result_preview: teamRun.output ? teamRun.output.substring(0, 500) : null,
+            result_full: teamRun.output ?? null,
             error: teamRun.error_message ?? null,
             timestamp: new Date().toISOString(),
         };
@@ -308,16 +311,18 @@ async function deliverSlack(
                         type: 'section',
                         text: {
                             type: 'mrkdwn',
-                            text: `${emoji} *Task ${payload.status}*: ${payload.task_title}\n*Agent:* ${payload.agent_name}`,
+                            text: `${emoji} *${payload.team_run_id ? 'Team Run' : 'Task'} ${payload.status}*: ${payload.task_title}\n*${payload.team_run_id ? 'Team' : 'Agent'}:* ${payload.agent_name}`,
                         },
                     },
-                    ...(payload.result_preview
+                    ...(payload.result_full
                         ? [
                             {
                                 type: 'section',
                                 text: {
                                     type: 'mrkdwn',
-                                    text: `\`\`\`${payload.result_preview}\`\`\``,
+                                    text: payload.result_full.length > 2900
+                                        ? `\`\`\`${payload.result_full.substring(0, 2900)}\`\`\`\n_Output truncated (${payload.result_full.length} chars). Full output available via HTTP webhook._`
+                                        : `\`\`\`${payload.result_full}\`\`\``,
                                 },
                             },
                         ]
@@ -361,14 +366,19 @@ async function deliverDiscord(
     const discordBody = {
         embeds: [
             {
-                title: `${emoji} Task ${payload.status}`,
+                title: `${emoji} ${payload.team_run_id ? 'Team Run' : 'Task'} ${payload.status}`,
                 description: payload.task_title,
                 color,
                 fields: [
-                    { name: 'Agent', value: payload.agent_name, inline: true },
+                    { name: payload.team_run_id ? 'Team' : 'Agent', value: payload.agent_name, inline: true },
                     { name: 'Status', value: payload.status, inline: true },
-                    ...(payload.result_preview
-                        ? [{ name: 'Result', value: `\`\`\`${payload.result_preview.substring(0, 1000)}\`\`\`` }]
+                    ...(payload.result_full
+                        ? [{
+                            name: 'Result',
+                            value: payload.result_full.length > 1000
+                                ? `\`\`\`${payload.result_full.substring(0, 950)}\`\`\`\n_Truncated (${payload.result_full.length} chars)_`
+                                : `\`\`\`${payload.result_full}\`\`\``,
+                        }]
                         : []),
                     ...(payload.error ? [{ name: 'Error', value: payload.error }] : []),
                 ],
@@ -397,12 +407,15 @@ async function deliverTelegram(
     const chatId = route.config.chat_id as string;
     const emoji = payload.status === 'completed' ? '✅' : '❌';
 
-    let text = `${emoji} *Task ${payload.status}*\n\n`;
+    let text = `${emoji} *${payload.team_run_id ? 'Team Run' : 'Task'} ${payload.status}*\n\n`;
     text += `*Title:* ${escapeMarkdown(payload.task_title)}\n`;
-    text += `*Agent:* ${escapeMarkdown(payload.agent_name)}\n`;
+    text += `*${payload.team_run_id ? 'Team' : 'Agent'}:* ${escapeMarkdown(payload.agent_name)}\n`;
 
-    if (payload.result_preview) {
-        text += `\n\`\`\`\n${payload.result_preview.substring(0, 3000)}\n\`\`\``;
+    if (payload.result_full) {
+        const resultText = payload.result_full.length > 3500
+            ? `${payload.result_full.substring(0, 3500)}\n\n... truncated (${payload.result_full.length} chars)`
+            : payload.result_full;
+        text += `\n\`\`\`\n${resultText}\n\`\`\``;
     }
     if (payload.error) {
         text += `\n⚠️ *Error:* ${escapeMarkdown(payload.error)}`;
@@ -452,22 +465,24 @@ async function deliverTeams(
                             type: 'TextBlock',
                             size: 'Medium',
                             weight: 'Bolder',
-                            text: `${emoji} Task ${payload.status}`,
+                            text: `${emoji} ${payload.team_run_id ? 'Team Run' : 'Task'} ${payload.status}`,
                             color: payload.status === 'completed' ? 'Good' : 'Attention',
                         },
                         {
                             type: 'FactSet',
                             facts: [
-                                { title: 'Task', value: payload.task_title },
-                                { title: 'Agent', value: payload.agent_name },
+                                { title: payload.team_run_id ? 'Prompt' : 'Task', value: payload.task_title },
+                                { title: payload.team_run_id ? 'Team' : 'Agent', value: payload.agent_name },
                                 { title: 'Status', value: payload.status },
                             ],
                         },
-                        ...(payload.result_preview
+                        ...(payload.result_full
                             ? [
                                 {
                                     type: 'TextBlock',
-                                    text: payload.result_preview.substring(0, 1000),
+                                    text: payload.result_full.length > 2000
+                                        ? `${payload.result_full.substring(0, 2000)}\n\n... truncated (${payload.result_full.length} chars)`
+                                        : payload.result_full,
                                     wrap: true,
                                     fontType: 'Monospace',
                                     size: 'Small',
@@ -518,8 +533,8 @@ async function deliverAsana(
     notes += `Status: ${payload.status}\n`;
     notes += `Time: ${payload.timestamp}\n`;
 
-    if (payload.result_preview) {
-        notes += `\n--- Result Preview ---\n${payload.result_preview.substring(0, 5000)}`;
+    if (payload.result_full) {
+        notes += `\n--- Result ---\n${payload.result_full}`;
     }
     if (payload.error) {
         notes += `\n⚠️ Error: ${payload.error}`;
