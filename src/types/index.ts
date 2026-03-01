@@ -257,6 +257,7 @@ export type TeamMessageType =
   | 'broadcast'
   | 'tool_call'
   | 'result'
+  | 'discussion'
   | 'system'
   | 'rejection'
   | 'revision_request'

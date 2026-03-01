@@ -22,6 +22,7 @@ import { useAgents } from '@/hooks/useAgents'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { PipelineProgressRail } from '@/components/teams/PipelineProgressRail'
 import { DelegationTree } from '@/components/teams/DelegationTree'
+import { CollaborationChatView } from '@/components/teams/CollaborationChatView'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import type { PipelineConfig, OrchestratorConfig, TeamMessage } from '@/types'
@@ -44,6 +45,7 @@ const MESSAGE_ICON: Record<string, typeof Bot> = {
     worker_result: Bot,
     revision_request: GitBranch,
     accepted: CheckCircle2,
+    discussion: Bot,
 }
 
 /**
@@ -60,8 +62,9 @@ export function TeamRunDetail() {
     const { run, messages, isLoading, error } = useTeamRun(runId ?? null)
 
     const isOrchestrator = team?.mode === 'orchestrator'
+    const isCollaboration = team?.mode === 'collaboration'
     const config = team?.config as PipelineConfig | OrchestratorConfig | undefined
-    const steps = (!isOrchestrator && config ? (config as PipelineConfig).steps : undefined) ?? []
+    const steps = (!isOrchestrator && !isCollaboration && config ? (config as PipelineConfig).steps : undefined) ?? []
     const orchConfig = isOrchestrator ? (config as OrchestratorConfig) : null
     const badge = run ? STATUS_BADGE[run.status] : null
 
@@ -69,7 +72,11 @@ export function TeamRunDetail() {
         ? getElapsed(run.started_at, run.completed_at ?? new Date().toISOString())
         : '—'
 
-    const runTitle = isOrchestrator ? 'Orchestrator Run' : 'Pipeline Run'
+    const discussionTurns = isCollaboration
+        ? messages.filter((m) => m.message_type === 'discussion').length
+        : 0
+
+    const runTitle = isCollaboration ? 'Collaboration Run' : isOrchestrator ? 'Orchestrator Run' : 'Pipeline Run'
 
     return (
         <div className="p-6 lg:p-8">
@@ -124,10 +131,16 @@ export function TeamRunDetail() {
                                 <Clock className="h-3.5 w-3.5" />
                                 {elapsed}
                             </span>
-                            {!isOrchestrator && (
+                            {!isOrchestrator && !isCollaboration && (
                                 <span className="flex items-center gap-1.5">
                                     <Hash className="h-3.5 w-3.5" />
                                     Step {run.current_step_idx !== null ? run.current_step_idx + 1 : 0} of {steps.length}
+                                </span>
+                            )}
+                            {isCollaboration && (
+                                <span className="flex items-center gap-1.5">
+                                    <Hash className="h-3.5 w-3.5" />
+                                    {discussionTurns} turn{discussionTurns !== 1 ? 's' : ''}
                                 </span>
                             )}
                             {isOrchestrator && run.delegation_depth != null && run.delegation_depth > 0 && (
@@ -159,10 +172,15 @@ export function TeamRunDetail() {
                     {/* Main content: progress + activity timeline */}
                     <div className={cn(
                         'grid gap-6',
-                        isOrchestrator ? 'lg:grid-cols-1' : 'lg:grid-cols-[240px_1fr]',
+                        isOrchestrator || isCollaboration ? 'lg:grid-cols-1' : 'lg:grid-cols-[240px_1fr]',
                     )}>
-                        {/* Left: Progress rail (pipeline) or Delegation tree (orchestrator) */}
-                        {isOrchestrator && orchConfig ? (
+                        {/* Left: Progress rail (pipeline), Delegation tree (orchestrator), or Chat (collaboration) */}
+                        {isCollaboration ? (
+                            <CollaborationChatView
+                                messages={messages}
+                                isLive={run.status === 'running'}
+                            />
+                        ) : isOrchestrator && orchConfig ? (
                             <div className="rounded-lg border border-border bg-surface-card p-4">
                                 <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500">Delegation Tree</h3>
                                 <DelegationTree
@@ -183,23 +201,25 @@ export function TeamRunDetail() {
                             </div>
                         )}
 
-                        {/* Activity timeline + output */}
+                        {/* Activity timeline + output (skip timeline for collaboration — chat view covers it) */}
                         <div className="space-y-4">
-                            {/* Activity timeline */}
-                            <div className="rounded-lg border border-border bg-surface-card p-4">
-                                <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500">
-                                    Activity ({messages.length})
-                                </h3>
-                                {messages.length > 0 ? (
-                                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-                                        {messages.map((msg) => (
-                                            <MessageCard key={msg.id} message={msg} agents={agents} />
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-xs text-gray-600">No activity yet...</p>
-                                )}
-                            </div>
+                            {/* Activity timeline (pipeline/orchestrator only — collaboration uses chat view above) */}
+                            {!isCollaboration && (
+                                <div className="rounded-lg border border-border bg-surface-card p-4">
+                                    <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500">
+                                        Activity ({messages.length})
+                                    </h3>
+                                    {messages.length > 0 ? (
+                                        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                                            {messages.map((msg) => (
+                                                <MessageCard key={msg.id} message={msg} agents={agents} />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-gray-600">No activity yet...</p>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Output */}
                             {run.status === 'completed' && run.output && (
@@ -232,9 +252,11 @@ export function TeamRunDetail() {
                                     <div>
                                         <p className="text-sm font-medium text-blue-400">Running</p>
                                         <p className="text-xs text-gray-500">
-                                            {isOrchestrator
-                                                ? 'Orchestrator is delegating to workers. Updates appear in real-time.'
-                                                : 'Pipeline is executing. Updates appear in real-time.'}
+                                            {isCollaboration
+                                                ? 'Agents are discussing. Updates appear in real-time.'
+                                                : isOrchestrator
+                                                    ? 'Orchestrator is delegating to workers. Updates appear in real-time.'
+                                                    : 'Pipeline is executing. Updates appear in real-time.'}
                                         </p>
                                     </div>
                                 </div>
