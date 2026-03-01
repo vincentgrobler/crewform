@@ -231,7 +231,8 @@ function WorkspacesTab() {
 function MarketplaceTab() {
     const [agents, setAgents] = useState<Array<{
         id: string; name: string; provider: string; model: string;
-        install_count: number; rating_avg: number; workspace_id: string
+        install_count: number; rating_avg: number; workspace_id: string;
+        workspace_name: string; owner_email: string
     }>>([])
     const [isLoading, setIsLoading] = useState(true)
     const [removing, setRemoving] = useState<string | null>(null)
@@ -282,7 +283,9 @@ function MarketplaceTab() {
 
     const filtered = agents.filter(a =>
         a.name.toLowerCase().includes(search.toLowerCase()) ||
-        a.provider.toLowerCase().includes(search.toLowerCase()),
+        a.provider.toLowerCase().includes(search.toLowerCase()) ||
+        a.workspace_name.toLowerCase().includes(search.toLowerCase()) ||
+        a.owner_email.toLowerCase().includes(search.toLowerCase()),
     )
 
     return (
@@ -323,6 +326,9 @@ function MarketplaceTab() {
                                 <p className="text-xs text-gray-500">
                                     {agent.provider} · {agent.model} · {agent.install_count} install{agent.install_count !== 1 ? 's' : ''}
                                     {agent.rating_avg > 0 && ` · ★ ${agent.rating_avg}`}
+                                </p>
+                                <p className="text-[10px] text-gray-600">
+                                    {agent.workspace_name} · {agent.owner_email}
                                 </p>
                             </div>
                             <button
