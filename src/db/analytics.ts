@@ -253,7 +253,7 @@ export async function fetchTopModels(
 
     // From team run usage_records (model stored in metadata.model)
     for (const row of usageResult.data as Array<{ tokens_used: number; metadata: Record<string, unknown> }>) {
-        const model = row.metadata?.model as string | undefined
+        const model = row.metadata.model as string | undefined
         if (!model) continue
         let entry = modelMap.get(model)
         if (!entry) {
