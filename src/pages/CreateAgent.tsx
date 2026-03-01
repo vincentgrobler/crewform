@@ -132,6 +132,7 @@ export function CreateAgent() {
                         onSubmit={handleFormSubmit}
                         onBack={() => setStep('template')}
                         activeProviders={activeProviders}
+                        workspaceId={workspaceId}
                     />
                 )}
 
