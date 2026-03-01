@@ -387,15 +387,21 @@ export async function fetchPublishedAgents(): Promise<Array<{
     install_count: number
     rating_avg: number
     workspace_id: string
+    workspace_name: string
+    owner_email: string
 }>> {
     const result = await supabase
         .from('agents')
-        .select('id, name, provider, model, install_count, rating_avg, workspace_id')
+        .select(`
+            id, name, provider, model, install_count, rating_avg, workspace_id,
+            workspaces!workspace_id ( name, owner_id )
+        `)
         .eq('is_published', true)
         .order('install_count', { ascending: false })
 
     if (result.error) throw result.error
-    return result.data as Array<{
+
+    const raw = result.data as unknown as Array<{
         id: string
         name: string
         provider: string
@@ -403,5 +409,34 @@ export async function fetchPublishedAgents(): Promise<Array<{
         install_count: number
         rating_avg: number
         workspace_id: string
+        workspaces: { name: string; owner_id: string } | null
     }>
+
+    // Collect unique owner IDs for email lookup
+    const ownerIds = [...new Set(raw.map(r => r.workspaces?.owner_id).filter(Boolean))] as string[]
+    const emailMap = new Map<string, string>()
+    if (ownerIds.length > 0) {
+        const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, email')
+            .in('id', ownerIds)
+
+        if (profiles) {
+            for (const p of profiles as Array<{ id: string; email: string }>) {
+                emailMap.set(p.id, p.email)
+            }
+        }
+    }
+
+    return raw.map(r => ({
+        id: r.id,
+        name: r.name,
+        provider: r.provider,
+        model: r.model,
+        install_count: r.install_count,
+        rating_avg: r.rating_avg,
+        workspace_id: r.workspace_id,
+        workspace_name: r.workspaces?.name ?? 'Unknown',
+        owner_email: emailMap.get(r.workspaces?.owner_id ?? '') ?? 'Unknown',
+    }))
 }
