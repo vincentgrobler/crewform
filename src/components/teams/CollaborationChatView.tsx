@@ -52,7 +52,7 @@ export function CollaborationChatView({ messages, isLive = false }: Collaboratio
             colorMap.set(agentId, AGENT_COLORS[colorIdx % AGENT_COLORS.length])
             colorIdx++
         }
-        return colorMap.get(agentId)!
+        return colorMap.get(agentId) ?? AGENT_COLORS[0]
     }
 
     // Auto-scroll to bottom on new messages

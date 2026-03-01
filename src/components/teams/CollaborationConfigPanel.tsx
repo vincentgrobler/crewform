@@ -118,7 +118,7 @@ export function CollaborationConfigPanel({ agents, config, onChange }: Collabora
                 <select
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     value={config.speaker_selection}
-                    onChange={(e) => onChange({ ...config, speaker_selection: e.target.value as CollaborationConfig['speaker_selection'] })}
+                    onChange={(e) => onChange({ ...config, speaker_selection: e.target.value })}
                 >
                     {SPEAKER_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -185,7 +185,7 @@ export function CollaborationConfigPanel({ agents, config, onChange }: Collabora
                 <select
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     value={config.termination_condition}
-                    onChange={(e) => onChange({ ...config, termination_condition: e.target.value as CollaborationConfig['termination_condition'] })}
+                    onChange={(e) => onChange({ ...config, termination_condition: e.target.value })}
                 >
                     {TERMINATION_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>
