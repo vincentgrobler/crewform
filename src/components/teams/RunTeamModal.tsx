@@ -6,6 +6,7 @@ import { X, Loader2, Play } from 'lucide-react'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useAuth } from '@/hooks/useAuth'
 import { useCreateTeamRun } from '@/hooks/useCreateTeamRun'
+import { SpeechToTextButton } from '@/components/shared/SpeechToTextButton'
 
 interface RunTeamModalProps {
     teamId: string
@@ -73,9 +74,17 @@ export function RunTeamModal({ teamId, teamName, onClose, onCreated }: RunTeamMo
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label htmlFor="input-task" className="mb-1.5 block text-sm font-medium text-gray-300">
-                            Task / Prompt <span className="text-red-400">*</span>
-                        </label>
+                        <div className="mb-1.5 flex items-center gap-1.5">
+                            <label htmlFor="input-task" className="text-sm font-medium text-gray-300">
+                                Task / Prompt <span className="text-red-400">*</span>
+                            </label>
+                            <SpeechToTextButton
+                                onTranscript={(text) => {
+                                    setInputTask((prev) => prev ? `${prev} ${text}` : text)
+                                    setError('')
+                                }}
+                            />
+                        </div>
                         <textarea
                             id="input-task"
                             value={inputTask}
