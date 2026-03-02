@@ -13,7 +13,7 @@ Run CrewForm on your own infrastructure with Docker Compose. This guide covers a
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/vincentgrobler/crewform.git
+git clone https://github.com/CrewForm/crewform.git
 cd crewform
 
 # 2. Configure environment

@@ -7,7 +7,7 @@
 **AI Orchestration for Everyone**
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![CI](https://github.com/vincentgrobler/crewform/actions/workflows/ci.yml/badge.svg)](https://github.com/vincentgrobler/crewform/actions/workflows/ci.yml)
+[![CI](https://github.com/CrewForm/crewform/actions/workflows/ci.yml/badge.svg)](https://github.com/CrewForm/crewform/actions/workflows/ci.yml)
 [![Discord](https://img.shields.io/discord/1476188192100323488?color=5865F2&label=Discord&logo=discord&logoColor=white)](https://discord.gg/NpcWr9d7)
 
 [Website](https://crewform.tech) · [Docs](https://docs.crewform.tech) · [Discord](https://discord.gg/NpcWr9d7) · [Twitter](https://twitter.com/CrewForm)
@@ -59,7 +59,7 @@ Get up and running in under 5 minutes:
 
 ```bash
 # Clone the repo
-git clone https://github.com/vincentgrobler/crewform.git
+git clone https://github.com/CrewForm/crewform.git
 cd crewform
 
 # Install dependencies
@@ -143,7 +143,7 @@ We welcome contributions from everyone! Please see [CONTRIBUTING.md](CONTRIBUTIN
 ## Community
 
 - 💬 **[Discord](https://discord.gg/NpcWr9d7)** — Chat with the team and community
-- 🗣️ **[GitHub Discussions](https://github.com/vincentgrobler/crewform/discussions)** — Ideas, Q&A, and show & tell
+- 🗣️ **[GitHub Discussions](https://github.com/CrewForm/crewform/discussions)** — Ideas, Q&A, and show & tell
 - 🐦 **[Twitter/X](https://twitter.com/CrewForm)** — Product updates and AI ecosystem commentary
 - 📧 **Email** — support@crewform.tech
 

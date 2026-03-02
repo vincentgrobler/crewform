@@ -12,7 +12,7 @@ Get CrewForm running locally in under 5 minutes.
 ## 1. Clone & Install
 
 ```bash
-git clone https://github.com/vincentgrobler/crewform.git
+git clone https://github.com/CrewForm/crewform.git
 cd crewform
 npm install
 ```
