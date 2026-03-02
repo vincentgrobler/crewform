@@ -47,6 +47,8 @@ export function useOverridePlan() {
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: ['admin-workspaces'] })
             void queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+            void queryClient.invalidateQueries({ queryKey: ['workspace'] })
+            void queryClient.invalidateQueries({ queryKey: ['subscription'] })
         },
     })
 }

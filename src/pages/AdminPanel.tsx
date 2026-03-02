@@ -181,7 +181,7 @@ function WorkspacesTab() {
                                 <p className="text-xs text-gray-500">/{ws.slug} · {ws.member_count} members</p>
                             </div>
                             <select
-                                value={ws.subscription_plan ?? 'free'}
+                                value={ws.plan}
                                 onChange={(e) => overrideMutation.mutate({
                                     workspaceId: ws.id,
                                     plan: e.target.value,
@@ -189,7 +189,7 @@ function WorkspacesTab() {
                                 disabled={overrideMutation.isPending}
                                 className={cn(
                                     'rounded-md border border-transparent px-2 py-1 text-xs font-bold uppercase outline-none',
-                                    PLAN_COLORS[ws.subscription_plan ?? 'free'],
+                                    PLAN_COLORS[ws.plan],
                                 )}
                             >
                                 <option value="free">Free</option>
