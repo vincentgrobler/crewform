@@ -4,7 +4,7 @@ import { executeOpenAI } from './providers/openai';
 import { executeGoogle } from './providers/google';
 import { decryptApiKey } from './crypto';
 import { writeTaskUsageRecord } from './usageWriter';
-import { dispatchWebhooks } from './webhookDispatcher';
+import { dispatchWebhooks, replyToSourceChannel } from './webhookDispatcher';
 import { executeWithToolLoop, getToolDefinitions } from './toolExecutor';
 import { loadInputFiles, buildFileContext, extractAndSaveArtifacts } from './fileAttachments';
 import type { CustomToolConfig } from './toolExecutor';
@@ -268,6 +268,9 @@ export async function processTask(task: Task) {
             'task.completed',
         );
 
+        // 8b. Reply to source channel if task originated from messaging (fire-and-forget)
+        void replyToSourceChannel(task.id, executionResult.result, null, 'completed');
+
     } catch (error: unknown) {
         const errMsg = error instanceof Error ? error.message : String(error);
         console.error(`[TaskRunner] Failed task ${task.id}:`, errMsg);
@@ -299,6 +302,9 @@ export async function processTask(task: Task) {
             { name: agent?.name ?? 'Unknown Agent' },
             'task.failed',
         );
+
+        // Reply to source channel on failure too
+        void replyToSourceChannel(task.id, null, errMsg, 'failed');
     }
 }
 

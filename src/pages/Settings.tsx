@@ -2,7 +2,7 @@
 // Copyright (C) 2026 CrewForm
 
 import { useState } from 'react'
-import { KeyRound, User, Building2, Webhook, Users, ScrollText, CreditCard } from 'lucide-react'
+import { KeyRound, User, Building2, Webhook, Users, ScrollText, CreditCard, MessageSquareText } from 'lucide-react'
 import { ApiKeysSettings } from '@/components/settings/ApiKeysSettings'
 import { RestApiKeysSettings } from '@/components/settings/RestApiKeysSettings'
 import { WebhooksSettings } from '@/components/settings/WebhooksSettings'
@@ -11,13 +11,15 @@ import { WorkspaceSettings } from '@/components/settings/WorkspaceSettings'
 import { AuditLogPanel } from '@/components/settings/AuditLogPanel'
 import { BillingSettings } from '@/components/settings/BillingSettings'
 import { ProfileSettings } from '@/components/settings/ProfileSettings'
+import { MessagingChannelsSettings } from '@/components/settings/MessagingChannelsSettings'
 import { cn } from '@/lib/utils'
 
-type SettingsTab = 'api-keys' | 'webhooks' | 'members' | 'workspace' | 'billing' | 'audit-log' | 'profile'
+type SettingsTab = 'api-keys' | 'webhooks' | 'channels' | 'members' | 'workspace' | 'billing' | 'audit-log' | 'profile'
 
 const settingsTabs: { key: SettingsTab; label: string; icon: typeof KeyRound }[] = [
   { key: 'api-keys', label: 'API Keys', icon: KeyRound },
   { key: 'webhooks', label: 'Webhooks', icon: Webhook },
+  { key: 'channels', label: 'Channels', icon: MessageSquareText },
   { key: 'members', label: 'Members', icon: Users },
   { key: 'workspace', label: 'Workspace', icon: Building2 },
   { key: 'billing', label: 'Billing', icon: CreditCard },
@@ -63,6 +65,8 @@ export function Settings() {
         )}
 
         {activeTab === 'webhooks' && <WebhooksSettings />}
+
+        {activeTab === 'channels' && <MessagingChannelsSettings />}
 
         {activeTab === 'members' && <MembersSettings />}
 

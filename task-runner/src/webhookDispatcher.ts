@@ -664,3 +664,187 @@ async function logDelivery(
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+// ─── Source Channel Reply ───────────────────────────────────────────────────
+
+interface SourceChannel {
+    platform: 'telegram' | 'discord' | 'slack' | 'email';
+    bot_token?: string;
+    chat_id?: string;
+    message_id?: string;
+    channel_id?: string;
+    thread_ts?: string;
+    guild_id?: string;
+    from_email?: string;
+    subject?: string;
+    channel_db_id?: string;
+}
+
+/**
+ * Reply to the originating messaging channel after a task completes.
+ * Reads source_channel JSONB from the task, delivers the response,
+ * and logs to channel_message_log. Never throws.
+ */
+export async function replyToSourceChannel(
+    taskId: string,
+    result: string | null,
+    error: string | null,
+    status: string,
+): Promise<void> {
+    try {
+        // Read source_channel from the task
+        const { data, error: fetchErr } = await supabase
+            .from('tasks')
+            .select('source_channel, title')
+            .eq('id', taskId)
+            .single();
+
+        if (fetchErr || !data) return;
+        const row = data as { source_channel: SourceChannel | null; title: string };
+        if (!row.source_channel) return;
+
+        const sc = row.source_channel;
+        const isSuccess = status === 'completed';
+        const emoji = isSuccess ? '✅' : '❌';
+        const content = isSuccess
+            ? (result ?? 'Task completed with no output.')
+            : `Error: ${error ?? 'Unknown error'}`;
+
+        let delivered = false;
+        let deliveryError: string | null = null;
+
+        try {
+            switch (sc.platform) {
+                case 'telegram':
+                    delivered = await replyTelegram(sc, emoji, row.title, content);
+                    break;
+                case 'discord':
+                    delivered = await replyDiscord(sc, emoji, row.title, content);
+                    break;
+                case 'slack':
+                    delivered = await replySlack(sc, emoji, row.title, content);
+                    break;
+                case 'email':
+                    // Email reply deferred to Edge Function (requires email provider SDK)
+                    console.log(`[SourceChannel] Email reply not yet implemented for task ${taskId}`);
+                    return;
+                default:
+                    return;
+            }
+        } catch (err: unknown) {
+            deliveryError = err instanceof Error ? err.message : String(err);
+            console.error(`[SourceChannel] Failed to reply on ${sc.platform} for task ${taskId}:`, deliveryError);
+        }
+
+        // Log to channel_message_log
+        if (sc.channel_db_id) {
+            await supabase.from('channel_message_log').insert({
+                channel_id: sc.channel_db_id,
+                direction: 'outbound',
+                task_id: taskId,
+                message_preview: content.substring(0, 200),
+                status: delivered ? 'delivered' : 'failed',
+                error: deliveryError,
+            });
+        }
+    } catch (err: unknown) {
+        console.error('[SourceChannel] Unexpected error:', err instanceof Error ? err.message : String(err));
+    }
+}
+
+async function replyTelegram(sc: SourceChannel, emoji: string, title: string, content: string): Promise<boolean> {
+    if (!sc.bot_token || !sc.chat_id) return false;
+
+    let text = `${emoji} *${escapeMarkdown(title)}*\n\n`;
+    if (content.length > 3500) {
+        text += `\`\`\`\n${content.substring(0, 3500)}\n\`\`\`\n\n_...truncated (${content.length} chars)_`;
+    } else {
+        text += content;
+    }
+
+    const resp = await fetch(`https://api.telegram.org/bot${sc.bot_token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            chat_id: sc.chat_id,
+            text,
+            parse_mode: 'Markdown',
+            reply_to_message_id: sc.message_id ? parseInt(sc.message_id, 10) : undefined,
+            disable_web_page_preview: true,
+        }),
+        signal: AbortSignal.timeout(10000),
+    });
+
+    return resp.ok;
+}
+
+async function replyDiscord(sc: SourceChannel, emoji: string, title: string, content: string): Promise<boolean> {
+    if (!sc.bot_token || !sc.channel_id) return false;
+
+    const truncated = content.length > 1900
+        ? `${content.substring(0, 1900)}\n\n... truncated (${content.length} chars)`
+        : content;
+
+    const body: Record<string, unknown> = {
+        embeds: [{
+            title: `${emoji} ${title}`,
+            description: truncated,
+            color: emoji === '✅' ? 0x22c55e : 0xef4444,
+            timestamp: new Date().toISOString(),
+        }],
+    };
+
+    if (sc.message_id) {
+        body.message_reference = { message_id: sc.message_id };
+    }
+
+    const resp = await fetch(`https://discord.com/api/v10/channels/${sc.channel_id}/messages`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bot ${sc.bot_token}`,
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(10000),
+    });
+
+    return resp.ok;
+}
+
+async function replySlack(sc: SourceChannel, emoji: string, title: string, content: string): Promise<boolean> {
+    if (!sc.bot_token || !sc.channel_id) return false;
+
+    const truncated = content.length > 2900
+        ? `${content.substring(0, 2900)}\n\n... truncated (${content.length} chars)`
+        : content;
+
+    const body: Record<string, unknown> = {
+        channel: sc.channel_id,
+        text: `${emoji} *${title}*`,
+        blocks: [
+            {
+                type: 'section',
+                text: {
+                    type: 'mrkdwn',
+                    text: `${emoji} *${title}*\n\n${truncated}`,
+                },
+            },
+        ],
+    };
+
+    if (sc.thread_ts) {
+        body.thread_ts = sc.thread_ts;
+    }
+
+    const resp = await fetch('https://slack.com/api/chat.postMessage', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${sc.bot_token}`,
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(10000),
+    });
+
+    return resp.ok;
+}
