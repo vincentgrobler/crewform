@@ -162,7 +162,7 @@ Deno.serve(async (req: Request) => {
                     workspace_id: channel.workspace_id,
                     input_task: text,
                     created_by: ownerId,
-                    status: 'pending',
+                    status: 'dispatched',
                     source_channel: sourceChannel,
                 })
                 .select('id')
@@ -179,7 +179,7 @@ Deno.serve(async (req: Request) => {
                     workspace_id: channel.workspace_id,
                     assigned_agent_id: channel.default_agent_id,
                     created_by: ownerId,
-                    status: 'pending',
+                    status: 'dispatched',
                     priority: 'medium',
                     source_channel: sourceChannel,
                     metadata: {
