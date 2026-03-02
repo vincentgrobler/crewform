@@ -11,7 +11,6 @@ import {
 } from 'lucide-react'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useDashboardStats, useAgentPerformance, useRecentActivity } from '@/hooks/useDashboard'
-import { useAgents } from '@/hooks/useAgents'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { AgentPerformanceGrid } from '@/components/dashboard/AgentPerformanceGrid'
 import { ActivityTimeline } from '@/components/dashboard/ActivityTimeline'
@@ -25,15 +24,13 @@ import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard'
  */
 export function Dashboard() {
   const { workspace, workspaceId } = useWorkspace()
-  const { agents } = useAgents(workspaceId)
   const { stats, isLoading: isLoadingStats, error: statsError } = useDashboardStats(workspaceId)
   const { agents: performanceAgents, isLoading: isLoadingAgents } = useAgentPerformance(workspaceId)
   const { activity, isLoading: isLoadingActivity } = useRecentActivity(workspaceId)
 
-  // Show onboarding for new users
+  // Show onboarding for new users (only check the completion flag)
   const onboardingCompleted = workspace?.settings.onboarding_completed === true
-  const hasAgents = agents.length > 0
-  const showOnboarding = !onboardingCompleted && !hasAgents
+  const showOnboarding = !onboardingCompleted
 
   if (showOnboarding) {
     return <OnboardingWizard />

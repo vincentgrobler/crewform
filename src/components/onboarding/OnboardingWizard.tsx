@@ -27,8 +27,8 @@ const STEPS = [
 
 type StepKey = (typeof STEPS)[number]['key']
 
-// Filter to providers that have models (OpenRouter is treated as custom)
-const PROVIDER_OPTIONS = MODEL_OPTIONS.filter(g => g.models.length > 0)
+// Include all providers (OpenRouter has empty models — user enters model name manually)
+const PROVIDER_OPTIONS = MODEL_OPTIONS
 
 // Links for getting API keys
 const API_KEY_URLS: Record<string, string> = {
@@ -58,7 +58,8 @@ export function OnboardingWizard() {
 
     const [step, setStep] = useState<StepKey>('welcome')
     const [selectedProvider, setSelectedProvider] = useState(PROVIDER_OPTIONS[0])
-    const [selectedModel, setSelectedModel] = useState(PROVIDER_OPTIONS[0].models[0].value)
+    const [selectedModel, setSelectedModel] = useState(PROVIDER_OPTIONS[0].models[0]?.value ?? '')
+    const [customModel, setCustomModel] = useState('')
     const [apiKey, setApiKey] = useState('')
     const [keySaved, setKeySaved] = useState(false)
     const [keySaving, setKeySaving] = useState(false)
@@ -75,6 +76,8 @@ export function OnboardingWizard() {
 
     const providerKey = selectedProvider.provider.toLowerCase()
     const apiKeyUrl = API_KEY_URLS[providerKey]
+    const hasModels = selectedProvider.models.length > 0
+    const resolvedModel = hasModels ? selectedModel : customModel.trim()
 
     // ── Change provider ──
     const handleProviderChange = useCallback((providerId: string) => {
@@ -82,6 +85,7 @@ export function OnboardingWizard() {
         if (!group) return
         setSelectedProvider(group)
         setSelectedModel(group.models[0]?.value ?? '')
+        setCustomModel('')
         setKeySaved(false)
         setApiKey('')
         setError(null)
@@ -124,8 +128,8 @@ export function OnboardingWizard() {
                 workspace_id: workspaceId,
                 name: agentName,
                 description: 'Created during onboarding',
-                model: selectedModel,
-                provider: inferProviderFromModel(selectedModel),
+                model: resolvedModel,
+                provider: hasModels ? inferProviderFromModel(resolvedModel) : providerKey,
                 system_prompt: systemPrompt,
                 temperature: 0.7,
                 tools: [],
@@ -369,15 +373,25 @@ export function OnboardingWizard() {
                         {/* Model selector */}
                         <div className="mb-4">
                             <label className="mb-1.5 block text-xs text-gray-400">Model</label>
-                            <select
-                                value={selectedModel}
-                                onChange={e => setSelectedModel(e.target.value)}
-                                className="w-full rounded-lg border border-border bg-surface-primary px-3 py-2 text-sm text-gray-200 focus:border-brand-primary focus:outline-none"
-                            >
-                                {selectedProvider.models.map(m => (
-                                    <option key={m.value} value={m.value}>{m.label}</option>
-                                ))}
-                            </select>
+                            {hasModels ? (
+                                <select
+                                    value={selectedModel}
+                                    onChange={e => setSelectedModel(e.target.value)}
+                                    className="w-full rounded-lg border border-border bg-surface-primary px-3 py-2 text-sm text-gray-200 focus:border-brand-primary focus:outline-none"
+                                >
+                                    {selectedProvider.models.map(m => (
+                                        <option key={m.value} value={m.value}>{m.label}</option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <input
+                                    type="text"
+                                    value={customModel}
+                                    onChange={e => setCustomModel(e.target.value)}
+                                    placeholder="e.g. openrouter/anthropic/claude-sonnet-4"
+                                    className="w-full rounded-lg border border-border bg-surface-primary px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:border-brand-primary focus:outline-none"
+                                />
+                            )}
                         </div>
 
                         <div className="mb-4">
@@ -391,7 +405,7 @@ export function OnboardingWizard() {
                         </div>
 
                         <p className="mb-5 text-xs text-gray-600">
-                            Using <strong className="text-gray-400">{selectedProvider.provider}</strong> / <code className="text-gray-400">{selectedModel}</code>
+                            Using <strong className="text-gray-400">{selectedProvider.provider}</strong> / <code className="text-gray-400">{resolvedModel || '(enter model name)'}</code>
                         </p>
 
                         <div className="flex items-center justify-between">
@@ -405,7 +419,7 @@ export function OnboardingWizard() {
                             <button
                                 type="button"
                                 onClick={() => void handleCreateAgent()}
-                                disabled={!agentName.trim() || saving || agentCreated}
+                                disabled={!agentName.trim() || !resolvedModel || saving || agentCreated}
                                 className="flex items-center gap-2 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-hover disabled:opacity-50"
                             >
                                 {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
