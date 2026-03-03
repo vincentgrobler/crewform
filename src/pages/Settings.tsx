@@ -9,6 +9,7 @@ import { WebhooksSettings } from '@/components/settings/WebhooksSettings'
 import { MembersSettings } from '@/components/settings/MembersSettings'
 import { WorkspaceSettings } from '@/components/settings/WorkspaceSettings'
 import { AuditLogPanel } from '@/components/settings/AuditLogPanel'
+import { AuditStreamingSettings } from '@/components/settings/AuditStreamingSettings'
 import { BillingSettings } from '@/components/settings/BillingSettings'
 import { ProfileSettings } from '@/components/settings/ProfileSettings'
 import { MessagingChannelsSettings } from '@/components/settings/MessagingChannelsSettings'
@@ -74,7 +75,13 @@ export function Settings() {
 
         {activeTab === 'billing' && <BillingSettings />}
 
-        {activeTab === 'audit-log' && <AuditLogPanel />}
+        {activeTab === 'audit-log' && (
+          <>
+            <AuditLogPanel />
+            <hr className="my-8 border-border" />
+            <AuditStreamingSettings />
+          </>
+        )}
 
         {activeTab === 'profile' && <ProfileSettings />}
       </div>

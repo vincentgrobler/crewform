@@ -6,8 +6,12 @@ import {
     fetchMembers, updateMemberRole, removeMember,
     fetchInvitations, createInvitation, revokeInvitation,
     fetchAuditLog, updateWorkspace,
+    fetchAuditStreamingConfig, updateAuditStreamingConfig,
 } from '@/db/members'
-import type { WorkspaceMemberRow, WorkspaceInvitation, AuditLogEntry } from '@/db/members'
+import type {
+    WorkspaceMemberRow, WorkspaceInvitation, AuditLogEntry,
+    AuditLogFilters, AuditStreamingConfig,
+} from '@/db/members'
 import type { WorkspaceRole } from '@/types'
 
 // ─── Members ────────────────────────────────────────────────────────────────
@@ -91,14 +95,40 @@ export function useRevokeInvitation() {
 
 // ─── Audit Log ──────────────────────────────────────────────────────────────
 
-export function useAuditLog(workspaceId: string | null) {
+export function useAuditLog(workspaceId: string | null, filters?: AuditLogFilters) {
     return useQuery<AuditLogEntry[]>({
-        queryKey: ['audit-log', workspaceId],
+        queryKey: ['audit-log', workspaceId, filters],
         queryFn: () => {
             if (!workspaceId) throw new Error('Missing workspaceId')
-            return fetchAuditLog(workspaceId)
+            return fetchAuditLog(workspaceId, filters)
         },
         enabled: !!workspaceId,
+    })
+}
+
+// ─── Audit Streaming ────────────────────────────────────────────────────────
+
+export function useAuditStreamingConfig(workspaceId: string | null) {
+    return useQuery<AuditStreamingConfig>({
+        queryKey: ['audit-streaming', workspaceId],
+        queryFn: () => {
+            if (!workspaceId) throw new Error('Missing workspaceId')
+            return fetchAuditStreamingConfig(workspaceId)
+        },
+        enabled: !!workspaceId,
+    })
+}
+
+export function useUpdateAuditStreamingConfig() {
+    const queryClient = useQueryClient()
+    return useMutation<undefined, Error, { workspaceId: string; config: AuditStreamingConfig }>({
+        mutationFn: async ({ workspaceId, config }) => {
+            await updateAuditStreamingConfig(workspaceId, config)
+            return undefined
+        },
+        onSuccess: (_d, { workspaceId }) => {
+            void queryClient.invalidateQueries({ queryKey: ['audit-streaming', workspaceId] })
+        },
     })
 }
 
