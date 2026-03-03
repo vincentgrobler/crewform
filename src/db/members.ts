@@ -169,31 +169,161 @@ export async function acceptInvitation(token: string): Promise<{ success: boolea
 
 // ─── Audit Log ──────────────────────────────────────────────────────────────
 
-/** Fetch recent audit log entries */
-export async function fetchAuditLog(workspaceId: string, limit = 50): Promise<AuditLogEntry[]> {
-    const result = await supabase
+export interface AuditLogFilters {
+    action?: string
+    dateRange?: 'all' | '7d' | '30d' | '90d'
+    offset?: number
+    limit?: number
+}
+
+/** Fetch audit log entries with optional filters and pagination */
+export async function fetchAuditLog(
+    workspaceId: string,
+    filters: AuditLogFilters = {},
+): Promise<AuditLogEntry[]> {
+    const { action, dateRange = 'all', offset = 0, limit = 50 } = filters
+
+    let query = supabase
         .from('audit_log')
         .select('*')
         .eq('workspace_id', workspaceId)
         .order('created_at', { ascending: false })
-        .limit(limit)
+        .range(offset, offset + limit - 1)
 
+    if (action) {
+        query = query.eq('action', action)
+    }
+
+    if (dateRange !== 'all') {
+        const days = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90
+        const since = new Date()
+        since.setDate(since.getDate() - days)
+        query = query.gte('created_at', since.toISOString())
+    }
+
+    const result = await query
     if (result.error) throw result.error
     return result.data as AuditLogEntry[]
 }
 
-/** Write an audit log entry */
+/** Write an audit log entry and fire streaming webhook if configured */
 export async function writeAuditLog(
     workspaceId: string,
     userId: string,
     action: string,
     details: Record<string, unknown> = {},
 ): Promise<void> {
+    const entry = { workspace_id: workspaceId, user_id: userId, action, details }
     const result = await supabase
         .from('audit_log')
-        .insert({ workspace_id: workspaceId, user_id: userId, action, details })
+        .insert(entry)
 
     if (result.error) throw result.error
+
+    // Fire streaming webhook (fire-and-forget)
+    void dispatchAuditWebhook(workspaceId, { ...entry, created_at: new Date().toISOString() })
+}
+
+// ─── Audit Streaming ────────────────────────────────────────────────────────
+
+export interface AuditStreamingConfig {
+    enabled: boolean
+    webhookUrl: string
+    service: 'datadog' | 'splunk' | 'custom'
+}
+
+const DEFAULT_STREAMING_CONFIG: AuditStreamingConfig = {
+    enabled: false,
+    webhookUrl: '',
+    service: 'custom',
+}
+
+/** Fetch audit streaming config from workspace settings */
+export async function fetchAuditStreamingConfig(
+    workspaceId: string,
+): Promise<AuditStreamingConfig> {
+    const result = await supabase
+        .from('workspaces')
+        .select('settings')
+        .eq('id', workspaceId)
+        .single()
+
+    if (result.error) return DEFAULT_STREAMING_CONFIG
+    const settings = (result.data as Record<string, unknown>).settings as Record<string, unknown> | undefined
+    if (!settings?.audit_streaming) return DEFAULT_STREAMING_CONFIG
+    return settings.audit_streaming as AuditStreamingConfig
+}
+
+/** Update audit streaming config in workspace settings */
+export async function updateAuditStreamingConfig(
+    workspaceId: string,
+    config: AuditStreamingConfig,
+): Promise<void> {
+    // Read current settings first to merge
+    const current = await supabase
+        .from('workspaces')
+        .select('settings')
+        .eq('id', workspaceId)
+        .single()
+
+    const row = current.data as Record<string, unknown>
+    const existing: Record<string, unknown> = (row.settings as Record<string, unknown> | null) ?? {}
+
+    const result = await supabase
+        .from('workspaces')
+        .update({ settings: { ...existing, audit_streaming: config } })
+        .eq('id', workspaceId)
+
+    if (result.error) throw result.error
+}
+
+/** Send a test event to the audit streaming webhook */
+export async function testAuditWebhook(
+    webhookUrl: string,
+): Promise<{ ok: boolean; status: number; statusText: string }> {
+    const testEvent = {
+        source: 'crewform',
+        event_type: 'audit_log.test',
+        timestamp: new Date().toISOString(),
+        data: {
+            action: 'test_event',
+            details: { message: 'CrewForm audit log streaming test event' },
+        },
+    }
+    try {
+        const resp = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(testEvent),
+        })
+        return { ok: resp.ok, status: resp.status, statusText: resp.statusText }
+    } catch {
+        return { ok: false, status: 0, statusText: 'Network error' }
+    }
+}
+
+/** Fire-and-forget POST of audit entry to configured webhook */
+async function dispatchAuditWebhook(
+    workspaceId: string,
+    entry: Record<string, unknown>,
+): Promise<void> {
+    try {
+        const config = await fetchAuditStreamingConfig(workspaceId)
+        if (!config.enabled || !config.webhookUrl) return
+
+        await fetch(config.webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                source: 'crewform',
+                event_type: 'audit_log',
+                timestamp: entry.created_at,
+                data: entry,
+            }),
+        })
+    } catch {
+        // Streaming failures must never block audit writes
+    }
 }
 
 // ─── Workspace Settings ─────────────────────────────────────────────────────
