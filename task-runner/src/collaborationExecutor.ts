@@ -8,6 +8,7 @@ import { supabase } from './supabase';
 import { executeLLMCall } from './llmHelper';
 import { writeTeamRunUsageRecord } from './usageWriter';
 import { dispatchTeamRunWebhooks } from './webhookDispatcher';
+import { storeTeamMemory, retrieveRelevantMemories, buildMemoryContext } from './teamMemory';
 import type { TeamRun, Agent, CollaborationConfig, TokenUsage } from './types';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -63,7 +64,13 @@ export async function processCollaborationRun(run: TeamRun): Promise<void> {
             agentMap.set(agent.id, agent);
         }
 
-        // 3. Record initial system message
+        // 3. Retrieve relevant team memories
+        const teamMemories = await retrieveRelevantMemories(run.team_id, run.workspace_id, run.input_task);
+        if (teamMemories.length > 0) {
+            console.log(`[Collaboration] Found ${teamMemories.length} relevant memories for team ${run.team_id}`);
+        }
+
+        // 4. Record initial system message
         await recordMessage(run.id, null, 'system', `Collaboration started: ${run.input_task}`);
 
         // 4. Collaboration turn loop
@@ -89,7 +96,12 @@ export async function processCollaborationRun(run: TeamRun): Promise<void> {
 
             // Build prompt for speaker
             const systemPrompt = buildSpeakerSystemPrompt(speaker, agents, config);
-            const userPrompt = buildTurnPrompt(run.input_task, conversation, speaker, turn, config);
+            let userPrompt = buildTurnPrompt(run.input_task, conversation, speaker, turn, config);
+
+            // Inject team memory context on the first turn
+            if (turn === 0 && teamMemories.length > 0) {
+                userPrompt += buildMemoryContext(teamMemories);
+            }
 
             // Execute LLM call
             const result = await executeLLMCall({
@@ -164,6 +176,9 @@ export async function processCollaborationRun(run: TeamRun): Promise<void> {
         await recordMessage(run.id, null, 'system', `Collaboration completed after ${conversation.length} turns.`);
 
         console.log(`[Collaboration] Completed run ${run.id} (${conversation.length} turns, ${totalTokens} tokens)`);
+
+        // Store output as team memory (fire-and-forget)
+        void storeTeamMemory(run.team_id, run.id, run.workspace_id, finalOutput);
 
         // Fire webhook (fire-and-forget)
         void dispatchTeamRunWebhooks(
