@@ -18,13 +18,13 @@ export const FEATURE_MIN_PLAN: Record<string, string> = {
     advanced_webhooks: 'Pro',
     team_triggers: 'Pro',
     billing: 'Pro',
+    orchestrator_mode: 'Pro',
+    messaging_channels: 'Pro',
+    custom_tools: 'Pro',
     // Team tier
-    orchestrator_mode: 'Team',
     collaboration_mode: 'Team',
     team_memory: 'Team',
     rbac: 'Team',
-    custom_tools: 'Team',
-    messaging_channels: 'Team',
     // Enterprise tier
     audit_logs: 'Enterprise',
     swarm: 'Enterprise',

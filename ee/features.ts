@@ -37,6 +37,9 @@ export const PLAN_FEATURES: Record<string, EEFeature[]> = {
         EE_FEATURES.ADVANCED_WEBHOOKS,
         EE_FEATURES.TEAM_TRIGGERS,
         EE_FEATURES.BILLING,
+        EE_FEATURES.ORCHESTRATOR_MODE,
+        EE_FEATURES.MESSAGING_CHANNELS,
+        EE_FEATURES.CUSTOM_TOOLS,
     ],
     team: [
         // All pro features plus:
@@ -47,11 +50,11 @@ export const PLAN_FEATURES: Record<string, EEFeature[]> = {
         EE_FEATURES.TEAM_TRIGGERS,
         EE_FEATURES.BILLING,
         EE_FEATURES.ORCHESTRATOR_MODE,
+        EE_FEATURES.MESSAGING_CHANNELS,
+        EE_FEATURES.CUSTOM_TOOLS,
         EE_FEATURES.COLLABORATION_MODE,
         EE_FEATURES.TEAM_MEMORY,
         EE_FEATURES.RBAC,
-        EE_FEATURES.CUSTOM_TOOLS,
-        EE_FEATURES.MESSAGING_CHANNELS,
     ],
     enterprise: [
         // All team features plus:

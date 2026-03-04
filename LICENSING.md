@@ -25,22 +25,26 @@ All code **outside** the `ee/` directory is licensed under AGPL-3.0. You are fre
 
 All code **inside** the `ee/` directory is proprietary and requires a valid Enterprise license key. This code is not covered by the AGPL-3.0 license.
 
-**EE adds:**
+**EE adds (Pro and above):**
 - Orchestrator mode (brain agent + worker delegation)
-- Collaboration mode (multi-agent discussion)
-- Team Memory (pgvector semantic search)
-- Audit log viewer and log streaming (Datadog/Splunk)
 - Advanced analytics, charts, and CSV export
 - Prompt history with diff viewer
 - Advanced webhooks (Slack, Discord, Zapier, Asana)
 - Messaging channels (Telegram, Discord bots)
 - Team triggers (scheduled + webhook)
 - File attachments
-- Swarm (multi-runner concurrency pool)
-- Billing and Stripe integration
-- Workspace members, RBAC, and invitations
-- Marketplace publishing
 - Custom tools
+- Billing and Stripe integration
+
+**EE adds (Team and above):**
+- Collaboration mode (multi-agent discussion)
+- Team Memory (pgvector semantic search)
+- Workspace members, RBAC, and invitations
+
+**EE adds (Enterprise):**
+- Audit log viewer and log streaming (Datadog/Splunk)
+- Swarm (multi-runner concurrency pool)
+- Marketplace publishing
 - Admin panel
 - SSO / SAML (coming soon)
 
