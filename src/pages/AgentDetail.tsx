@@ -766,7 +766,7 @@ function ActivityTab({ agentId }: { agentId: string }) {
 
             if (error) throw error
 
-            const tasks = (data ?? []) as AgentTaskRec[]
+            const tasks = (data as AgentTaskRec[])
 
             // Fetch task titles
             const taskIds = [...new Set(tasks.map(t => t.task_id))]
