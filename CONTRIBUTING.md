@@ -64,6 +64,7 @@ To set up the project locally for development:
 ## Project Structure
 
 *   `src/`: Frontend React application built with Vite, Tailwind CSS, and ShadCN UI.
+*   `ee/`: Enterprise Edition proprietary code (license validation, feature flags). **Requires CLA.**
 *   `task-runner/`: Node.js backend execution engine.
 *   `supabase/`: Database schema, migrations, and edge functions.
 *   `crewform-docs/`: Project documentation and ROADMAP.
@@ -74,6 +75,17 @@ To set up the project locally for development:
 *   **Linting & Formatting**: We use ESLint and Prettier. Ensure your code passes all lint checks (`npm run lint`).
 *   **Components**: Follow the established React functional component patterns in `src/components`, keeping components modular and utilizing specialized hooks in `src/hooks`.
 
+## Community Edition vs Enterprise Edition
+
+CrewForm uses a dual-license (open-core) model:
+
+*   **Community Edition** (everything outside `ee/`)  — Licensed under AGPL-3.0. Contributions welcome!
+*   **Enterprise Edition** (inside `ee/`)  — Proprietary. Contributions require a signed **Contributor License Agreement (CLA)**.
+
+If you're unsure whether your change touches EE code, just open an issue or PR and we'll guide you.
+
 ## License
 
-By contributing to CrewForm, you agree that your contributions will be licensed under the project's [GNU Affero General Public License v3.0 (AGPL v3)](LICENSE).
+By contributing to Community Edition code (outside `ee/`), you agree that your contributions will be licensed under the project's [GNU Affero General Public License v3.0 (AGPL v3)](LICENSE).
+
+Contributions to Enterprise Edition code (inside `ee/`) require a signed Contributor License Agreement. Contact enterprise@crewform.tech for details.
