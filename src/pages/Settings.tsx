@@ -27,7 +27,7 @@ const settingsTabs: { key: SettingsTab; label: string; icon: typeof KeyRound; ee
   { key: 'channels', label: 'Channels', icon: MessageSquareText, eeFeature: 'messaging_channels' },
   { key: 'members', label: 'Members', icon: Users, eeFeature: 'rbac' },
   { key: 'workspace', label: 'Workspace', icon: Building2 },
-  { key: 'billing', label: 'Billing', icon: CreditCard, eeFeature: 'billing' },
+  { key: 'billing', label: 'Billing', icon: CreditCard },
   { key: 'audit-log', label: 'Audit Log', icon: ScrollText, eeFeature: 'audit_logs' },
   { key: 'license', label: 'License', icon: ShieldCheck },
   { key: 'admin', label: 'Admin', icon: Settings2, eeFeature: 'admin_panel' },
