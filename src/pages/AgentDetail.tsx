@@ -853,7 +853,7 @@ function ActivityTab({ agentId }: { agentId: string }) {
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between gap-2">
                                     <p className="truncate text-sm font-medium text-gray-200">
-                                        {rec.task_title ?? 'Untitled Task'}
+                                        {rec.task_title || 'Untitled Task'}
                                     </p>
                                     <span className={cn('shrink-0 text-xs font-medium', cfg.color)}>
                                         {cfg.label}
