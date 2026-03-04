@@ -20,6 +20,7 @@
 
 - [Why CrewForm?](#why-crewform)
 - [Key Features](#key-features)
+- [Editions & Pricing](#editions--pricing)
 - [Quick Start](#quick-start)
 - [Documentation](#documentation)
 - [Architecture](#architecture)
@@ -44,14 +45,48 @@ CrewForm is built for developers and teams who want production-ready AI agent or
 
 ## Key Features
 
+### Community Edition (Free & Open Source)
+
 - 🤖 **Agent Management** — Create, configure, and monitor AI agents from a visual UI
-- 👥 **Team Modes** — Orchestrate agents using Pipeline, Orchestrator, or Collaboration patterns
+- 👥 **Pipeline Teams** — Chain agents together in sequential workflows
 - 🔑 **BYOK (Bring Your Own Key)** — Pay your LLM provider directly. Zero markup, zero middleman
-- 🏪 **Marketplace** — Share and discover agent templates built by the community
+- 🏪 **Marketplace** — Browse and install agent templates built by the community
 - 🏠 **Self-Hostable** — Run on your own infrastructure with Docker Compose
 - 🔒 **Secure by Default** — AES-256-GCM key encryption, Row-Level Security, GDPR-ready
 - ⚡ **Real-Time** — Watch your agents work in real-time with live task execution updates
 - 📊 **Usage Tracking** — Monitor token usage, costs, and performance per agent and task
+
+### Enterprise Edition (Paid Plans)
+
+- 🔗 **Orchestrator Mode** — Brain agent coordinates sub-agents via delegation trees *(Pro)*
+- 🛠️ **Custom Tools** — Extend agents with custom tool integrations *(Pro)*
+- 📡 **Messaging Channels** — Telegram, Discord, Slack bots *(Pro)*
+- 📈 **Advanced Analytics** — Charts, CSV export, prompt history with diffs *(Pro)*
+- 🤝 **Collaboration Mode** — Multi-agent real-time discussion *(Team)*
+- 🧠 **Team Memory** — Shared pgvector semantic search across agents *(Team)*
+- 👤 **RBAC** — Role-based access control and workspace member invitations *(Team)*
+- 📋 **Audit Logs** — Full audit trail with Datadog/Splunk streaming *(Enterprise)*
+- 🐝 **Swarm** — Multi-runner concurrency pool *(Enterprise)*
+
+## Editions & Pricing
+
+CrewForm uses an **open-core** model: a free Community Edition under AGPL-3.0 and a proprietary Enterprise Edition.
+
+| | Free | Pro | Team | Enterprise |
+|---|---|---|---|---|
+| **Price** | $0 | $39/mo | $99/mo | Custom |
+| Agents | 3 | 25 | Unlimited | Unlimited |
+| Tasks/month | 50 | 1,000 | Unlimited | Unlimited |
+| Teams | 1 | 10 | Unlimited | Unlimited |
+| Members | 1 | 3 | 25 | Unlimited |
+| Pipeline Mode | ✅ | ✅ | ✅ | ✅ |
+| Orchestrator Mode | — | ✅ | ✅ | ✅ |
+| Collaboration Mode | — | — | ✅ | ✅ |
+| Team Memory | — | — | ✅ | ✅ |
+| Audit Logs | — | — | — | ✅ |
+| Self-Hosting | ✅ (CE) | ✅ | ✅ | ✅ |
+
+> See [LICENSING.md](LICENSING.md) for full details on the dual-license model.
 
 ## Quick Start
 
@@ -91,8 +126,12 @@ npm run dev
 │                   CrewForm UI                    │
 │          React + TypeScript + Tailwind           │
 ├─────────────────────────────────────────────────┤
+│          EE Feature Gating (ee/)                 │
+│     License Validation · Feature Flags           │
+├─────────────────────────────────────────────────┤
 │                  Supabase Layer                  │
 │     Auth · Database · Realtime · Storage         │
+│           Edge Functions (REST API)              │
 ├─────────────────────────────────────────────────┤
 │                  Task Runner                     │
 │      Node.js · Multi-Provider LLM Support        │
@@ -158,7 +197,13 @@ CrewForm is an open-source AI orchestration platform that lets you deploy, manag
 <details>
 <summary><strong>Is CrewForm free to use?</strong></summary>
 
-Yes. CrewForm is open-source under the AGPL v3 license. You can self-host it for free. We also offer a hosted version with a free tier at [crewform.tech](https://crewform.tech).
+Yes. CrewForm's Community Edition is open-source under the AGPL v3 license. You can self-host it for free. We also offer a hosted version with a free tier at [crewform.tech](https://crewform.tech). Paid plans (Pro $39/mo, Team $99/mo, Enterprise custom) unlock additional features.
+</details>
+
+<details>
+<summary><strong>What is the CE/EE split?</strong></summary>
+
+CrewForm uses an open-core model. All code outside `ee/` is Community Edition (AGPL-3.0, free). Code inside `ee/` is Enterprise Edition (proprietary, requires a license key). CE includes agents, pipeline teams, marketplace, and self-hosting. EE adds orchestrator mode, collaboration, memory, audit logs, and more.
 </details>
 
 <details>
@@ -187,9 +232,12 @@ CrewForm currently supports **Anthropic (Claude)**, **Google (Gemini)**, and **O
 
 ## License
 
-CrewForm is licensed under the [GNU Affero General Public License v3.0](LICENSE).
+CrewForm uses a **dual-license** model:
 
-This means you can use, modify, and distribute CrewForm freely. If you modify CrewForm and run it as a network service, you must make your modifications available under the same license.
+- **Community Edition** (everything outside `ee/`) — [GNU Affero General Public License v3.0](LICENSE)
+- **Enterprise Edition** (inside `ee/`) — [CrewForm Enterprise License](ee/LICENSE)
+
+You can use, modify, and distribute the Community Edition freely. Enterprise features require a valid license key. See [LICENSING.md](LICENSING.md) for full details.
 
 ---
 

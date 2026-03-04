@@ -38,10 +38,12 @@ We will keep you informed of progress toward a fix and full announcement.
 ### In Scope
 
 - CrewForm web application (`src/`)
+- Enterprise Edition code (`ee/`)
 - Task Runner service (`task-runner/`)
 - Supabase configuration and RLS policies (`supabase/`)
 - Authentication and authorisation flows
 - API key storage and encryption
+- License key validation and generation
 - Edge functions
 
 ### Out of Scope
