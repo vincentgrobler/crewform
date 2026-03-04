@@ -1,3 +1,4 @@
+import http from 'http';
 import { supabase } from './supabase';
 import { processTask } from './executor';
 import { processPipelineRun } from './pipelineExecutor';
@@ -12,10 +13,16 @@ import {
 import { evaluateTriggers, TRIGGER_EVAL_INTERVAL_MS } from './triggerScheduler';
 import type { Task, TeamRun } from './types';
 
-// ─── Adaptive Polling ────────────────────────────────────────────────────────
+// ─── Configuration ───────────────────────────────────────────────────────────
 
-const POLL_MIN_MS = 1_000;
-const POLL_MAX_MS = 15_000;
+const PORT = parseInt(process.env.PORT ?? '3001', 10);
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET ?? '';
+
+// ─── Slow-Polling Fallback ───────────────────────────────────────────────────
+// Primary pickup is via webhook; polling is a safety net.
+
+const POLL_MIN_MS = 30_000;  // 30s — webhooks handle instant pickup
+const POLL_MAX_MS = 60_000;  // 60s max backoff
 let pollIntervalMs = POLL_MIN_MS;
 let pollTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -60,9 +67,6 @@ function onSlotFreed() {
     activeSlots = Math.max(activeSlots - 1, 0);
     log(`Slot freed — active: ${activeSlots}/${MAX_CONCURRENT}`);
     void decrementLoad();
-    // Immediately try to fill the freed slot
-    resetPollInterval();
-    scheduleNextPoll();
 }
 
 // ─── Team Run Executor Router ────────────────────────────────────────────────
@@ -114,75 +118,101 @@ async function executeTeamRun(run: TeamRun): Promise<void> {
     });
 }
 
-// ─── Poll Loop ───────────────────────────────────────────────────────────────
+// ─── Shared: Claim & Execute ────────────────────────────────────────────────
+
+/**
+ * Attempt to claim and process the next available task.
+ * Returns true if work was claimed.
+ */
+async function tryClaimTask(): Promise<boolean> {
+    if (activeSlots >= MAX_CONCURRENT) return false;
+
+    const runnerId = getRunnerId();
+    const rpcResponse = await supabase.rpc('claim_next_task', {
+        p_runner_id: runnerId,
+    });
+    const taskData = rpcResponse.data as Task[] | null;
+    const taskError = rpcResponse.error;
+
+    if (taskError) {
+        logError(`RPC Error claiming task: ${taskError.message}`);
+        return false;
+    }
+
+    if (taskData && taskData.length > 0) {
+        const claimedTask = taskData[0];
+        activeSlots++;
+        log(`Claimed task ${claimedTask.id} — active: ${activeSlots}/${MAX_CONCURRENT}`);
+
+        processTask(claimedTask)
+            .catch((err: unknown) => {
+                logError(`Unhandled error processing task ${claimedTask.id}:`, err);
+            })
+            .finally(() => { onSlotFreed(); });
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Attempt to claim and process the next available team run.
+ * Returns true if work was claimed.
+ */
+async function tryClaimTeamRun(): Promise<boolean> {
+    if (activeSlots >= MAX_CONCURRENT) return false;
+
+    const runnerId = getRunnerId();
+    const teamRunResponse = await supabase.rpc('claim_next_team_run', {
+        p_runner_id: runnerId,
+    });
+    const teamRunData = teamRunResponse.data as TeamRun[] | null;
+    const teamRunError = teamRunResponse.error;
+
+    if (teamRunError) {
+        logError(`RPC Error claiming team run: ${teamRunError.message}`);
+        return false;
+    }
+
+    if (teamRunData && teamRunData.length > 0) {
+        const claimedRun = teamRunData[0];
+        activeSlots++;
+        log(`Claimed team run ${claimedRun.id} — active: ${activeSlots}/${MAX_CONCURRENT}`);
+
+        executeTeamRun(claimedRun)
+            .catch((err: unknown) => {
+                logError(`Unhandled error processing team run ${claimedRun.id}:`, err);
+                void writeTeamRunAudit(claimedRun.workspace_id, claimedRun.created_by, 'team_run_failed', {
+                    team_id: claimedRun.team_id, run_id: claimedRun.id,
+                });
+            })
+            .finally(() => { onSlotFreed(); });
+        return true;
+    }
+
+    return false;
+}
+
+// ─── Poll Loop (Slow Fallback) ───────────────────────────────────────────────
 
 async function poll() {
     if (pollTimer) clearTimeout(pollTimer);
 
-    // Don't claim if already at capacity
     if (activeSlots >= MAX_CONCURRENT) {
         scheduleNextPoll();
         return;
     }
 
-    const runnerId = getRunnerId();
     let foundWork = false;
 
     try {
-        // ─── 1. Check for pending tasks ──────────────────────────────────
-        const rpcResponse = await supabase.rpc('claim_next_task', {
-            p_runner_id: runnerId,
-        });
-        const taskData = rpcResponse.data as Task[] | null;
-        const taskError = rpcResponse.error;
-
-        if (taskError) {
-            logError(`RPC Error claiming task: ${taskError.message}`);
-        } else if (taskData && taskData.length > 0) {
-            const claimedTask = taskData[0];
-            activeSlots++;
-            foundWork = true;
-            log(`Claimed task ${claimedTask.id} — active: ${activeSlots}/${MAX_CONCURRENT}`);
-
-            processTask(claimedTask)
-                .catch((err: unknown) => {
-                    logError(`Unhandled error processing task ${claimedTask.id}:`, err);
-                })
-                .finally(() => { onSlotFreed(); });
-        }
-
-        // ─── 2. Check for pending team runs (if still have capacity) ─────
-        if (activeSlots < MAX_CONCURRENT) {
-            const teamRunResponse = await supabase.rpc('claim_next_team_run', {
-                p_runner_id: runnerId,
-            });
-            const teamRunData = teamRunResponse.data as TeamRun[] | null;
-            const teamRunError = teamRunResponse.error;
-
-            if (teamRunError) {
-                logError(`RPC Error claiming team run: ${teamRunError.message}`);
-            } else if (teamRunData && teamRunData.length > 0) {
-                const claimedRun = teamRunData[0];
-                activeSlots++;
-                foundWork = true;
-                log(`Claimed team run ${claimedRun.id} — active: ${activeSlots}/${MAX_CONCURRENT}`);
-
-                executeTeamRun(claimedRun)
-                    .catch((err: unknown) => {
-                        logError(`Unhandled error processing team run ${claimedRun.id}:`, err);
-                        void writeTeamRunAudit(claimedRun.workspace_id, claimedRun.created_by, 'team_run_failed', {
-                            team_id: claimedRun.team_id, run_id: claimedRun.id,
-                        });
-                    })
-                    .finally(() => { onSlotFreed(); });
-            }
-        }
+        if (await tryClaimTask()) foundWork = true;
+        if (await tryClaimTeamRun()) foundWork = true;
     } catch (err: unknown) {
         const errMsg = err instanceof Error ? err.message : String(err);
         logError(`Unexpected error in polling loop: ${errMsg}`);
     }
 
-    // Adjust polling speed
     if (foundWork) {
         resetPollInterval();
     } else {
@@ -192,6 +222,65 @@ async function poll() {
     scheduleNextPoll();
 }
 
+// ─── Webhook Server ──────────────────────────────────────────────────────────
+
+function createWebhookServer(): http.Server {
+    const server = http.createServer((req, res) => {
+        // Health check
+        if (req.method === 'GET' && req.url === '/health') {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                status: 'ok',
+                activeSlots,
+                maxConcurrent: MAX_CONCURRENT,
+                runnerId: getRunnerId(),
+            }));
+            return;
+        }
+
+        // Webhook endpoints
+        if (req.method === 'POST' && (req.url === '/webhook/task' || req.url === '/webhook/team-run')) {
+            // Validate webhook secret
+            if (WEBHOOK_SECRET && req.headers['x-webhook-secret'] !== WEBHOOK_SECRET) {
+                log('Webhook rejected — invalid secret');
+                res.writeHead(401, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Unauthorized' }));
+                return;
+            }
+
+            // Read body (we don't actually need the payload — we use claim_next RPC)
+            let body = '';
+            req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+            req.on('end', () => {
+                const endpoint = req.url;
+                log(`Webhook received: ${endpoint} (${body.length} bytes)`);
+
+                // Respond immediately — processing is async
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ accepted: true }));
+
+                // Attempt to claim and process
+                if (endpoint === '/webhook/task') {
+                    void tryClaimTask().catch((err: unknown) => {
+                        logError('Webhook task claim failed:', err);
+                    });
+                } else {
+                    void tryClaimTeamRun().catch((err: unknown) => {
+                        logError('Webhook team-run claim failed:', err);
+                    });
+                }
+            });
+            return;
+        }
+
+        // 404 for everything else
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Not found' }));
+    });
+
+    return server;
+}
+
 // ─── Startup ─────────────────────────────────────────────────────────────────
 
 async function start() {
@@ -199,15 +288,25 @@ async function start() {
         const id = await registerRunner();
         log(`Registered with ID ${id}`);
         log(`MAX_CONCURRENT=${MAX_CONCURRENT}`);
-        log(`Poll interval: ${POLL_MIN_MS}ms (min) → ${POLL_MAX_MS}ms (max, adaptive)`);
-        log(`Recovery sweep every ${RECOVERY_INTERVAL_MS}ms for stale runners.`);
-        log(`Trigger evaluation every ${TRIGGER_EVAL_INTERVAL_MS}ms.`);
+        log(`Webhook server on port ${PORT}`);
+        log(`Polling fallback: ${POLL_MIN_MS}ms (min) → ${POLL_MAX_MS}ms (max)`);
+        log(`Recovery sweep every ${RECOVERY_INTERVAL_MS}ms`);
+        log(`Trigger evaluation every ${TRIGGER_EVAL_INTERVAL_MS}ms`);
+        if (!WEBHOOK_SECRET) {
+            log('⚠️  WEBHOOK_SECRET is not set — webhook endpoints are unprotected');
+        }
+
+        // Start HTTP webhook server
+        const server = createWebhookServer();
+        server.listen(PORT, () => {
+            log(`Webhook server listening on port ${PORT}`);
+        });
 
         // Start recovery sweep and trigger evaluation on fixed intervals
         setInterval(() => { void runRecoverySweep(); }, RECOVERY_INTERVAL_MS);
         setInterval(() => { void evaluateTriggers(); }, TRIGGER_EVAL_INTERVAL_MS);
 
-        // Initial poll (adaptive setTimeout chain starts here)
+        // Initial poll (slow fallback chain starts here)
         void poll();
     } catch (err: unknown) {
         const errMsg = err instanceof Error ? err.message : String(err);
