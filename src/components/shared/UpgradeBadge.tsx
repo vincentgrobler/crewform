@@ -72,11 +72,3 @@ export function EEGate({ workspaceId, feature, children, fallback }: EEGateProps
 
     return <>{children}</>
 }
-
-/**
- * useEEGate — hook version of EEGate for more flexible usage.
- * Returns whether the feature is enabled.
- */
-export function useEEGate(workspaceId: string | undefined, feature: string) {
-    return useEEFeature(workspaceId, feature)
-}

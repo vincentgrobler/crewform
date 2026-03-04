@@ -26,22 +26,22 @@ export interface EELicense {
  * Returns null if no license exists (Community Edition).
  */
 export async function fetchEELicense(workspaceId: string): Promise<EELicense | null> {
-    const { data, error } = await supabase
+    const result = await supabase
         .from('ee_licenses')
         .select('*')
         .eq('workspace_id', workspaceId)
         .eq('status', 'active')
         .maybeSingle()
 
-    if (error) {
+    if (result.error) {
         // Table might not exist yet (migration not applied) — treat as CE
-        console.warn('[EELicense] Lookup failed:', error.message)
+        console.warn('[EELicense] Lookup failed:', result.error.message)
         return null
     }
 
-    if (!data) return null
+    if (!result.data) return null
 
-    const license = data as EELicense
+    const license = result.data as EELicense
 
     // Check expiry client-side
     if (license.valid_until && new Date(license.valid_until) < new Date()) {

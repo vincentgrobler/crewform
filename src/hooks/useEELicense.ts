@@ -12,7 +12,7 @@ import type { EELicense } from '@/db/eeLicense'
 export function useEELicense(workspaceId: string | undefined) {
     const { data: license, isLoading } = useQuery<EELicense | null>({
         queryKey: ['ee-license', workspaceId],
-        queryFn: () => fetchEELicense(workspaceId!),
+        queryFn: () => fetchEELicense(workspaceId ?? ''),
         enabled: !!workspaceId,
         staleTime: 5 * 60 * 1000,       // Cache for 5 minutes
         refetchOnWindowFocus: false,
