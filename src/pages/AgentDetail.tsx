@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 CrewForm
 
-import { useState, useEffect, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, Trash2, Upload, DownloadCloud, Activity, Settings2, AlertCircle, Loader2, History, Zap, Plus, Pencil, X } from 'lucide-react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { ArrowLeft, Save, Trash2, Upload, DownloadCloud, Activity, Settings2, AlertCircle, Loader2, History, Zap, Plus, Pencil, X, CheckCircle2, XCircle, Clock, Cpu, Coins } from 'lucide-react'
 import { useAgent } from '@/hooks/useAgent'
 import { useUpdateAgent } from '@/hooks/useUpdateAgent'
 import { useDeleteAgent } from '@/hooks/useDeleteAgent'
@@ -314,7 +314,7 @@ export function AgentDetail() {
                 <TriggersPanel agentId={id} />
             )}
 
-            {activeTab === 'activity' && <ActivityTab />}
+            {activeTab === 'activity' && id && <ActivityTab agentId={id} />}
 
             {/* Publish modal */}
             {showPublishModal && (
@@ -735,14 +735,164 @@ function ConfigurationTab({ formData, fieldErrors, onUpdateField, modelOptions, 
 
 // ─── Activity Tab ────────────────────────────────────────────────────────────
 
-function ActivityTab() {
+interface AgentTaskRec {
+    id: string
+    task_id: string
+    status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+    tokens_used: number
+    cost_estimate_usd: number
+    model_used: string | null
+    started_at: string | null
+    completed_at: string | null
+    created_at: string
+    error_message: string | null
+    task_title?: string
+}
+
+function ActivityTab({ agentId }: { agentId: string }) {
+    const [records, setRecords] = useState<AgentTaskRec[]>([])
+    const [isLoading, setIsLoading] = useState(true)
+
+    const loadActivity = useCallback(async () => {
+        setIsLoading(true)
+        try {
+            const { supabase } = await import('@/lib/supabase')
+            const { data, error } = await supabase
+                .from('agent_tasks')
+                .select('id, task_id, status, tokens_used, cost_estimate_usd, model_used, started_at, completed_at, created_at, error_message')
+                .eq('agent_id', agentId)
+                .order('created_at', { ascending: false })
+                .limit(50)
+
+            if (error) throw error
+
+            const tasks = (data ?? []) as AgentTaskRec[]
+
+            // Fetch task titles
+            const taskIds = [...new Set(tasks.map(t => t.task_id))]
+            if (taskIds.length > 0) {
+                const { data: taskData } = await supabase
+                    .from('tasks')
+                    .select('id, title')
+                    .in('id', taskIds)
+
+                if (taskData) {
+                    const titleMap = new Map<string, string>()
+                    for (const t of taskData as Array<{ id: string; title: string }>) {
+                        titleMap.set(t.id, t.title)
+                    }
+                    for (const rec of tasks) {
+                        rec.task_title = titleMap.get(rec.task_id) ?? 'Untitled Task'
+                    }
+                }
+            }
+
+            setRecords(tasks)
+        } catch (err) {
+            console.error('[ActivityTab] Failed to load activity:', err)
+        } finally {
+            setIsLoading(false)
+        }
+    }, [agentId])
+
+    useEffect(() => {
+        void loadActivity()
+    }, [loadActivity])
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center py-16">
+                <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+            </div>
+        )
+    }
+
+    if (records.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-surface-card py-16">
+                <Activity className="mb-4 h-10 w-10 text-gray-600" />
+                <h3 className="mb-1 text-lg font-medium text-gray-300">No activity yet</h3>
+                <p className="text-sm text-gray-500">
+                    Task history will appear here once this agent runs tasks.
+                </p>
+            </div>
+        )
+    }
+
     return (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-surface-card py-16">
-            <Activity className="mb-4 h-10 w-10 text-gray-600" />
-            <h3 className="mb-1 text-lg font-medium text-gray-300">No activity yet</h3>
-            <p className="text-sm text-gray-500">
-                Task history and performance stats will appear here once this agent runs tasks.
+        <div className="space-y-3">
+            <p className="text-xs text-gray-500">
+                {records.length} task run{records.length !== 1 ? 's' : ''} (last 50)
             </p>
+            {records.map((rec) => {
+                const statusConfig: Record<string, { icon: typeof CheckCircle2; color: string; label: string }> = {
+                    completed: { icon: CheckCircle2, color: 'text-green-400', label: 'Completed' },
+                    failed: { icon: XCircle, color: 'text-red-400', label: 'Failed' },
+                    running: { icon: Loader2, color: 'text-amber-400', label: 'Running' },
+                    pending: { icon: Clock, color: 'text-gray-400', label: 'Pending' },
+                    cancelled: { icon: XCircle, color: 'text-gray-500', label: 'Cancelled' },
+                }
+                const cfg = statusConfig[rec.status] ?? statusConfig.pending
+                const StatusIcon = cfg.icon
+
+                // Duration
+                let duration = ''
+                if (rec.started_at && rec.completed_at) {
+                    const ms = new Date(rec.completed_at).getTime() - new Date(rec.started_at).getTime()
+                    duration = ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`
+                }
+
+                return (
+                    <Link
+                        key={rec.id}
+                        to={`/tasks/${rec.task_id}`}
+                        className="block rounded-lg border border-border bg-surface-card p-4 transition-colors hover:border-gray-600"
+                    >
+                        <div className="flex items-start gap-3">
+                            <StatusIcon className={cn('mt-0.5 h-4 w-4 shrink-0', cfg.color, rec.status === 'running' && 'animate-spin')} />
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className="truncate text-sm font-medium text-gray-200">
+                                        {rec.task_title ?? 'Untitled Task'}
+                                    </p>
+                                    <span className={cn('shrink-0 text-xs font-medium', cfg.color)}>
+                                        {cfg.label}
+                                    </span>
+                                </div>
+
+                                {/* Meta row */}
+                                <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[11px] text-gray-500">
+                                    <span>{new Date(rec.created_at).toLocaleString()}</span>
+                                    {rec.model_used && (
+                                        <span className="flex items-center gap-1">
+                                            <Cpu className="h-3 w-3" />
+                                            {rec.model_used.split('/').pop()}
+                                        </span>
+                                    )}
+                                    {rec.tokens_used > 0 && (
+                                        <span>{rec.tokens_used.toLocaleString()} tokens</span>
+                                    )}
+                                    {rec.cost_estimate_usd > 0 && (
+                                        <span className="flex items-center gap-1">
+                                            <Coins className="h-3 w-3" />
+                                            ${rec.cost_estimate_usd.toFixed(4)}
+                                        </span>
+                                    )}
+                                    {duration && <span>{duration}</span>}
+                                </div>
+
+                                {/* Error message */}
+                                {rec.status === 'failed' && rec.error_message && (
+                                    <p className="mt-1.5 text-xs text-red-400 line-clamp-2">
+                                        {rec.error_message}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    </Link>
+                )
+            })}
         </div>
     )
 }
+
