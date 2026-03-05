@@ -37,6 +37,7 @@ Guidelines:
             max_tokens: null,
             tags: [],
             tools: [],
+            fallback_model: null,
         },
     },
     {
@@ -61,6 +62,7 @@ Guidelines:
             max_tokens: null,
             tags: [],
             tools: [],
+            fallback_model: null,
         },
     },
     {
@@ -85,6 +87,7 @@ Guidelines:
             max_tokens: null,
             tags: [],
             tools: [],
+            fallback_model: null,
         },
     },
     {
@@ -109,6 +112,7 @@ Guidelines:
             max_tokens: null,
             tags: [],
             tools: [],
+            fallback_model: null,
         },
     },
     {
@@ -133,6 +137,7 @@ Guidelines:
             max_tokens: null,
             tags: [],
             tools: [],
+            fallback_model: null,
         },
     },
 ]
