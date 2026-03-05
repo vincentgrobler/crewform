@@ -44,6 +44,7 @@ export function TemplateSelector({ onSelect }: TemplateSelectorProps) {
                             max_tokens: null,
                             tags: [],
                             tools: [],
+                            fallback_model: null,
                         })
                     }
                     className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-surface-card p-6 transition-colors hover:border-gray-600 hover:bg-surface-elevated"
