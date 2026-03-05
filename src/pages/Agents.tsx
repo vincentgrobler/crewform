@@ -75,7 +75,7 @@ export function Agents() {
         <button
           type="button"
           onClick={() => navigate('/agents/new')}
-          className="rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-hover"
+          className="rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-brand-hover"
         >
           + New Agent
         </button>
@@ -187,7 +187,7 @@ export function Agents() {
           <button
             type="button"
             onClick={() => navigate('/agents/new')}
-            className="rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-hover"
+            className="rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-brand-hover"
           >
             + Create Agent
           </button>
