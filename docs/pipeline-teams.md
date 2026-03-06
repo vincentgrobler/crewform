@@ -105,6 +105,18 @@ This is step 3 in a multi-step pipeline. 2 previous steps have completed.
 5. **Use stop for critical steps** — If step 1 fails, there's no point running step 2
 6. **Monitor costs** — Each step uses tokens; longer pipelines cost more
 
+## Output Routes
+
+Like individual agents, pipeline teams support targeted output delivery. By default, team run results are broadcast to all active output routes.
+
+To restrict where a team's output is sent:
+
+1. Open **Teams → [Team Name] → Settings**
+2. Scroll to **Output Routes**
+3. Select one or more specific channels — or leave blank to send to all
+
+This setting applies to the final pipeline result. Individual step outputs are internal and not broadcast.
+
 ## Monitoring
 
 View pipeline metrics on the **Analytics** page:
