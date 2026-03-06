@@ -4,7 +4,7 @@ import { executeOpenAI } from './providers/openai';
 import { executeGoogle } from './providers/google';
 import { decryptApiKey } from './crypto';
 import { writeTaskUsageRecord } from './usageWriter';
-import { dispatchWebhooks, replyToSourceChannel } from './webhookDispatcher';
+import { dispatchWebhooks, replyToSourceChannel, broadcastToChannels } from './webhookDispatcher';
 import { executeWithToolLoop, getToolDefinitions } from './toolExecutor';
 import { loadInputFiles, buildFileContext, extractAndSaveArtifacts } from './fileAttachments';
 import type { CustomToolConfig } from './toolExecutor';
@@ -331,6 +331,19 @@ export async function processTask(task: Task) {
         // 8b. Reply to source channel if task originated from messaging (fire-and-forget)
         void replyToSourceChannel(task.id, executionResult.result, null, 'completed');
 
+        // 8c. Broadcast to selected messaging channels (fire-and-forget)
+        void broadcastToChannels(
+            task.workspace_id,
+            task.id,
+            null,
+            task.title,
+            agent.name,
+            'completed',
+            executionResult.result,
+            null,
+            agent.output_channel_ids ?? null,
+        );
+
     } catch (error: unknown) {
         const errMsg = error instanceof Error ? error.message : String(error);
         console.error(`[TaskRunner] Failed task ${task.id}:`, errMsg);
@@ -373,6 +386,21 @@ export async function processTask(task: Task) {
 
         // Reply to source channel on failure too
         void replyToSourceChannel(task.id, null, errMsg, 'failed');
+
+        // Broadcast failure to selected messaging channels (fire-and-forget)
+        if (agent) {
+            void broadcastToChannels(
+                task.workspace_id,
+                task.id,
+                null,
+                task.title,
+                agent.name,
+                'failed',
+                null,
+                errMsg,
+                agent.output_channel_ids ?? null,
+            );
+        }
     }
 }
 

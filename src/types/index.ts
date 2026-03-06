@@ -74,6 +74,7 @@ export interface Agent {
   install_count: number
   rating_avg: number
   price_cents: number | null // null or 0 = free, >0 = paid (USD cents)
+  output_channel_ids: string[] | null // null = all channels, [] = none, [...ids] = specific
   created_at: string
   updated_at: string
 }
@@ -128,6 +129,7 @@ export interface Team {
   description: string
   mode: TeamMode
   config: PipelineConfig | OrchestratorConfig | CollaborationConfig
+  output_channel_ids: string[] | null // null = all channels, [] = none, [...ids] = specific
   created_at: string
   updated_at: string
 }

@@ -660,6 +660,107 @@ async function logDelivery(
     }
 }
 
+// ─── Broadcast to Messaging Channels ────────────────────────────────────────
+
+interface BroadcastChannel {
+    id: string;
+    platform: 'telegram' | 'discord' | 'slack' | 'email';
+    config: Record<string, unknown>;
+    is_active: boolean;
+}
+
+/**
+ * Broadcast a task/team-run result to selected messaging channels.
+ * If outputChannelIds is null, broadcasts to ALL active channels in the workspace.
+ * If it's an array, only those specific channel IDs are used.
+ * Never throws — failures are logged but never block the calling flow.
+ */
+export async function broadcastToChannels(
+    workspaceId: string,
+    taskId: string | null,
+    teamRunId: string | null,
+    title: string,
+    agentOrTeamName: string,
+    status: string,
+    result: string | null,
+    error: string | null,
+    outputChannelIds: string[] | null,
+): Promise<void> {
+    try {
+        // Fetch active messaging channels for this workspace
+        let query = supabase
+            .from('messaging_channels')
+            .select('id, platform, config, is_active')
+            .eq('workspace_id', workspaceId)
+            .eq('is_active', true);
+
+        // If specific channels are requested, filter to those IDs
+        if (outputChannelIds !== null) {
+            if (outputChannelIds.length === 0) return; // empty array = no broadcast
+            query = query.in('id', outputChannelIds);
+        }
+
+        const { data: channels, error: fetchErr } = await query;
+
+        if (fetchErr || !channels || channels.length === 0) return;
+
+        const emoji = status === 'completed' ? '✅' : '❌';
+        const content = status === 'completed'
+            ? (result ?? 'Task completed with no output.')
+            : `Error: ${error ?? 'Unknown error'}`;
+
+        const deliveries = (channels as BroadcastChannel[]).map(async (ch) => {
+            let delivered = false;
+            let deliveryError: string | null = null;
+
+            try {
+                const sc = {
+                    platform: ch.platform,
+                    bot_token: ch.config.bot_token as string | undefined,
+                    chat_id: ch.config.chat_id as string | undefined,
+                    channel_id: ch.config.channel_id as string | undefined,
+                    from_email: ch.config.to_email as string | undefined,
+                    subject: title,
+                    channel_db_id: ch.id,
+                };
+
+                switch (ch.platform) {
+                    case 'telegram':
+                        delivered = await replyTelegram(sc, emoji, title, content);
+                        break;
+                    case 'discord':
+                        delivered = await replyDiscord(sc, emoji, title, content);
+                        break;
+                    case 'slack':
+                        delivered = await replySlack(sc, emoji, title, content);
+                        break;
+                    case 'email':
+                        delivered = await replyEmail(sc, emoji, title, content);
+                        break;
+                }
+            } catch (err: unknown) {
+                deliveryError = err instanceof Error ? err.message : String(err);
+                console.error(`[Broadcast] Failed to deliver to channel ${ch.id} (${ch.platform}):`, deliveryError);
+            }
+
+            // Log to channel_message_log
+            await supabase.from('channel_message_log').insert({
+                channel_id: ch.id,
+                direction: 'outbound',
+                task_id: taskId,
+                team_run_id: teamRunId,
+                message_preview: content.substring(0, 200),
+                status: delivered ? 'delivered' : 'failed',
+                error: deliveryError,
+            });
+        });
+
+        await Promise.allSettled(deliveries);
+    } catch (err: unknown) {
+        console.error('[Broadcast] Unexpected error:', err instanceof Error ? err.message : String(err));
+    }
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function sleep(ms: number): Promise<void> {
