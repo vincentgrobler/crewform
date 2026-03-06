@@ -80,5 +80,6 @@ npm start
 
 - [Agents Guide](./agents.md) — Deep dive into agent configuration
 - [Pipeline Teams Guide](./pipeline-teams.md) — Multi-agent workflows
+- [Discord Integration](./discord-integration.md) — Connect Discord with `/ask` and `/connect`
 - [API Reference](./api-reference.md) — REST API documentation
 - [Self-Hosting Guide](./self-hosting.md) — Docker production deployment

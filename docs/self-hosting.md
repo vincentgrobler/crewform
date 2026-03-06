@@ -83,6 +83,8 @@ The frontend will be available at **http://localhost:3000**.
 | `OPENAI_API_KEY` | — | Fallback OpenAI key |
 | `ANTHROPIC_API_KEY` | — | Fallback Anthropic key |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | — | Fallback Google AI key |
+| `DISCORD_BOT_TOKEN` | — | Bot token for the managed CrewForm Discord bot (from Discord Developer Portal) |
+| `DISCORD_PUBLIC_KEY` | — | Ed25519 public key for Discord signature verification (required to register an Interactions Endpoint) |
 
 ## Database Migrations
 
