@@ -17,6 +17,7 @@ import {
 } from '@dnd-kit/sortable'
 import { Plus, Save, Loader2, AlertCircle } from 'lucide-react'
 import { PipelineStepCard } from '@/components/teams/PipelineStepCard'
+import { ChannelSelector } from '@/components/shared/ChannelSelector'
 import { useUpdateTeam } from '@/hooks/useUpdateTeam'
 import type { Agent, Team, PipelineConfig, PipelineStep } from '@/types'
 import type { PipelineStepFormData } from '@/lib/teamSchema'
@@ -68,6 +69,7 @@ export function PipelineConfigPanel({ team, agents }: PipelineConfigPanelProps) 
     const [steps, setSteps] = useState<StepWithId[]>(() => hydrate(config.steps))
     const [hasChanges, setHasChanges] = useState(false)
     const [validationError, setValidationError] = useState('')
+    const [outputChannelIds, setOutputChannelIds] = useState<string[] | null>(team.output_channel_ids ?? null)
 
     const updateMutation = useUpdateTeam()
 
@@ -147,7 +149,7 @@ export function PipelineConfigPanel({ team, agents }: PipelineConfigPanelProps) 
         }
 
         updateMutation.mutate(
-            { id: team.id, updates: { config: updatedConfig } },
+            { id: team.id, updates: { config: updatedConfig, output_channel_ids: outputChannelIds } },
             {
                 onSuccess: () => {
                     setHasChanges(false)
@@ -247,6 +249,14 @@ export function PipelineConfigPanel({ team, agents }: PipelineConfigPanelProps) 
                     </button>
                 </div>
             )}
+
+            {/* Output Channels */}
+            <div className="mt-6">
+                <ChannelSelector
+                    value={outputChannelIds}
+                    onChange={(ids) => { setOutputChannelIds(ids); setHasChanges(true) }}
+                />
+            </div>
         </div>
     )
 }

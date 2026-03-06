@@ -11,6 +11,7 @@ import { useDeleteAgent } from '@/hooks/useDeleteAgent'
 import { DeleteAgentDialog } from '@/components/agents/DeleteAgentDialog'
 import { PromptHistoryPanel } from '@/components/agents/PromptHistoryPanel'
 import { TriggersPanel } from '@/components/agents/TriggersPanel'
+import { ChannelSelector } from '@/components/shared/ChannelSelector'
 import { PublishAgentModal } from '@/components/marketplace/PublishAgentModal'
 import { CustomToolEditor } from '@/components/agents/CustomToolEditor'
 import { unpublishAgent } from '@/db/marketplace'
@@ -53,6 +54,7 @@ export function AgentDetail() {
     const [hasChanges, setHasChanges] = useState(false)
     const [saveSuccess, setSaveSuccess] = useState(false)
     const [isUnpublishing, setIsUnpublishing] = useState(false)
+    const [outputChannelIds, setOutputChannelIds] = useState<string[] | null>(null)
 
     // Only show models for providers with active API keys
     const activeProviders = useMemo(
@@ -86,6 +88,7 @@ export function AgentDetail() {
                 tools: agent.tools,
                 fallback_model: agent.fallback_model ?? null,
             })
+            setOutputChannelIds(agent.output_channel_ids ?? null)
         }
     }, [agent, formData])
 
@@ -111,7 +114,7 @@ export function AgentDetail() {
             setFieldErrors({})
 
             updateMutation.mutate(
-                { id, data: { ...validated, provider: inferProviderFromModel(validated.model) } },
+                { id, data: { ...validated, provider: inferProviderFromModel(validated.model), output_channel_ids: outputChannelIds } },
                 {
                     onSuccess: () => {
                         setHasChanges(false)
@@ -298,6 +301,8 @@ export function AgentDetail() {
                     onUpdateField={updateField}
                     modelOptions={dynamicModelOptions}
                     workspaceId={workspaceId}
+                    outputChannelIds={outputChannelIds}
+                    onOutputChannelIdsChange={(ids) => { setOutputChannelIds(ids); setHasChanges(true) }}
                 />
             )}
 
@@ -347,9 +352,11 @@ interface ConfigTabProps {
     onUpdateField: <K extends keyof AgentFormData>(key: K, value: AgentFormData[K]) => void
     modelOptions: typeof MODEL_OPTIONS
     workspaceId: string
+    outputChannelIds: string[] | null
+    onOutputChannelIdsChange: (ids: string[] | null) => void
 }
 
-function ConfigurationTab({ formData, fieldErrors, onUpdateField, modelOptions, workspaceId }: ConfigTabProps) {
+function ConfigurationTab({ formData, fieldErrors, onUpdateField, modelOptions, workspaceId, outputChannelIds, onOutputChannelIdsChange }: ConfigTabProps) {
     const { customTools } = useCustomTools(workspaceId)
     const createToolMutation = useCreateCustomTool()
     const updateToolMutation = useUpdateCustomTool()
@@ -759,6 +766,12 @@ function ConfigurationTab({ formData, fieldErrors, onUpdateField, modelOptions, 
                     }}
                 />
             )}
+
+            {/* Output Channels */}
+            <ChannelSelector
+                value={outputChannelIds}
+                onChange={onOutputChannelIdsChange}
+            />
         </div>
     )
 }
