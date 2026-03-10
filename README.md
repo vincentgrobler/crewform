@@ -257,7 +257,7 @@ CrewForm supports **14 providers**: OpenAI, Anthropic, Google Gemini, Groq, Mist
 <details>
 <summary><strong>What integrations are available?</strong></summary>
 
-CrewForm integrates with **Zapier** (7,000+ apps), messaging channels (**Discord**, **Slack**, **Telegram**, **Email**), and output routes (**webhooks**, **MS Teams**, **Asana**, and more). You can trigger agents from external events and deliver results anywhere.
+CrewForm integrates with **Zapier** (7,000+ apps), messaging channels (**Discord**, **Slack**, **Telegram**, **Email**, **Trello**), and output routes (**webhooks**, **MS Teams**, **Asana**, **Trello**, and more). You can trigger agents from external events and deliver results anywhere.
 </details>
 
 ## License

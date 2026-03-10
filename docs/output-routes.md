@@ -12,6 +12,7 @@ Supported destinations:
 | [Telegram](#telegram) | Bot API — sends message to a chat or group |
 | [Microsoft Teams](#microsoft-teams) | Incoming Webhook — Adaptive Card |
 | [Asana](#asana) | Creates a task in a project via Personal Access Token |
+| [Trello](#trello) | Creates or updates a card on a board via API Key + Token |
 
 ---
 
@@ -304,6 +305,53 @@ Each delivery creates an Asana task with:
 - **Notes:** Event type, task/agent details, timestamp, and full result
 
 > **Tip:** Use Asana rules to automatically assign, tag, or move created tasks to specific sections based on their name or status.
+
+---
+
+## Trello
+
+Creates a new card (or updates an existing one) on a Trello board when a CrewForm task or team run completes or fails. Trello also supports **bidirectional integration** — cards moved to a trigger list can start agent tasks, and results are posted back as comments.
+
+### Setup
+
+1. Go to [trello.com/power-ups/admin](https://trello.com/power-ups/admin) → create or select a Power-Up to get your **API Key**
+2. From the API key page, click the **Token** link to generate a token with read/write access
+3. Find your **Board ID**:
+   - Open the board in Trello
+   - The URL contains the ID: `https://trello.com/b/<BOARD_ID>/...`
+4. Find the **List ID** for the target list:
+   - Use the Trello API: `GET https://api.trello.com/1/boards/<BOARD_ID>/lists?key=<KEY>&token=<TOKEN>`
+   - Or use a browser extension like [Trello Card Numbers](https://chrome.google.com/webstore/detail/trello-card-numbers)
+5. *(Optional)* Find a **Review List ID** — completed cards will be moved here automatically
+
+### Configuration
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| **API Key** | ✅ | Trello API key from the Power-Up admin page |
+| **Token** | ✅ | Trello token with read/write access |
+| **Board ID** | ✅ | Board short ID from the Trello URL |
+| **Default List ID** | ✅ | List where new result cards are created |
+| **Review List ID** | Optional | If set, cards are moved here after results are posted |
+
+### Card Format
+
+Each delivery creates a Trello card with:
+
+- **Name:** `[CrewForm] <task title> — <status>`
+- **Description:** Event type, task/agent details, timestamp, and full result
+
+If a card mapping already exists (from an inbound Trello trigger), the result is posted as a **comment** on the existing card instead of creating a new one, and the card is moved to the Review list.
+
+### Bidirectional Flow
+
+When used with a [Trello Messaging Channel](./channels.md#trello), CrewForm supports a full round-trip:
+
+1. **Inbound:** A card is created or moved to the trigger list → CrewForm creates a task
+2. **Agent processes** the card's title/description as the prompt
+3. **Outbound:** The agent result is posted as a comment on the original card → card moves to the Review list
+
+> **Tip:** Set up two lists on your board — an "AI Work" list (trigger) and a "Review" list (review) — for a clean Kanban workflow with your AI agents.
 
 ---
 

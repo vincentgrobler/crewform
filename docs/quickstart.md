@@ -83,7 +83,7 @@ npm start
 - [Orchestration Teams](./orchestration-teams.md) — Brain agent delegates to workers dynamically
 - [Collaboration Teams](./collaboration-teams.md) — Agents discuss and reach consensus
 - [Channels](./channels.md) — Inbound messaging (Telegram, Slack, Discord, Email)
-- [Output Routes](./output-routes.md) — Push results to HTTP, Slack, Discord, Telegram, Teams, Asana
+- [Output Routes](./output-routes.md) — Push results to HTTP, Slack, Discord, Telegram, Teams, Asana, Trello
 - [Discord Integration](./discord-integration.md) — Detailed Discord setup guide
 - [API Reference](./api-reference.md) — REST API documentation
 - [Self-Hosting Guide](./self-hosting.md) — Docker production deployment
