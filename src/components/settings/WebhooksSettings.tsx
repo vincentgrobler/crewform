@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import {
     Globe, MessageSquare, Send, Hash, Plus, Trash2, Power, PowerOff,
-    CheckCircle2, XCircle, ChevronDown, ChevronUp, Loader2, Zap, CheckSquare, Pencil, Trello,
+    CheckCircle2, XCircle, ChevronDown, ChevronUp, Loader2, Zap, CheckSquare, Pencil, Columns3,
 } from 'lucide-react'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useWebhooks, useCreateWebhook, useUpdateWebhook, useDeleteWebhook, useWebhookLogs } from '@/hooks/useWebhooks'
@@ -23,7 +23,7 @@ const DESTINATION_META: Record<DestinationType, { label: string; icon: typeof Gl
     telegram: { label: 'Telegram', icon: Send, color: 'text-sky-400', bgColor: 'bg-sky-500/10' },
     teams: { label: 'Teams', icon: MessageSquare, color: 'text-violet-400', bgColor: 'bg-violet-500/10' },
     asana: { label: 'Asana', icon: CheckSquare, color: 'text-rose-400', bgColor: 'bg-rose-500/10' },
-    trello: { label: 'Trello', icon: Trello, color: 'text-teal-400', bgColor: 'bg-teal-500/10' },
+    trello: { label: 'Trello', icon: Columns3, color: 'text-teal-400', bgColor: 'bg-teal-500/10' },
 }
 
 const EVENT_OPTIONS = [

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 CrewForm
 
-import { Globe, MessageSquare, Hash, Send, Users, CheckSquare, Radio, Trello } from 'lucide-react'
+import { Globe, MessageSquare, Hash, Send, Users, CheckSquare, Radio, Columns3 } from 'lucide-react'
 import { useOutputRoutes } from '@/hooks/useChannels'
 import { cn } from '@/lib/utils'
 
@@ -12,7 +12,7 @@ const DESTINATION_ICONS: Record<string, typeof Globe> = {
     telegram: Send,
     teams: Users,
     asana: CheckSquare,
-    trello: Trello,
+    trello: Columns3,
 }
 
 const DESTINATION_COLORS: Record<string, { text: string; bg: string }> = {

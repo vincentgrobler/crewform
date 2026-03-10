@@ -5,7 +5,7 @@ import { useState } from 'react'
 import {
     Send, MessageSquare, Hash, Mail, Plus, Trash2, Power, PowerOff,
     Loader2, ChevronDown, ChevronUp, ExternalLink, ArrowDownLeft, ArrowUpRight,
-    Copy, Check, Link2, Trello,
+    Copy, Check, Link2, Columns3,
 } from 'lucide-react'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import {
@@ -84,7 +84,7 @@ const PLATFORM_META: Record<ChannelPlatform, {
     },
     trello: {
         label: 'Trello',
-        icon: Trello,
+        icon: Columns3,
         color: 'text-teal-400',
         bgColor: 'bg-teal-500/10',
         setupGuide: 'https://trello.com/power-ups/admin',
