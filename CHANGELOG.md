@@ -17,8 +17,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **BYOK (Bring Your Own Key)** — Connect your own API keys from 14 providers: OpenAI, Anthropic, Google Gemini, Groq, Mistral, Cohere, NVIDIA NIM, Perplexity, Together, OpenRouter, HuggingFace, MiniMax, Moonshot, Venice
 - **Team Memory** — Shared pgvector semantic search across agents *(Team)*
 - **RBAC** — Role-based access control and workspace member invitations *(Team)*
-- **Messaging Channels** — Trigger agents from Discord (slash commands), Slack, Telegram, and Email
-- **Output Routes** — Deliver results to Discord, Slack, webhooks, MS Teams, Asana, and Email
+- **Messaging Channels** — Trigger agents from Discord (slash commands), Slack, Telegram, Email, and Trello
+- **Output Routes** — Deliver results to Discord, Slack, webhooks, MS Teams, Asana, Trello, and Email
 - **Zapier Integration** — Connect CrewForm to 7,000+ apps with triggers and actions
 - **Real-Time Execution** — Live task execution updates via Supabase Realtime
 - **Usage Tracking** — Monitor token usage, costs, and performance per agent and task

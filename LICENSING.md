@@ -29,7 +29,7 @@ All code **inside** the `ee/` directory is proprietary and requires a valid Ente
 - Orchestrator mode (brain agent + worker delegation)
 - Advanced analytics, charts, and CSV export
 - Prompt history with diff viewer
-- Advanced webhooks (Slack, Discord, Zapier, Asana)
+- Advanced webhooks (Slack, Discord, Zapier, Asana, Trello)
 - Messaging channels (Telegram, Discord bots)
 - Team triggers (scheduled + webhook)
 - File attachments

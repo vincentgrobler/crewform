@@ -22,6 +22,7 @@
 ## Table of Contents
 
 - [Why CrewForm?](#why-crewform)
+- [Who It's For](#who-its-for)
 - [Key Features](#key-features)
 - [Editions & Pricing](#editions--pricing)
 - [Quick Start](#quick-start)
@@ -45,6 +46,33 @@ Most multi-agent AI platforms today require you to either:
 **CrewForm changes that.** We provide the orchestration layer — the UI, the team management, the monitoring, the marketplace — while you keep full control of your API keys, your data, and your infrastructure.
 
 CrewForm is built for developers and teams who want production-ready AI agent orchestration without the complexity, cost, or lock-in of closed platforms.
+
+## Who It's For
+
+### 🧑 Solo User — Freelancer / Indie Hacker
+
+Pick agents from the marketplace (or build your own) and throw tasks at them — "Research competitors for X", "Write a blog post about Y", "Review this code". Agents work in the background; you get results.
+
+**Daily loop:** Dispatch tasks → review results → ship to clients.
+
+### 👥 Small Team — Agency / Startup
+
+Set up a shared workspace with a crew of agents matching your workflow — a Researcher, a Coder, a Writer, a QA agent. Tasks get assigned, agents run in pipeline or collaboration mode, results land in one place.
+
+**Daily loop:** Create task → assign to agent → agent does the legwork → human reviews → done.
+
+### 🏢 Enterprise — Agency / Multi-Tenant
+
+Each client gets their own workspace. Custom agents built around their tools and data. Analytics show which agents perform, which cost most, where to optimise. BYOK means you control API spend.
+
+---
+
+> **The core habit CrewForm builds:** I have a task → I assign it to an agent → I review the output. It becomes as natural as assigning work in Slack — the difference is the agent actually does the work.
+
+**Where it really shines:**
+- Repetitive but complex tasks (reports, summaries, code reviews)
+- Multi-step workflows with handoffs between skills (research → write → format)
+- Teams that want AI leverage without every member needing prompt engineering skills
 
 ## Key Features
 
@@ -257,7 +285,7 @@ CrewForm supports **14 providers**: OpenAI, Anthropic, Google Gemini, Groq, Mist
 <details>
 <summary><strong>What integrations are available?</strong></summary>
 
-CrewForm integrates with **Zapier** (7,000+ apps), messaging channels (**Discord**, **Slack**, **Telegram**, **Email**), and output routes (**webhooks**, **MS Teams**, **Asana**, and more). You can trigger agents from external events and deliver results anywhere.
+CrewForm integrates with **Zapier** (7,000+ apps), messaging channels (**Discord**, **Slack**, **Telegram**, **Email**, **Trello**), and output routes (**webhooks**, **MS Teams**, **Asana**, **Trello**, and more). You can trigger agents from external events and deliver results anywhere.
 </details>
 
 ## License
