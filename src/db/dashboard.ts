@@ -129,6 +129,66 @@ export async function fetchAgentPerformance(workspaceId: string): Promise<AgentP
     return Array.from(perfMap.values()).sort((a, b) => b.completedCount - a.completedCount)
 }
 
+// ─── Team Performance ────────────────────────────────────────────────────────
+
+export interface TeamPerformanceRow {
+    teamId: string
+    teamName: string
+    mode: string
+    completedCount: number
+    failedCount: number
+    totalTokens: number
+    totalCost: number
+}
+
+/** Fetch per-team performance stats */
+export async function fetchTeamPerformance(workspaceId: string): Promise<TeamPerformanceRow[]> {
+    const [runResult, teamResult] = await Promise.all([
+        supabase
+            .from('team_runs')
+            .select('team_id, status, tokens_total, cost_estimate_usd')
+            .eq('workspace_id', workspaceId),
+        supabase
+            .from('teams')
+            .select('id, name, mode')
+            .eq('workspace_id', workspaceId),
+    ])
+
+    if (runResult.error) throw runResult.error
+    if (teamResult.error) throw teamResult.error
+
+    const teamMap = new Map<string, { name: string; mode: string }>()
+    for (const t of teamResult.data as Array<{ id: string; name: string; mode: string }>) {
+        teamMap.set(t.id, { name: t.name, mode: t.mode })
+    }
+
+    const perfMap = new Map<string, TeamPerformanceRow>()
+
+    for (const row of runResult.data as Array<{ team_id: string; status: string; tokens_total: number; cost_estimate_usd: number }>) {
+        let entry = perfMap.get(row.team_id)
+        if (!entry) {
+            const team = teamMap.get(row.team_id)
+            entry = {
+                teamId: row.team_id,
+                teamName: team?.name ?? 'Unknown',
+                mode: team?.mode ?? 'pipeline',
+                completedCount: 0,
+                failedCount: 0,
+                totalTokens: 0,
+                totalCost: 0,
+            }
+            perfMap.set(row.team_id, entry)
+        }
+
+        if (row.status === 'completed') entry.completedCount++
+        if (row.status === 'failed') entry.failedCount++
+        entry.totalTokens += row.tokens_total
+        entry.totalCost += row.cost_estimate_usd
+    }
+
+    return Array.from(perfMap.values()).sort((a, b) => b.completedCount - a.completedCount)
+}
+
 // ─── Recent Activity ─────────────────────────────────────────────────────────
 
 export type ActivityItem =

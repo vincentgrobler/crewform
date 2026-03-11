@@ -11,9 +11,10 @@ import {
   GitBranch,
 } from 'lucide-react'
 import { useWorkspace } from '@/hooks/useWorkspace'
-import { useDashboardStats, useAgentPerformance, useRecentActivity } from '@/hooks/useDashboard'
+import { useDashboardStats, useAgentPerformance, useTeamPerformance, useRecentActivity } from '@/hooks/useDashboard'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { AgentPerformanceGrid } from '@/components/dashboard/AgentPerformanceGrid'
+import { TeamPerformanceGrid } from '@/components/dashboard/TeamPerformanceGrid'
 import { ActivityTimeline } from '@/components/dashboard/ActivityTimeline'
 import { QuickActions } from '@/components/dashboard/QuickActions'
 import { ErrorState } from '@/components/shared/ErrorState'
@@ -27,6 +28,7 @@ export function Dashboard() {
   const { workspace, workspaceId } = useWorkspace()
   const { stats, isLoading: isLoadingStats, error: statsError } = useDashboardStats(workspaceId)
   const { agents: performanceAgents, isLoading: isLoadingAgents } = useAgentPerformance(workspaceId)
+  const { teams: performanceTeams, isLoading: isLoadingTeams } = useTeamPerformance(workspaceId)
   const { activity, isLoading: isLoadingActivity } = useRecentActivity(workspaceId)
 
   // Show onboarding for new users (only check the completion flag)
@@ -142,14 +144,22 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* Two-column: Agent Performance + Activity Timeline */}
+      {/* Two-column: Performance + Activity Timeline */}
       <div className="mb-8 grid gap-6 lg:grid-cols-[1fr_380px]">
-        {/* Agent Performance */}
-        <div className="rounded-xl border border-border bg-surface-card p-5">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">
-            Agent Performance
-          </h2>
-          <AgentPerformanceGrid agents={performanceAgents} isLoading={isLoadingAgents} />
+        {/* Performance */}
+        <div className="space-y-6">
+          <div className="rounded-xl border border-border bg-surface-card p-5">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">
+              Agent Performance
+            </h2>
+            <AgentPerformanceGrid agents={performanceAgents} isLoading={isLoadingAgents} />
+          </div>
+          <div className="rounded-xl border border-border bg-surface-card p-5">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">
+              Team Performance
+            </h2>
+            <TeamPerformanceGrid teams={performanceTeams} isLoading={isLoadingTeams} />
+          </div>
         </div>
 
         {/* Activity Timeline */}

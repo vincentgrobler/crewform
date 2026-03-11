@@ -5,9 +5,10 @@ import { useQuery } from '@tanstack/react-query'
 import {
     fetchDashboardStats,
     fetchAgentPerformance,
+    fetchTeamPerformance,
     fetchRecentActivity,
 } from '@/db/dashboard'
-import type { DashboardStats, AgentPerformanceRow, ActivityItem } from '@/db/dashboard'
+import type { DashboardStats, AgentPerformanceRow, TeamPerformanceRow, ActivityItem } from '@/db/dashboard'
 
 const REFETCH_INTERVAL = 30 * 1000 // 30 seconds
 
@@ -47,6 +48,25 @@ export function useAgentPerformance(workspaceId: string | null) {
     })
 
     return { agents, isLoading, error }
+}
+
+/**
+ * Per-team performance metrics.
+ */
+export function useTeamPerformance(workspaceId: string | null) {
+    const {
+        data: teams = [],
+        isLoading,
+        error,
+    } = useQuery<TeamPerformanceRow[]>({
+        queryKey: ['team-performance', workspaceId],
+        queryFn: () => fetchTeamPerformance(workspaceId ?? ''),
+        enabled: !!workspaceId,
+        staleTime: 30 * 1000,
+        refetchInterval: REFETCH_INTERVAL,
+    })
+
+    return { teams, isLoading, error }
 }
 
 /**
