@@ -43,27 +43,27 @@ export function TeamPerformanceGrid({ teams, isLoading }: TeamPerformanceGridPro
 
     return (
         <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
                 <thead>
                     <tr className="border-b border-border text-left">
-                        <th className="pb-3 font-medium text-gray-500">Team</th>
-                        <th className="pb-3 font-medium text-gray-500 text-right">
+                        <th className="pb-3 font-medium text-gray-500" style={{ width: '40%' }}>Team</th>
+                        <th className="pb-3 font-medium text-gray-500 text-right" style={{ width: '12%' }}>
                             <span className="flex items-center justify-end gap-1">
                                 <CheckCircle2 className="h-3 w-3" /> Done
                             </span>
                         </th>
-                        <th className="pb-3 font-medium text-gray-500 text-right">
+                        <th className="pb-3 font-medium text-gray-500 text-right" style={{ width: '12%' }}>
                             <span className="flex items-center justify-end gap-1">
                                 <XCircle className="h-3 w-3" /> Failed
                             </span>
                         </th>
-                        <th className="pb-3 font-medium text-gray-500 text-right">Rate</th>
-                        <th className="pb-3 font-medium text-gray-500 text-right">
+                        <th className="pb-3 font-medium text-gray-500 text-right" style={{ width: '12%' }}>Rate</th>
+                        <th className="pb-3 font-medium text-gray-500 text-right" style={{ width: '12%' }}>
                             <span className="flex items-center justify-end gap-1">
                                 <Hash className="h-3 w-3" /> Tokens
                             </span>
                         </th>
-                        <th className="pb-3 font-medium text-gray-500 text-right">
+                        <th className="pb-3 font-medium text-gray-500 text-right" style={{ width: '12%' }}>
                             <span className="flex items-center justify-end gap-1">
                                 <Coins className="h-3 w-3" /> Cost
                             </span>
