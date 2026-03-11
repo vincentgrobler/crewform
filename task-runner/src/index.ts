@@ -19,10 +19,10 @@ const PORT = parseInt(process.env.PORT ?? '3001', 10);
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET ?? '';
 
 // ─── Slow-Polling Fallback ───────────────────────────────────────────────────
-// Primary pickup is via webhook; polling is a safety net.
+// Primary pickup is via Realtime subscription; polling is a rare safety net.
 
-const POLL_MIN_MS = 30_000;  // 30s — webhooks handle instant pickup
-const POLL_MAX_MS = 60_000;  // 60s max backoff
+const POLL_MIN_MS = 120_000; // 2 min — Realtime handles instant pickup
+const POLL_MAX_MS = 300_000; // 5 min max backoff
 let pollIntervalMs = POLL_MIN_MS;
 let pollTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -302,6 +302,62 @@ async function start() {
             log(`Webhook server listening on port ${PORT}`);
         });
 
+        // ── Realtime Subscriptions ────────────────────────────────────────────
+        // Subscribe to tasks and team_runs for near-instant pickup.
+        const channel = supabase
+            .channel('runner-dispatch')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'tasks',
+                    filter: 'status=eq.dispatched',
+                },
+                (payload) => {
+                    log(`Realtime: task ${(payload.new as { id: string }).id} dispatched — claiming`);
+                    void tryClaimTask().catch((err: unknown) => {
+                        logError('Realtime task claim failed:', err);
+                    });
+                },
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'tasks',
+                    filter: 'status=eq.dispatched',
+                },
+                (payload) => {
+                    log(`Realtime: new task ${(payload.new as { id: string }).id} — claiming`);
+                    void tryClaimTask().catch((err: unknown) => {
+                        logError('Realtime task claim failed:', err);
+                    });
+                },
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'team_runs',
+                    filter: 'status=eq.pending',
+                },
+                (payload) => {
+                    log(`Realtime: new team run ${(payload.new as { id: string }).id} — claiming`);
+                    void tryClaimTeamRun().catch((err: unknown) => {
+                        logError('Realtime team-run claim failed:', err);
+                    });
+                },
+            )
+            .subscribe((status) => {
+                log(`Realtime channel status: ${status}`);
+            });
+
+        // Store channel reference for cleanup
+        (globalThis as Record<string, unknown>).__realtimeChannel = channel;
+
         // Start recovery sweep and trigger evaluation on fixed intervals
         setInterval(() => { void runRecoverySweep(); }, RECOVERY_INTERVAL_MS);
         setInterval(() => { void evaluateTriggers(); }, TRIGGER_EVAL_INTERVAL_MS);
@@ -320,6 +376,12 @@ async function start() {
 async function shutdown(signal: string) {
     log(`Received ${signal}, shutting down gracefully...`);
     if (pollTimer) clearTimeout(pollTimer);
+    // Unsubscribe from Realtime
+    const channel = (globalThis as Record<string, unknown>).__realtimeChannel;
+    if (channel) {
+        await supabase.removeChannel(channel as ReturnType<typeof supabase.channel>);
+        log('Realtime channel unsubscribed');
+    }
     // Wait briefly for in-flight tasks to complete (best effort)
     if (activeSlots > 0) {
         log(`Waiting for ${activeSlots} active task(s) to finish...`);
