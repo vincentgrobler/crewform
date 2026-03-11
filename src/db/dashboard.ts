@@ -25,7 +25,7 @@ export async function fetchDashboardStats(workspaceId: string): Promise<Dashboar
     startOfMonth.setHours(0, 0, 0, 0)
     const monthStart = startOfMonth.toISOString()
 
-    // Fetch tasks, team runs, and cost in parallel
+    // Fetch tasks, team runs (status + cost), and agent task cost in parallel
     const [taskResult, runResult, costResult] = await Promise.all([
         supabase
             .from('tasks')
@@ -34,7 +34,7 @@ export async function fetchDashboardStats(workspaceId: string): Promise<Dashboar
             .gte('created_at', monthStart),
         supabase
             .from('team_runs')
-            .select('status')
+            .select('status, cost_estimate_usd')
             .eq('workspace_id', workspaceId)
             .gte('created_at', monthStart),
         supabase
@@ -49,12 +49,14 @@ export async function fetchDashboardStats(workspaceId: string): Promise<Dashboar
     if (costResult.error) throw costResult.error
 
     const taskList = taskResult.data as Array<{ status: string }>
-    const runList = runResult.data as Array<{ status: string }>
+    const runList = runResult.data as Array<{ status: string; cost_estimate_usd: number }>
 
-    const totalCost = costResult.data.reduce(
+    const taskCost = costResult.data.reduce(
         (sum, row) => sum + (row as { cost_estimate_usd: number }).cost_estimate_usd,
         0,
     )
+    const runCost = runList.reduce((sum, row) => sum + row.cost_estimate_usd, 0)
+    const totalCost = taskCost + runCost
 
     return {
         tasksThisMonth: taskList.length,
