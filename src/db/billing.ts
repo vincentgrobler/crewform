@@ -198,24 +198,28 @@ export async function checkQuota(
 
 /** Create a Stripe Checkout session via Edge Function */
 export async function createCheckoutSession(
-    _workspaceId: string,
+    workspaceId: string,
     plan: 'pro' | 'team',
 ): Promise<{ url: string }> {
-    const { data, error } = await supabase.functions.invoke('stripe-checkout', {
-        body: { plan },
-    })
+    void workspaceId // workspace context is inferred from JWT
+    const result: { data: unknown; error: { message: string } | null } =
+        await supabase.functions.invoke('stripe-checkout', {
+            body: { plan },
+        })
 
-    if (error) throw new Error(error.message ?? 'Failed to create checkout session')
-    return data as { url: string }
+    if (result.error) throw new Error(result.error.message ?? 'Failed to create checkout session')
+    return result.data as { url: string }
 }
 
 /** Create a Stripe Customer Portal session via Edge Function */
 export async function createPortalSession(
-    _workspaceId: string,
+    workspaceId: string,
 ): Promise<{ url: string }> {
-    const { data, error } = await supabase.functions.invoke('stripe-portal', {})
+    void workspaceId // workspace context is inferred from JWT
+    const result: { data: unknown; error: { message: string } | null } =
+        await supabase.functions.invoke('stripe-portal', {})
 
-    if (error) throw new Error(error.message ?? 'Failed to create portal session')
-    return data as { url: string }
+    if (result.error) throw new Error(result.error.message ?? 'Failed to create portal session')
+    return result.data as { url: string }
 }
 
