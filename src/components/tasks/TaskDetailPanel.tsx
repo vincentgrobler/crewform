@@ -7,6 +7,8 @@ import { useCancelTask } from '@/hooks/useCancelTask'
 import { useDispatchTask } from '@/hooks/useDispatchTask'
 import { useRerunTask } from '@/hooks/useRerunTask'
 import { TaskStatusBadge, TaskPriorityBadge } from '@/components/tasks/TaskStatusBadge'
+import { MarkdownContent } from '@/components/shared/MarkdownContent'
+import { extractResultText } from '@/lib/markdown'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Agent } from '@/types'
 
@@ -189,9 +191,7 @@ export function TaskDetailPanel({ taskId, agents, onClose }: TaskDetailPanelProp
                             <h3 className="mb-2 text-sm font-medium text-gray-400">Output</h3>
                             {task.status === 'completed' && task.result ? (
                                 <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-4">
-                                    <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-sm text-gray-300">
-                                        {JSON.stringify(task.result, null, 2)}
-                                    </pre>
+                                    <MarkdownContent content={extractResultText(task.result)} />
                                 </div>
                             ) : task.status === 'failed' && task.error ? (
                                 <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4">

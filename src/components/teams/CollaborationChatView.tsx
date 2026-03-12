@@ -4,6 +4,7 @@
 import { useEffect, useRef } from 'react'
 import { useAgents } from '@/hooks/useAgents'
 import { useWorkspace } from '@/hooks/useWorkspace'
+import { MarkdownContent } from '@/components/shared/MarkdownContent'
 import { cn } from '@/lib/utils'
 
 interface TeamMessage {
@@ -144,9 +145,7 @@ export function CollaborationChatView({ messages, isLive = false }: Collaboratio
                             </div>
 
                             {/* Message content */}
-                            <p className="whitespace-pre-wrap text-sm text-gray-300">
-                                {msg.content}
-                            </p>
+                            <MarkdownContent content={msg.content} />
                         </div>
                     )
                 })}
