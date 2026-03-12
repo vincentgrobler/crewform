@@ -207,7 +207,7 @@ export async function createCheckoutSession(
             body: { plan },
         })
 
-    if (result.error) throw new Error(result.error.message ?? 'Failed to create checkout session')
+    if (result.error) throw new Error(result.error.message)
     return result.data as { url: string }
 }
 
@@ -219,7 +219,7 @@ export async function createPortalSession(
     const result: { data: unknown; error: { message: string } | null } =
         await supabase.functions.invoke('stripe-portal', {})
 
-    if (result.error) throw new Error(result.error.message ?? 'Failed to create portal session')
+    if (result.error) throw new Error(result.error.message)
     return result.data as { url: string }
 }
 
