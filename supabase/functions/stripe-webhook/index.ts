@@ -47,6 +47,23 @@ function mapStripeStatus(status: string): string {
     }
 }
 
+/** Extract period dates from subscription — handles both top-level and item-level fields */
+function extractPeriodDates(sub: Record<string, unknown>): { start: string | null; end: string | null } {
+    // Try top-level first (older API versions), then fall back to item-level
+    const item = (sub as { items?: { data?: Array<{ current_period_start?: number; current_period_end?: number }> } })
+        .items?.data?.[0];
+
+    const startTs = (sub as { current_period_start?: number }).current_period_start
+        ?? item?.current_period_start;
+    const endTs = (sub as { current_period_end?: number }).current_period_end
+        ?? item?.current_period_end;
+
+    return {
+        start: startTs ? new Date(startTs * 1000).toISOString() : null,
+        end: endTs ? new Date(endTs * 1000).toISOString() : null,
+    };
+}
+
 // ─── Handler ────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
@@ -92,6 +109,7 @@ Deno.serve(async (req: Request) => {
                 const subscription = await stripe.subscriptions.retrieve(subscriptionId);
                 const priceId = subscription.items.data[0]?.price.id ?? '';
                 const plan = resolvePlan(priceId);
+                const period = extractPeriodDates(subscription as unknown as Record<string, unknown>);
 
                 await supabase
                     .from('subscriptions')
@@ -101,8 +119,8 @@ Deno.serve(async (req: Request) => {
                         stripe_subscription_id: subscriptionId,
                         plan,
                         status: 'active',
-                        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-                        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+                        current_period_start: period.start,
+                        current_period_end: period.end,
                         cancel_at_period_end: subscription.cancel_at_period_end,
                     }, { onConflict: 'workspace_id' });
 
@@ -128,14 +146,15 @@ Deno.serve(async (req: Request) => {
                 const priceId = subscription.items.data[0]?.price.id ?? '';
                 const plan = resolvePlan(priceId);
                 const status = mapStripeStatus(subscription.status);
+                const period = extractPeriodDates(subscription as unknown as Record<string, unknown>);
 
                 await supabase
                     .from('subscriptions')
                     .update({
                         plan,
                         status,
-                        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-                        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+                        current_period_start: period.start,
+                        current_period_end: period.end,
                         cancel_at_period_end: subscription.cancel_at_period_end,
                     })
                     .eq('workspace_id', workspaceId);
