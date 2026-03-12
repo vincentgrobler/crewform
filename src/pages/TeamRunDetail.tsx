@@ -25,6 +25,7 @@ import { PipelineProgressRail } from '@/components/teams/PipelineProgressRail'
 import { DelegationTree } from '@/components/teams/DelegationTree'
 import { CollaborationChatView } from '@/components/teams/CollaborationChatView'
 import { FileAttachmentsList } from '@/components/shared/FileAttachmentsList'
+import { MarkdownContent } from '@/components/shared/MarkdownContent'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import type { PipelineConfig, OrchestratorConfig, TeamMessage } from '@/types'
@@ -231,9 +232,7 @@ export function TeamRunDetail() {
                                         <CheckCircle2 className="h-4 w-4 text-green-400" />
                                         <h3 className="text-sm font-medium text-green-400">Final Output</h3>
                                     </div>
-                                    <div className="text-sm text-gray-300 whitespace-pre-wrap">
-                                        {run.output}
-                                    </div>
+                                    <MarkdownContent content={typeof run.output === 'string' ? run.output : JSON.stringify(run.output, null, 2)} />
                                 </div>
                             )}
 
@@ -322,13 +321,7 @@ function MessageCard({ message, agents }: MessageCardProps) {
                     {new Date(message.created_at).toLocaleTimeString()}
                 </span>
             </div>
-            <p className={cn(
-                'whitespace-pre-wrap',
-                isResult ? 'text-gray-300' : 'text-gray-400',
-                !isResult && 'line-clamp-3',
-            )}>
-                {message.content}
-            </p>
+            <MarkdownContent content={message.content} />
             {message.tokens_used > 0 && (
                 <p className="mt-1 text-[10px] text-gray-600">
                     {message.tokens_used.toLocaleString()} tokens
