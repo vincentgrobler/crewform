@@ -194,28 +194,32 @@ export async function checkQuota(
     }
 }
 
-// ─── Stripe Session Stubs ───────────────────────────────────────────────────
-// These will be replaced with actual Edge Function calls
+// ─── Stripe Session Calls ───────────────────────────────────────────────────
 
-/** Create a Stripe Checkout session (stub) */
-export function createCheckoutSession(
-    _workspaceId: string,
+/** Create a Stripe Checkout session via Edge Function */
+export async function createCheckoutSession(
+    workspaceId: string,
     plan: 'pro' | 'team',
-): { url: string } {
-    // TODO: Replace with actual Supabase Edge Function call
-    // const result = await supabase.functions.invoke('create-checkout', {
-    //     body: { workspaceId, plan }
-    // })
-    console.warn(`[Billing Stub] Would create checkout session for plan: ${plan}`)
-    return { url: '#checkout-stub' }
+): Promise<{ url: string }> {
+    void workspaceId // workspace context is inferred from JWT
+    const result: { data: unknown; error: { message: string } | null } =
+        await supabase.functions.invoke('stripe-checkout', {
+            body: { plan },
+        })
+
+    if (result.error) throw new Error(result.error.message)
+    return result.data as { url: string }
 }
 
-/** Create a Stripe Customer Portal session (stub) */
-export function createPortalSession(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _workspaceId: string,
-): { url: string } {
-    // TODO: Replace with actual Supabase Edge Function call
-    console.warn('[Billing Stub] Would create portal session')
-    return { url: '#portal-stub' }
+/** Create a Stripe Customer Portal session via Edge Function */
+export async function createPortalSession(
+    workspaceId: string,
+): Promise<{ url: string }> {
+    void workspaceId // workspace context is inferred from JWT
+    const result: { data: unknown; error: { message: string } | null } =
+        await supabase.functions.invoke('stripe-portal', {})
+
+    if (result.error) throw new Error(result.error.message)
+    return result.data as { url: string }
 }
+
