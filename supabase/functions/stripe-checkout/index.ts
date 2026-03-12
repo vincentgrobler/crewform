@@ -16,8 +16,8 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
 });
 
 const PRICE_MAP: Record<string, string | undefined> = {
-    pro: Deno.env.get('STRIPE_PRO_PRICE_ID'),
-    team: Deno.env.get('STRIPE_TEAM_PRICE_ID'),
+    pro: Deno.env.get('STRIPE_PRO_PRICE_ID')?.trim(),
+    team: Deno.env.get('STRIPE_TEAM_PRICE_ID')?.trim(),
 };
 
 Deno.serve(async (req: Request) => {
