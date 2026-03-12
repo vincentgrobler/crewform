@@ -29,7 +29,6 @@
 - [Documentation](#documentation)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
-- [How CrewForm Compares](#how-crewform-compares)
 - [Contributing](#contributing)
 - [Community](#community)
 - [FAQ](#faq)
@@ -37,15 +36,18 @@
 
 ## Why CrewForm?
 
-Most multi-agent AI platforms today require you to either:
+CrewForm gives you everything you need to orchestrate multi-agent AI workflows — a visual UI, team management, real-time monitoring, and an agent marketplace — while you keep full control of your API keys, your data, and your infrastructure.
 
-- 💸 Pay a SaaS provider who marks up your LLM costs
-- 🔒 Accept vendor lock-in with no self-hosting option
-- 🎓 Be a Python expert to set up orchestration from scratch
+- 🖥️ **UI-First** — Create, configure, and monitor agents from a visual interface. No code required to get started
+- 🔑 **BYOK (Bring Your Own Key)** — Connect your own LLM provider keys. Pay your provider directly at their standard rates, zero markup
+- 🏠 **Self-Hostable** — Deploy on your own infrastructure with Docker. Your data stays with you
+- 🔀 **3 Orchestration Modes** — Pipeline (sequential), Orchestrator (brain + workers), and Collaboration (multi-agent discussion)
+- 🏪 **Agent Marketplace** — Browse and install community-built agent templates, or publish your own
+- ⚡ **Integrations Ecosystem** — Zapier (7,000+ apps), Discord, Slack, Telegram, Email, webhooks, and output routes
+- 🔒 **Secure by Default** — AES-256-GCM key encryption, Row-Level Security, GDPR-ready
+- 📊 **Built-in Analytics** — Track token usage, costs, and performance per agent and task
 
-**CrewForm changes that.** We provide the orchestration layer — the UI, the team management, the monitoring, the marketplace — while you keep full control of your API keys, your data, and your infrastructure.
-
-CrewForm is built for developers and teams who want production-ready AI agent orchestration without the complexity, cost, or lock-in of closed platforms.
+CrewForm is built for developers and teams who want production-ready AI agent orchestration. The AI agent ecosystem is rich with great tools — we encourage you to explore and choose what works best for your needs.
 
 ## Who It's For
 
@@ -200,27 +202,7 @@ npm run dev
 | **Validation** | Zod |
 | **Deployment** | Vercel · Docker |
 
-## How CrewForm Compares
 
-CrewForm occupies a unique position: a **UI-first, self-hostable, open-source** multi-agent orchestration platform with zero LLM cost markup.
-
-| Feature | CrewForm | CrewAI | AutoGen | LangGraph | Agency Swarm | Relevance AI | Flowise | n8n AI |
-|---------|----------|--------|---------|-----------|--------------|--------------|---------|--------|
-| **Open Source** | ✅ AGPL v3 | ✅ MIT | ✅ MIT | ✅ MIT | ✅ MIT | ❌ Proprietary | ✅ Apache | ✅ Sustainable Use |
-| **Visual UI** | ✅ Built-in | ✅ Studio | ⚠️ Basic | ❌ Code only | ❌ Code only | ✅ No-code | ✅ Drag-and-drop | ✅ Node-based |
-| **Self-Hostable** | ✅ Docker | ⚠️ Enterprise only | ✅ DIY | ⚠️ Via LangSmith | ✅ DIY | ❌ Cloud only | ✅ Docker | ✅ Docker |
-| **BYOK (No Markup)** | ✅ | ⚠️ OSS only | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| **Agent Marketplace** | ✅ | ❌ | ❌ | ❌ | ❌ | ⚠️ Pre-built only | ❌ | ❌ |
-| **Multi-Agent Orchestration** | ✅ 3 modes | ✅ | ✅ | ✅ | ✅ | ⚠️ Basic | ⚠️ Basic | ❌ |
-| **Messaging Channels** | ✅ 4 platforms | ❌ | ❌ | ❌ | ❌ | ⚠️ Slack only | ❌ | ✅ 400+ |
-| **Zapier Integration** | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ (built-in) |
-| **Output Routes** | ✅ Webhooks + Channels | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **Performance Tracking** | ✅ | ✅ | ⚠️ Basic | ✅ LangSmith | ❌ | ✅ | ⚠️ Basic | ⚠️ Basic |
-| **Team Collaboration** | ✅ RBAC + Memory | ❌ | ❌ | ❌ | ❌ | ✅ SSO/RBAC | ❌ | ✅ SSO/RBAC |
-| **Pricing Transparency** | ✅ Public | ❌ Enterprise | ✅ Free | ⚠️ LangSmith paid | ✅ Free | ❌ Sales call | ✅ Public | ✅ Public |
-| **Language** | TypeScript | Python | Python | Python | Python | N/A | TypeScript | TypeScript |
-
-> **Note:** CrewAI, AutoGen, LangGraph, and Agency Swarm are excellent Python libraries/frameworks for building agent systems in code. Relevance AI is GTM-focused. Flowise and n8n are general automation tools. CrewForm is a full-stack platform that wraps orchestration capabilities in a deployable application with a UI, team features, integrations, and marketplace. They're complementary — you could even use crewAI agents inside a CrewForm workflow.
 
 ## Contributing
 
@@ -264,11 +246,7 @@ CrewForm uses an open-core model. All code outside `ee/` is Community Edition (A
 BYOK stands for **Bring Your Own Key**. You connect your own API keys from providers like Anthropic, Google, or OpenAI. CrewForm never touches your LLM spend — you pay your provider directly at their standard rates.
 </details>
 
-<details>
-<summary><strong>How is CrewForm different from crewAI?</strong></summary>
 
-crewAI is a Python library for orchestrating AI agents in code. CrewForm is a full-stack platform with a visual UI, team collaboration, agent marketplace, and self-hosting support. They solve different problems — crewAI is for developers who want a Python framework, CrewForm is for teams who want a deployable application.
-</details>
 
 <details>
 <summary><strong>Can I self-host CrewForm?</strong></summary>
