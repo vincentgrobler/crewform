@@ -21,6 +21,7 @@ export interface AdminWorkspace {
 export interface AdminUser {
     id: string
     email: string
+    full_name: string
     created_at: string
     last_sign_in_at: string | null
     workspace_count: number
@@ -29,9 +30,25 @@ export interface AdminUser {
 export interface PlatformStats {
     totalWorkspaces: number
     totalUsers: number
+    activeUsersLast7d: number
     totalAgents: number
     totalTasks: number
+    totalTokens: number
+    totalCostUsd: number
     planBreakdown: { plan: string; count: number }[]
+}
+
+export interface AuditLogEntry {
+    id: string
+    workspace_id: string
+    workspace_name: string
+    actor_id: string | null
+    actor_email: string
+    action: string
+    resource_type: string
+    resource_id: string | null
+    details: Record<string, unknown>
+    created_at: string
 }
 
 // ─── Super Admin Check ──────────────────────────────────────────────────────
@@ -102,11 +119,12 @@ export async function fetchAllWorkspaces(): Promise<AdminWorkspace[]> {
 
 /** Fetch platform-level statistics (super admin only) */
 export async function fetchPlatformStats(): Promise<PlatformStats> {
-    const [workspaces, agents, tasks, subs] = await Promise.all([
+    const [workspaces, agents, tasks, subs, rpcResult] = await Promise.all([
         supabase.from('workspaces').select('id', { count: 'exact', head: true }),
         supabase.from('agents').select('id', { count: 'exact', head: true }),
         supabase.from('tasks').select('id', { count: 'exact', head: true }),
         supabase.from('subscriptions').select('plan'),
+        supabase.rpc('admin_platform_stats'),
     ])
 
     // Count plans
@@ -117,11 +135,21 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
         }
     }
 
+    const rpcData = (rpcResult.data ?? {}) as {
+        total_users?: number
+        active_users_7d?: number
+        total_tokens?: number
+        total_cost_usd?: number
+    }
+
     return {
         totalWorkspaces: workspaces.count ?? 0,
-        totalUsers: 0, // Can't count auth.users from client — use workspace count as proxy
+        totalUsers: rpcData.total_users ?? 0,
+        activeUsersLast7d: rpcData.active_users_7d ?? 0,
         totalAgents: agents.count ?? 0,
         totalTasks: tasks.count ?? 0,
+        totalTokens: rpcData.total_tokens ?? 0,
+        totalCostUsd: rpcData.total_cost_usd ?? 0,
         planBreakdown: Array.from(planCounts.entries()).map(([plan, count]) => ({ plan, count })),
     }
 }
@@ -151,6 +179,68 @@ export async function toggleBeta(workspaceId: string, isBeta: boolean): Promise<
         .eq('id', workspaceId)
 
     if (result.error) throw result.error
+}
+
+// ─── All Users (super admin) ────────────────────────────────────────────────
+
+/** Fetch all platform users with profile and workspace info */
+export async function fetchAllUsers(): Promise<AdminUser[]> {
+    const result = await supabase.rpc('admin_list_users')
+    if (result.error) throw result.error
+    return result.data as AdminUser[]
+}
+
+// ─── Platform Audit Log ─────────────────────────────────────────────────────
+
+/** Fetch platform-wide audit logs (super admin only, latest 200) */
+export async function fetchPlatformAuditLogs(): Promise<AuditLogEntry[]> {
+    // Super admin RLS policy allows reading all audit_logs
+    const logsResult = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(200)
+
+    if (logsResult.error) throw logsResult.error
+
+    const logs = logsResult.data as Array<{
+        id: string; workspace_id: string; actor_id: string | null;
+        action: string; resource_type: string; resource_id: string | null;
+        details: Record<string, unknown>; created_at: string
+    }>
+
+    // Fetch workspace names for display
+    const wsIds = [...new Set(logs.map(l => l.workspace_id))]
+    const wsResult = await supabase
+        .from('workspaces')
+        .select('id, name')
+        .in('id', wsIds)
+
+    const wsNames = new Map<string, string>()
+    if (!wsResult.error) {
+        for (const w of wsResult.data as Array<{ id: string; name: string }>) {
+            wsNames.set(w.id, w.name)
+        }
+    }
+
+    // Fetch actor emails from user_profiles
+    const actorIds = [...new Set(logs.filter(l => l.actor_id).map(l => l.actor_id as string))]
+    const profileResult = actorIds.length > 0
+        ? await supabase.from('user_profiles').select('id, full_name').in('id', actorIds)
+        : { data: [], error: null }
+
+    const actorNames = new Map<string, string>()
+    if (!profileResult.error) {
+        for (const p of profileResult.data as Array<{ id: string; full_name: string }>) {
+            actorNames.set(p.id, p.full_name)
+        }
+    }
+
+    return logs.map(l => ({
+        ...l,
+        workspace_name: wsNames.get(l.workspace_id) ?? 'Unknown',
+        actor_email: l.actor_id ? (actorNames.get(l.actor_id) ?? l.actor_id) : 'System',
+    }))
 }
 
 // ─── Beta User Management ───────────────────────────────────────────────────

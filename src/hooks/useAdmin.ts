@@ -6,8 +6,9 @@ import {
     checkIsSuperAdmin, fetchAllWorkspaces, fetchPlatformStats,
     overrideWorkspacePlan, toggleBeta,
     fetchBetaUsers, approveBetaUser, revokeBetaUser,
+    fetchAllUsers, fetchPlatformAuditLogs,
 } from '@/db/admin'
-import type { AdminWorkspace, PlatformStats, BetaUser } from '@/db/admin'
+import type { AdminWorkspace, PlatformStats, BetaUser, AdminUser, AuditLogEntry } from '@/db/admin'
 
 /** Check if current user is a super admin */
 export function useSuperAdmin() {
@@ -92,5 +93,23 @@ export function useApproveBetaUser() {
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: ['admin-beta-users'] })
         },
+    })
+}
+
+/** Fetch all platform users (admin only) */
+export function useAllUsers() {
+    return useQuery<AdminUser[]>({
+        queryKey: ['admin-users'],
+        queryFn: fetchAllUsers,
+        staleTime: 60 * 1000,
+    })
+}
+
+/** Fetch platform-wide audit logs (admin only) */
+export function usePlatformAuditLog() {
+    return useQuery<AuditLogEntry[]>({
+        queryKey: ['admin-audit-log'],
+        queryFn: fetchPlatformAuditLogs,
+        staleTime: 30 * 1000,
     })
 }
