@@ -357,7 +357,7 @@ function TriggerCard({
                         {trigger.last_fired_at && (
                             <span>Last: {new Date(trigger.last_fired_at).toLocaleString()}</span>
                         )}
-                        {trigger.context_options && trigger.context_options.length > 0 && (
+                        {trigger.context_options.length > 0 && (
                             <span className="text-cyan-400">
                                 📊 {trigger.context_options.length} data source{trigger.context_options.length !== 1 ? 's' : ''}
                             </span>
