@@ -481,16 +481,16 @@ export async function rejectSubmission(id: string, reviewerId: string, notes: st
 // ─── Creator Stats ──────────────────────────────────────────────────────────
 
 /** Fetch creator statistics for published agents */
-export async function fetchCreatorStats(userId: string): Promise<CreatorStats> {
-    // Get published agents by this user
+export async function fetchCreatorStats(workspaceId: string): Promise<CreatorStats> {
+    // Get published agents in this workspace
     const agentsResult = await supabase
         .from('agents')
-        .select('install_count, rating_avg')
-        .eq('workspace_id', userId) // agents belong to workspace, not user directly
+        .select('id, install_count, rating_avg')
+        .eq('workspace_id', workspaceId)
         .eq('is_published', true)
 
     const agents = !agentsResult.error
-        ? (agentsResult.data as Array<{ install_count: number; rating_avg: number }>)
+        ? (agentsResult.data as Array<{ id: string; install_count: number; rating_avg: number }>)
         : []
 
     const publishedCount = agents.length
@@ -499,8 +499,20 @@ export async function fetchCreatorStats(userId: string): Promise<CreatorStats> {
         ? agents.reduce((sum, a) => sum + a.rating_avg, 0) / agents.length
         : 0
 
-    // Get submissions
-    const submissions = await fetchMySubmissions(userId)
+    // Get submissions for agents in this workspace
+    const agentIds = agents.map(a => a.id)
+    let submissions: MarketplaceSubmission[] = []
+    if (agentIds.length > 0) {
+        const subResult = await supabase
+            .from('marketplace_submissions')
+            .select('*')
+            .in('agent_id', agentIds)
+            .order('created_at', { ascending: false })
+
+        if (!subResult.error) {
+            submissions = subResult.data as MarketplaceSubmission[]
+        }
+    }
 
     return { publishedCount, totalInstalls, avgRating, submissions }
 }
