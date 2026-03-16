@@ -17,6 +17,7 @@ export interface AgentTrigger {
     webhook_token: string | null
     task_title_template: string
     task_description_template: string
+    context_options: string[]
     enabled: boolean
     last_fired_at: string | null
     created_at: string
@@ -39,6 +40,7 @@ export interface CreateTriggerInput {
     webhook_token?: string | null
     task_title_template: string
     task_description_template?: string
+    context_options?: string[]
     enabled?: boolean
 }
 
@@ -96,6 +98,7 @@ export interface CreateTeamTriggerInput {
     webhook_token?: string | null
     task_title_template: string
     task_description_template?: string
+    context_options?: string[]
     enabled?: boolean
 }
 

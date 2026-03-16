@@ -30,6 +30,12 @@ const CRON_PRESETS = [
     { label: 'Weekly (Mon 9am)', value: '0 9 * * 1' },
 ]
 
+const CONTEXT_OPTIONS = [
+    { key: 'task_summary', label: 'Task Summary', description: "Yesterday's task stats & titles" },
+    { key: 'team_activity', label: 'Team Activity', description: 'Team delegation outcomes' },
+    { key: 'agent_usage', label: 'Agent Usage', description: 'Token usage & costs by model' },
+]
+
 // ─── Main Component ─────────────────────────────────────────────────────────
 
 export function TriggersPanel({ agentId }: { agentId: string }) {
@@ -117,6 +123,13 @@ function CreateTriggerForm({
     const [cronExpression, setCronExpression] = useState('0 9 * * *')
     const [taskTitle, setTaskTitle] = useState('')
     const [taskDescription, setTaskDescription] = useState('')
+    const [contextOptions, setContextOptions] = useState<string[]>([])
+
+    function toggleContextOption(key: string) {
+        setContextOptions(prev =>
+            prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key],
+        )
+    }
 
     function handleSubmit() {
         if (!taskTitle.trim()) return
@@ -129,6 +142,7 @@ function CreateTriggerForm({
                 cron_expression: triggerType === 'cron' ? cronExpression : null,
                 task_title_template: taskTitle,
                 task_description_template: taskDescription,
+                context_options: triggerType === 'cron' ? contextOptions : [],
             },
             { onSuccess: () => onClose() },
         )
@@ -225,6 +239,40 @@ function CreateTriggerForm({
                 />
             </div>
 
+            {/* Context options (CRON only) */}
+            {triggerType === 'cron' && (
+                <div>
+                    <label className="mb-1.5 block text-xs font-medium text-gray-400">Data Context (optional)</label>
+                    <p className="mb-2 text-[10px] text-gray-600">
+                        Inject workspace data into the task so the agent can generate reports.
+                    </p>
+                    <div className="space-y-1.5">
+                        {CONTEXT_OPTIONS.map((opt) => (
+                            <label
+                                key={opt.key}
+                                className={cn(
+                                    'flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 transition-colors',
+                                    contextOptions.includes(opt.key)
+                                        ? 'border-brand-primary/40 bg-brand-primary/5'
+                                        : 'border-border bg-surface-primary hover:bg-surface-raised',
+                                )}
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={contextOptions.includes(opt.key)}
+                                    onChange={() => toggleContextOption(opt.key)}
+                                    className="h-3.5 w-3.5 rounded border-border accent-brand-primary"
+                                />
+                                <div>
+                                    <span className="text-xs font-medium text-gray-200">{opt.label}</span>
+                                    <p className="text-[10px] text-gray-500">{opt.description}</p>
+                                </div>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Actions */}
             <div className="flex justify-end gap-2">
                 <button
@@ -308,6 +356,11 @@ function TriggerCard({
                         )}
                         {trigger.last_fired_at && (
                             <span>Last: {new Date(trigger.last_fired_at).toLocaleString()}</span>
+                        )}
+                        {trigger.context_options.length > 0 && (
+                            <span className="text-cyan-400">
+                                📊 {trigger.context_options.length} data source{trigger.context_options.length !== 1 ? 's' : ''}
+                            </span>
                         )}
                     </div>
                 </div>
