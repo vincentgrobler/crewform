@@ -16,6 +16,7 @@ interface CronTriggerRow {
     cron_expression: string;
     task_title_template: string;
     task_description_template: string;
+    context_options: string[];
     last_fired_at: string | null;
 }
 
@@ -127,6 +128,119 @@ function renderTemplate(template: string): string {
         .replace(/\{\{datetime\}\}/g, now.toISOString());
 }
 
+// ─── Context Enrichment ─────────────────────────────────────────────────────
+
+/** Available context data sources */
+type ContextOption = 'task_summary' | 'team_activity' | 'agent_usage';
+
+/**
+ * Build a context block by querying yesterday's workspace data.
+ * Returns a formatted string to append to the task description.
+ */
+async function buildContextBlock(
+    workspaceId: string,
+    options: string[],
+): Promise<string> {
+    if (options.length === 0) return '';
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const startOfYesterday = new Date(yesterday);
+    startOfYesterday.setHours(0, 0, 0, 0);
+    const endOfYesterday = new Date(yesterday);
+    endOfYesterday.setHours(23, 59, 59, 999);
+
+    const sections: string[] = [];
+
+    for (const option of options) {
+        switch (option as ContextOption) {
+            case 'task_summary': {
+                const { data: tasks } = await supabase
+                    .from('tasks')
+                    .select('id, title, status, assigned_agent_id, created_at')
+                    .eq('workspace_id', workspaceId)
+                    .gte('created_at', startOfYesterday.toISOString())
+                    .lte('created_at', endOfYesterday.toISOString())
+                    .order('created_at', { ascending: false });
+
+                const taskList = (tasks ?? []) as Array<{ id: string; title: string; status: string; assigned_agent_id: string | null; created_at: string }>;
+                const completed = taskList.filter(t => t.status === 'completed').length;
+                const failed = taskList.filter(t => t.status === 'failed').length;
+                const pending = taskList.filter(t => t.status === 'pending' || t.status === 'dispatched').length;
+
+                let section = `## Task Summary (Yesterday)\n`;
+                section += `Total: ${taskList.length} | Completed: ${completed} | Failed: ${failed} | Pending: ${pending}\n`;
+                if (taskList.length > 0) {
+                    section += `\nTasks:\n`;
+                    for (const t of taskList.slice(0, 20)) {
+                        section += `- [${t.status.toUpperCase()}] ${t.title}\n`;
+                    }
+                    if (taskList.length > 20) section += `... and ${taskList.length - 20} more\n`;
+                }
+                sections.push(section);
+                break;
+            }
+
+            case 'team_activity': {
+                const { data: delegations } = await supabase
+                    .from('delegations')
+                    .select('id, parent_task_id, child_task_id, status, created_at')
+                    .eq('workspace_id', workspaceId)
+                    .gte('created_at', startOfYesterday.toISOString())
+                    .lte('created_at', endOfYesterday.toISOString());
+
+                const delegationList = (delegations ?? []) as Array<{ id: string; status: string }>;
+                const accepted = delegationList.filter(d => d.status === 'accepted').length;
+                const revised = delegationList.filter(d => d.status === 'revised').length;
+                const pendingDel = delegationList.filter(d => d.status === 'pending').length;
+
+                let section = `## Team Activity (Yesterday)\n`;
+                section += `Total delegations: ${delegationList.length} | Accepted: ${accepted} | Revised: ${revised} | Pending: ${pendingDel}\n`;
+                sections.push(section);
+                break;
+            }
+
+            case 'agent_usage': {
+                const { data: usage } = await supabase
+                    .from('usage_records')
+                    .select('agent_id, tokens_used, cost_estimate_usd, model')
+                    .eq('workspace_id', workspaceId)
+                    .gte('created_at', startOfYesterday.toISOString())
+                    .lte('created_at', endOfYesterday.toISOString());
+
+                const usageList = (usage ?? []) as Array<{ agent_id: string; tokens_used: number; cost_estimate_usd: number; model: string }>;
+                const totalTokens = usageList.reduce((sum, u) => sum + (u.tokens_used ?? 0), 0);
+                const totalCost = usageList.reduce((sum, u) => sum + (u.cost_estimate_usd ?? 0), 0);
+                const uniqueAgents = new Set(usageList.map(u => u.agent_id)).size;
+
+                let section = `## Agent Usage (Yesterday)\n`;
+                section += `Executions: ${usageList.length} | Agents used: ${uniqueAgents} | Total tokens: ${totalTokens.toLocaleString()} | Est. cost: $${totalCost.toFixed(4)}\n`;
+
+                // Group by model
+                const modelMap = new Map<string, { count: number; tokens: number }>(); 
+                for (const u of usageList) {
+                    const key = u.model ?? 'unknown';
+                    const entry = modelMap.get(key) ?? { count: 0, tokens: 0 };
+                    entry.count++;
+                    entry.tokens += u.tokens_used ?? 0;
+                    modelMap.set(key, entry);
+                }
+                if (modelMap.size > 0) {
+                    section += `\nBy model:\n`;
+                    for (const [model, stats] of modelMap) {
+                        section += `- ${model}: ${stats.count} runs, ${stats.tokens.toLocaleString()} tokens\n`;
+                    }
+                }
+                sections.push(section);
+                break;
+            }
+        }
+    }
+
+    if (sections.length === 0) return '';
+    return `\n\n---\n\n# Workspace Data Context\n\n${sections.join('\n')}`;
+}
+
 // ─── Main Scheduler ─────────────────────────────────────────────────────────
 
 let isEvaluating = false;
@@ -139,7 +253,7 @@ export async function evaluateTriggers(): Promise<void> {
         // Fetch all enabled CRON triggers
         const result = await supabase
             .from('agent_triggers')
-            .select('id, agent_id, workspace_id, cron_expression, task_title_template, task_description_template, last_fired_at')
+            .select('id, agent_id, workspace_id, cron_expression, task_title_template, task_description_template, context_options, last_fired_at')
             .eq('trigger_type', 'cron')
             .eq('enabled', true)
             .not('cron_expression', 'is', null);
@@ -159,7 +273,19 @@ export async function evaluateTriggers(): Promise<void> {
 
                 // Create the task
                 const title = renderTemplate(trigger.task_title_template);
-                const description = renderTemplate(trigger.task_description_template);
+                let description = renderTemplate(trigger.task_description_template);
+
+                // Enrich with workspace data if context options are selected
+                const contextOptions = trigger.context_options ?? [];
+                if (contextOptions.length > 0) {
+                    try {
+                        const contextBlock = await buildContextBlock(trigger.workspace_id, contextOptions);
+                        description += contextBlock;
+                    } catch (ctxErr: unknown) {
+                        const msg = ctxErr instanceof Error ? ctxErr.message : String(ctxErr);
+                        console.warn(`[TriggerScheduler] Failed to build context for trigger ${trigger.id}: ${msg}`);
+                    }
+                }
 
                 const taskResult = await supabase
                     .from('tasks')
