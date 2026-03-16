@@ -98,14 +98,14 @@ export function useRejectSubmission() {
 }
 
 /** Fetch creator statistics */
-export function useCreatorStats(userId: string | null) {
+export function useCreatorStats(workspaceId: string | null) {
     return useQuery<CreatorStats>({
-        queryKey: ['creator-stats', userId],
+        queryKey: ['creator-stats', workspaceId],
         queryFn: () => {
-            if (!userId) throw new Error('Missing userId')
-            return fetchCreatorStats(userId)
+            if (!workspaceId) throw new Error('Missing workspaceId')
+            return fetchCreatorStats(workspaceId)
         },
-        enabled: !!userId,
+        enabled: !!workspaceId,
         staleTime: 60 * 1000,
     })
 }

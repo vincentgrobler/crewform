@@ -4,7 +4,7 @@
 import {
     Loader2, Download, Star, Package, Clock, CheckCircle2, XCircle, AlertCircle,
 } from 'lucide-react'
-import { useAuth } from '@/hooks/useAuth'
+import { useWorkspace } from '@/hooks/useWorkspace'
 import { useCreatorStats } from '@/hooks/useMarketplace'
 import { cn } from '@/lib/utils'
 
@@ -18,8 +18,8 @@ const STATUS_CONFIG = {
  * Creator dashboard showing published agent stats and submission history.
  */
 export function CreatorDashboard() {
-    const { user } = useAuth()
-    const { data: stats, isLoading } = useCreatorStats(user?.id ?? null)
+    const { workspaceId } = useWorkspace()
+    const { data: stats, isLoading } = useCreatorStats(workspaceId)
 
     if (isLoading) {
         return (
