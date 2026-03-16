@@ -603,7 +603,6 @@ function AiScanLoader({ scanTaskId, submissionId }: AiScanLoaderProps) {
             while (!cancelledRef.current) {
                 try {
                     const res = await fetchScanTaskResult(scanTaskId)
-                    if (cancelledRef.current) return
                     if (res.done && res.result) {
                         setAiResult(res.result)
                         setIsPolling(false)
