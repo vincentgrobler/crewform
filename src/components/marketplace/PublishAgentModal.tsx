@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import { X, Upload, ShieldCheck, ShieldAlert, Loader2, Plus, Tag } from 'lucide-react'
+import { toast } from 'sonner'
 import { useAuth } from '@/hooks/useAuth'
 import { useSubmitAgent } from '@/hooks/useMarketplace'
 import { scanForInjection } from '@/db/marketplace'
@@ -69,6 +70,7 @@ export function PublishAgentModal({ agent, onClose }: PublishAgentModalProps) {
             { agentId: agent.id, tags, userId: user.id },
             {
                 onSuccess: () => {
+                    toast.success('Submitted for review! You\'ll be notified when it\'s approved.')
                     onClose()
                 },
             },

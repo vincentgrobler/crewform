@@ -8,6 +8,8 @@ import { toast } from 'sonner'
 import { useAgent } from '@/hooks/useAgent'
 import { useUpdateAgent } from '@/hooks/useUpdateAgent'
 import { useDeleteAgent } from '@/hooks/useDeleteAgent'
+import { useAuth } from '@/hooks/useAuth'
+import { useMySubmissions } from '@/hooks/useMarketplace'
 import { DeleteAgentDialog } from '@/components/agents/DeleteAgentDialog'
 import { PromptHistoryPanel } from '@/components/agents/PromptHistoryPanel'
 import { TriggersPanel } from '@/components/agents/TriggersPanel'
@@ -42,9 +44,19 @@ export function AgentDetail() {
     const { agent, isLoading, error } = useAgent(id)
     const updateMutation = useUpdateAgent()
     const deleteMutation = useDeleteAgent()
+    const { user } = useAuth()
 
     const { workspaceId } = useWorkspace()
     const { keys } = useApiKeys(workspaceId)
+    const { data: mySubmissions } = useMySubmissions(user?.id ?? null)
+
+    // Derive submission status for this agent
+    const submissionForAgent = useMemo(() => {
+        if (!mySubmissions || !id) return null
+        return mySubmissions
+            .filter((s) => s.agent_id === id)
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] ?? null
+    }, [mySubmissions, id])
 
     const [activeTab, setActiveTab] = useState<TabKey>('config')
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -196,6 +208,20 @@ export function AgentDetail() {
                     </button>
                     <h1 className="text-2xl font-semibold text-gray-100">{agent.name}</h1>
                     <StatusIndicator status={agent.status} size="md" />
+                    {/* Submission status badge */}
+                    {submissionForAgent?.status === 'pending' && (
+                        <span className="rounded-full bg-orange-500/15 border border-orange-500/30 px-2.5 py-0.5 text-xs font-medium text-orange-400">
+                            In Review
+                        </span>
+                    )}
+                    {submissionForAgent?.status === 'rejected' && (
+                        <span
+                            className="rounded-full bg-red-500/15 border border-red-500/30 px-2.5 py-0.5 text-xs font-medium text-red-400 cursor-help"
+                            title={submissionForAgent.review_notes ?? 'No reason provided'}
+                        >
+                            Rejected
+                        </span>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -221,7 +247,7 @@ export function AgentDetail() {
                         {saveSuccess ? 'Saved!' : 'Save'}
                     </button>
 
-                    {/* Publish / Unpublish button */}
+                    {/* Publish / Unpublish / In Review button */}
                     {agent.is_published ? (
                         <button
                             type="button"
@@ -242,6 +268,15 @@ export function AgentDetail() {
                         >
                             {isUnpublishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4" />}
                             Unpublish
+                        </button>
+                    ) : submissionForAgent?.status === 'pending' ? (
+                        <button
+                            type="button"
+                            disabled
+                            className="flex items-center gap-2 rounded-lg border border-orange-500/30 px-4 py-2 text-sm font-medium text-orange-400 cursor-not-allowed opacity-70"
+                        >
+                            <Clock className="h-4 w-4" />
+                            In Review
                         </button>
                     ) : (
                         <button
