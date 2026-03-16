@@ -333,6 +333,8 @@ export async function fetchPendingSubmissions(): Promise<MarketplaceSubmission[]
                     }
                 }
             }
+        } else {
+            console.warn('[fetchPendingSubmissions] Failed to fetch agent data — likely RLS issue:', agentsResult.error.message)
         }
     }
 
