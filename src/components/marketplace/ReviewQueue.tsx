@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { useAuth } from '@/hooks/useAuth'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { usePendingSubmissions, useApproveSubmission, useRejectSubmission, useMarketplaceAgents } from '@/hooks/useMarketplace'
+import { fetchScanTaskResult } from '@/db/marketplace'
 import { createTask } from '@/db/tasks'
 import { deleteTask } from '@/db/tasks'
 import { supabase } from '@/lib/supabase'
@@ -19,6 +20,7 @@ import { MODEL_OPTIONS } from '@/lib/agentSchema'
 import { cn } from '@/lib/utils'
 import type { Task } from '@/types'
 import type { DuplicateMatch } from '@/lib/similarity'
+import type { InjectionScanResult } from '@/db/marketplace'
 
 /**
  * Admin review queue for marketplace agent submissions.
@@ -136,6 +138,12 @@ export function ReviewQueue() {
                                         </p>
                                         <p className="text-[10px] text-gray-500">{scan.aiScan.reasoning}</p>
                                     </div>
+                                )}
+                                {!scan.aiScan && scan.scanTaskId && (
+                                    <AiScanLoader scanTaskId={scan.scanTaskId} submissionId={sub.id} />
+                                )}
+                                {!scan.aiScan && !scan.scanTaskId && (
+                                    <p className="mt-1 text-[10px] text-gray-600">AI scan not configured</p>
                                 )}
                             </div>
                         </div>
@@ -572,6 +580,76 @@ function TestRunPanel({ agentId, agentName, agentModel, workspaceId, userId }: T
                     <p className="text-xs text-red-300">{testError}</p>
                 </div>
             )}
+        </div>
+    )
+}
+
+// ─── AI Scan Loader (Async) ─────────────────────────────────────────────────
+
+interface AiScanLoaderProps {
+    scanTaskId: string
+    submissionId: string
+}
+
+function AiScanLoader({ scanTaskId, submissionId }: AiScanLoaderProps) {
+    const [aiResult, setAiResult] = useState<InjectionScanResult['aiScan'] | null>(null)
+    const [isPolling, setIsPolling] = useState(true)
+
+    useEffect(() => {
+        let cancelled = false
+        const poll = async () => {
+            while (!cancelled) {
+                try {
+                    const res = await fetchScanTaskResult(scanTaskId)
+                    if (cancelled) return
+                    if (res.done && res.result) {
+                        setAiResult(res.result)
+                        setIsPolling(false)
+                        // Update the submission's injection_scan_result with the AI result
+                        void supabase
+                            .from('marketplace_submissions')
+                            .update({
+                                injection_scan_result: {
+                                    safe: res.result.safe,
+                                    flags: [],
+                                    aiScan: res.result,
+                                } satisfies InjectionScanResult,
+                            })
+                            .eq('id', submissionId)
+                        return
+                    }
+                } catch {
+                    // ignore errors, try again
+                }
+                // Wait 5s before next poll
+                await new Promise((r) => setTimeout(r, 5_000))
+            }
+        }
+        void poll()
+        return () => { cancelled = true }
+    }, [scanTaskId, submissionId])
+
+    if (isPolling) {
+        return (
+            <div className="mt-1.5 flex items-center gap-1.5 border-t border-border/50 pt-1.5">
+                <Loader2 className="h-3 w-3 animate-spin text-blue-400" />
+                <p className="text-[10px] text-blue-300">AI scan in progress…</p>
+            </div>
+        )
+    }
+
+    if (!aiResult) return null
+
+    return (
+        <div className="mt-1.5 border-t border-border/50 pt-1.5">
+            <p className="text-[10px] font-medium text-gray-400">
+                AI Scan ({Math.round(aiResult.confidence * 100)}% confidence)
+                {' — '}
+                <span className={aiResult.safe ? 'text-green-400' : 'text-red-400'}>
+                    {aiResult.safe ? 'Safe' : 'Flagged'}
+                </span>
+            </p>
+            <p className="text-[10px] text-gray-500">{aiResult.reasoning}</p>
         </div>
     )
 }
