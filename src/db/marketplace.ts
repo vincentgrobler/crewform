@@ -249,12 +249,12 @@ async function aiScanForInjection(
         if (task.status === 'completed' && task.result) {
             try {
                 // Result could be a string or { output: string }
-                let raw = task.result
-                if (typeof raw === 'object' && raw !== null && 'output' in raw) {
-                    raw = (raw as { output: string }).output
-                }
+                const raw: unknown = task.result
+                const rawStr: string = (typeof raw === 'object' && raw !== null && 'output' in raw)
+                    ? (raw as { output: string }).output
+                    : typeof raw === 'string' ? raw : JSON.stringify(raw)
 
-                const parsed: unknown = typeof raw === 'string' ? JSON.parse(raw as string) : raw
+                const parsed: unknown = JSON.parse(rawStr)
                 if (
                     parsed &&
                     typeof parsed === 'object' &&
@@ -264,7 +264,7 @@ async function aiScanForInjection(
                 ) {
                     result = parsed as { safe: boolean; reasoning: string; confidence: number }
                 } else {
-                    result = { safe: true, reasoning: typeof raw === 'string' ? raw : JSON.stringify(raw), confidence: 0.3 }
+                    result = { safe: true, reasoning: rawStr, confidence: 0.3 }
                 }
             } catch {
                 result = { safe: true, reasoning: 'AI scan returned unparseable response.', confidence: 0 }
