@@ -36,6 +36,10 @@ export function AcceptInvite() {
             try {
                 const result = await acceptInvitation(token)
                 if (result.success) {
+                    // Switch to the invited workspace
+                    if (result.workspace_id) {
+                        localStorage.setItem('crewform:activeWorkspaceId', result.workspace_id)
+                    }
                     setState('success')
                     // Redirect to dashboard after a short delay
                     setTimeout(() => {
