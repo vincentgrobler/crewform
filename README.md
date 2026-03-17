@@ -4,14 +4,16 @@
 
 ### Form your AI crew
 
-**AI Orchestration for Everyone**
+**Open-source AI Agent Orchestration Platform**
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![CI](https://github.com/CrewForm/crewform/actions/workflows/ci.yml/badge.svg)](https://github.com/CrewForm/crewform/actions/workflows/ci.yml)
-[![Docs](https://img.shields.io/badge/Docs-Mintlify-0D9373?logo=mintlify&logoColor=white)](https://docs.crewform.tech)
+[![GitHub Stars](https://img.shields.io/github/stars/CrewForm/crewform?style=social)](https://github.com/CrewForm/crewform/stargazers)
 [![Discord](https://img.shields.io/discord/1476188192100323488?color=5865F2&label=Discord&logo=discord&logoColor=white)](https://discord.gg/TAFasJCTWs)
+[![Built with Supabase](https://img.shields.io/badge/Built_with-Supabase-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com)
+[![Deployed on Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000?logo=vercel&logoColor=white)](https://vercel.com)
+[![Docs](https://img.shields.io/badge/Docs-Mintlify-0D9373?logo=mintlify&logoColor=white)](https://docs.crewform.tech)
 [![Zapier](https://img.shields.io/badge/Zapier-Integrated-FF4A00?logo=zapier&logoColor=white)](https://zapier.com)
-[![Website](https://img.shields.io/badge/Website-crewform.tech-6bedb9)](https://crewform.tech)
 
 [Website](https://crewform.tech) · [Docs](https://docs.crewform.tech) · [Discord](https://discord.gg/TAFasJCTWs) · [Twitter](https://twitter.com/CrewFormHQ)
 
@@ -19,13 +21,86 @@
 
 ---
 
+<div align="center">
+  <strong>If you find CrewForm useful, please consider giving it a ⭐ — it helps others discover the project!</strong>
+</div>
+
+---
+
+<div align="center">
+  <img src=".github/assets/dashboard-hero.png" alt="CrewForm Dashboard" width="800" />
+  <p><em>The CrewForm dashboard — manage agents, track tasks, monitor performance, all in one place.</em></p>
+</div>
+
+## ✨ Features at a Glance
+
+<table>
+<tr>
+<td align="center" width="25%">
+🤖<br/><strong>14 LLM Providers</strong><br/>OpenAI, Anthropic, Gemini, Groq, Mistral, and more
+</td>
+<td align="center" width="25%">
+🔀<br/><strong>3 Team Modes</strong><br/>Pipeline, Orchestrator, and Collaboration
+</td>
+<td align="center" width="25%">
+🏪<br/><strong>Agent Marketplace</strong><br/>Browse, install, and publish agent templates
+</td>
+<td align="center" width="25%">
+🔑<br/><strong>BYOK</strong><br/>Your API keys, your cost — zero markup
+</td>
+</tr>
+<tr>
+<td align="center" width="25%">
+🏠<br/><strong>Self-Hostable</strong><br/>Docker Compose — your data, your infra
+</td>
+<td align="center" width="25%">
+⚡<br/><strong>Real-Time</strong><br/>Watch agents work with live updates
+</td>
+<td align="center" width="25%">
+🛠️<br/><strong>Tool-Use</strong><br/>HTTP tools, code interpreter, web search
+</td>
+<td align="center" width="25%">
+🧠<br/><strong>Team Memory</strong><br/>pgvector semantic search across runs
+</td>
+</tr>
+</table>
+
+## 🚀 Quick Start
+
+### Hosted (Fastest)
+
+Sign up at [crewform.tech](https://crewform.tech) — free tier includes 3 agents and 50 tasks/month.
+
+### Self-Hosted (Docker)
+
+```bash
+git clone https://github.com/CrewForm/crewform.git
+cd crewform
+cp .env.example .env  # Edit with your config
+docker compose up -d
+```
+
+Open **http://localhost:3000** — done!
+
+### Development
+
+```bash
+git clone https://github.com/CrewForm/crewform.git
+cd crewform
+npm install
+cp .env.example .env.local
+npm run dev
+```
+
+> 📖 See the [Self-Hosting Guide](https://docs.crewform.tech/self-hosting) for production deployment details.
+
 ## Table of Contents
 
 - [Why CrewForm?](#why-crewform)
 - [Who It's For](#who-its-for)
 - [Key Features](#key-features)
+- [How It Compares](#how-it-compares)
 - [Editions & Pricing](#editions--pricing)
-- [Quick Start](#quick-start)
 - [Documentation](#documentation)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
@@ -107,6 +182,26 @@ Each client gets their own workspace. Custom agents built around their tools and
 - 📋 **Audit Logs** — Full audit trail with Datadog/Splunk streaming *(Enterprise)*
 - 🐝 **Swarm** — Multi-runner concurrency pool *(Enterprise)*
 
+## How It Compares
+
+| Feature | CrewForm | AutoGPT | CrewAI | LangGraph |
+|---------|----------|---------|--------|-----------|
+| **Visual UI** | ✅ Full web app | ✅ Web UI | ❌ Code only | ❌ Code only |
+| **Self-Hostable** | ✅ Docker Compose | ✅ Docker | ✅ (library) | ✅ (library) |
+| **No-Code Setup** | ✅ Point-and-click | ✅ Partial | ❌ Python required | ❌ Python required |
+| **Team Modes** | ✅ Pipeline, Orchestrator, Collaboration | ❌ Single agent | ✅ Sequential, Hierarchical | ✅ Graph-based |
+| **Agent Marketplace** | ✅ Built-in | ✅ Built-in | ❌ | ❌ |
+| **BYOK Multi-Provider** | ✅ 14 providers | ✅ Limited | ✅ Via LiteLLM | ✅ Via config |
+| **Real-Time Monitoring** | ✅ Live updates | ✅ | ❌ | ❌ |
+| **Tool-Use / Function Calling** | ✅ Built-in | ✅ | ✅ | ✅ |
+| **Zapier Integration** | ✅ | ❌ | ❌ | ❌ |
+| **Messaging Channels** | ✅ Discord, Slack, Telegram, Email | ❌ | ❌ | ❌ |
+| **RBAC & Workspaces** | ✅ 5-role hierarchy | ❌ | ❌ | ❌ |
+| **Billing & Plans** | ✅ Stripe integrated | ❌ | ❌ | ❌ |
+| **License** | AGPL-3.0 | MIT | MIT | MIT |
+
+> **CrewForm's sweet spot:** You want a visual, production-ready AI agent platform that you can self-host, with no Python required and built-in team collaboration. If you prefer code-first orchestration, CrewAI and LangGraph are excellent choices.
+
 ## Editions & Pricing
 
 CrewForm uses an **open-core** model: a free Community Edition under AGPL-3.0 and a proprietary Enterprise Edition.
@@ -126,27 +221,6 @@ CrewForm uses an **open-core** model: a free Community Edition under AGPL-3.0 an
 | Self-Hosting | ✅ (CE) | ✅ | ✅ | ✅ |
 
 > See [LICENSING.md](LICENSING.md) for full details on the dual-license model.
-
-## Quick Start
-
-Get up and running in under 5 minutes:
-
-```bash
-# Clone the repo
-git clone https://github.com/CrewForm/crewform.git
-cd crewform
-
-# Install dependencies
-npm install
-
-# Set up environment
-cp .env.example .env.local
-
-# Start development server
-npm run dev
-```
-
-> **Self-hosting?** See the [Docker deployment guide](https://docs.crewform.tech/self-hosting) for production setup.
 
 ## Documentation
 
@@ -193,16 +267,15 @@ npm run dev
 ## Tech Stack
 
 | Layer | Technology |
-|-------|-----------| 
+|-------|-----------|
 | **Frontend** | React 18 · TypeScript · Vite · Tailwind CSS · ShadCN UI |
 | **State** | TanStack Query · Zustand |
 | **Backend** | Supabase (Auth, Database, Realtime, Edge Functions) |
 | **Task Runner** | Node.js · Multi-provider LLM integration |
+| **Vector Search** | pgvector (team memory) |
 | **Integrations** | Zapier · Discord · Slack · Telegram · Email · Webhooks |
 | **Validation** | Zod |
 | **Deployment** | Vercel · Docker |
-
-
 
 ## Contributing
 
@@ -246,8 +319,6 @@ CrewForm uses an open-core model. All code outside `ee/` is Community Edition (A
 BYOK stands for **Bring Your Own Key**. You connect your own API keys from providers like Anthropic, Google, or OpenAI. CrewForm never touches your LLM spend — you pay your provider directly at their standard rates.
 </details>
 
-
-
 <details>
 <summary><strong>Can I self-host CrewForm?</strong></summary>
 
@@ -266,6 +337,12 @@ CrewForm supports **14 providers**: OpenAI, Anthropic, Google Gemini, Groq, Mist
 CrewForm integrates with **Zapier** (7,000+ apps), messaging channels (**Discord**, **Slack**, **Telegram**, **Email**, **Trello**), and output routes (**webhooks**, **MS Teams**, **Asana**, **Trello**, and more). You can trigger agents from external events and deliver results anywhere.
 </details>
 
+<details>
+<summary><strong>How does CrewForm differ from CrewAI or LangGraph?</strong></summary>
+
+CrewForm is a **visual, UI-first platform** — you create agents, teams, and tasks through a web interface with no Python required. CrewAI and LangGraph are code-first libraries. CrewForm also includes built-in billing, RBAC, marketplace, messaging channels, and a production-ready self-hosted deployment. See the [comparison table](#how-it-compares) above.
+</details>
+
 ## License
 
 CrewForm uses a **dual-license** model:
@@ -282,5 +359,7 @@ You can use, modify, and distribute the Community Edition freely. Enterprise fea
 **CrewForm** — Form your AI crew ⚡
 
 [Website](https://crewform.tech) · [Docs](https://docs.crewform.tech) · [Discord](https://discord.gg/TAFasJCTWs) · [Twitter](https://twitter.com/CrewFormHQ)
+
+<sub>If CrewForm is useful to you, please consider ⭐ starring the repo — it really helps!</sub>
 
 </div>
