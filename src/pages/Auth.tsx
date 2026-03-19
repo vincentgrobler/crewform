@@ -34,10 +34,21 @@ export function Auth() {
     updatePassword,
   } = useAuth()
 
+  // Persist redirect in sessionStorage so it survives the email confirmation flow
+  // (AuthCallback is a separate page that would otherwise lose the ?redirect= param)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const redirect = params.get('redirect')
+    if (redirect && redirect !== '/') {
+      sessionStorage.setItem('crewform:authRedirect', redirect)
+    }
+  }, [location.search])
+
   useEffect(() => {
     if (!loading && user && mode !== 'reset-password') {
       const params = new URLSearchParams(location.search)
-      const redirect = params.get('redirect') ?? '/'
+      const redirect = params.get('redirect') ?? sessionStorage.getItem('crewform:authRedirect') ?? '/'
+      sessionStorage.removeItem('crewform:authRedirect')
       navigate(redirect, { replace: true })
     }
   }, [user, loading, navigate, mode, location.search])
