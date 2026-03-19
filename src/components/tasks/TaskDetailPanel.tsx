@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 CrewForm
 
-import { X, Clock, User, Bot, AlertCircle, Loader2, Ban, Terminal, Play, RefreshCw } from 'lucide-react'
+import { useState } from 'react'
+import { X, Clock, User, Bot, AlertCircle, Loader2, Ban, Terminal, Play, RefreshCw, Wrench, ChevronDown, ChevronRight, CheckCircle2, XCircle } from 'lucide-react'
 import { useTask } from '@/hooks/useTask'
 import { useCancelTask } from '@/hooks/useCancelTask'
 import { useDispatchTask } from '@/hooks/useDispatchTask'
@@ -226,15 +227,43 @@ export function TaskDetailPanel({ taskId, agents, onClose }: TaskDetailPanelProp
                             )}
                         </div>
 
-                        {/* Usage (placeholder — populated by Task Runner) */}
-                        <div>
-                            <h3 className="mb-2 text-sm font-medium text-gray-400">Usage</h3>
-                            <div className="grid grid-cols-3 gap-3">
-                                <UsageStat label="Tokens" value="—" />
-                                <UsageStat label="Cost" value="—" />
-                                <UsageStat label="Model" value={agent?.model ?? '—'} />
-                            </div>
-                        </div>
+                        {/* Tool Calls */}
+                        {(() => {
+                            const meta = task.metadata as Record<string, unknown> | null
+                            const toolCalls = Array.isArray(meta?.tool_calls) ? meta.tool_calls as { tool: string; arguments: Record<string, unknown>; result: string; success: boolean; duration_ms: number }[] : []
+                            const usage = meta?.usage as { totalTokens?: number; costEstimateUSD?: number } | undefined
+
+                            return (
+                                <>
+                                    {toolCalls.length > 0 && (
+                                        <div className="mb-6">
+                                            <h3 className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-400">
+                                                <Wrench className="h-4 w-4" />
+                                                Tool Calls
+                                                <span className="rounded-full bg-surface-elevated px-2 py-0.5 text-[10px] font-semibold text-gray-500">
+                                                    {toolCalls.length}
+                                                </span>
+                                            </h3>
+                                            <div className="space-y-2">
+                                                {toolCalls.map((tc, i) => (
+                                                    <ToolCallRow key={i} call={tc} />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Usage */}
+                                    <div>
+                                        <h3 className="mb-2 text-sm font-medium text-gray-400">Usage</h3>
+                                        <div className="grid grid-cols-3 gap-3">
+                                            <UsageStat label="Tokens" value={usage?.totalTokens != null ? usage.totalTokens.toLocaleString() : '—'} />
+                                            <UsageStat label="Cost" value={usage?.costEstimateUSD != null ? `$${usage.costEstimateUSD.toFixed(4)}` : '—'} />
+                                            <UsageStat label="Model" value={agent?.model ?? '—'} />
+                                        </div>
+                                    </div>
+                                </>
+                            )
+                        })()}
                     </div>
                 )}
             </div>
@@ -261,6 +290,46 @@ function UsageStat({ label, value }: { label: string; value: string }) {
         <div className="rounded-lg border border-border bg-surface-card px-3 py-2 text-center">
             <p className="text-xs text-gray-500">{label}</p>
             <p className="text-sm font-medium text-gray-300">{value}</p>
+        </div>
+    )
+}
+
+function ToolCallRow({ call }: { call: { tool: string; arguments: Record<string, unknown>; result: string; success: boolean; duration_ms: number } }) {
+    const [expanded, setExpanded] = useState(false)
+
+    return (
+        <div className="rounded-lg border border-border bg-surface-card">
+            <button
+                type="button"
+                onClick={() => setExpanded(!expanded)}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-surface-elevated"
+            >
+                {expanded ? <ChevronDown className="h-3.5 w-3.5 text-gray-500" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-500" />}
+                {call.success
+                    ? <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />
+                    : <XCircle className="h-3.5 w-3.5 text-red-400" />
+                }
+                <span className="font-mono text-xs text-gray-200">{call.tool}</span>
+                <span className="ml-auto rounded bg-surface-elevated px-1.5 py-0.5 text-[10px] text-gray-500">
+                    {call.duration_ms}ms
+                </span>
+            </button>
+            {expanded && (
+                <div className="border-t border-border px-3 py-2 space-y-2">
+                    <div>
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-gray-500 mb-1">Arguments</p>
+                        <pre className="rounded bg-surface-primary p-2 text-xs text-gray-400 overflow-x-auto">
+                            {JSON.stringify(call.arguments, null, 2)}
+                        </pre>
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-gray-500 mb-1">Result</p>
+                        <pre className="rounded bg-surface-primary p-2 text-xs text-gray-400 overflow-x-auto whitespace-pre-wrap">
+                            {call.result}
+                        </pre>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

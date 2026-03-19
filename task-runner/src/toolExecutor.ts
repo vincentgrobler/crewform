@@ -7,6 +7,16 @@
 
 import type { TokenUsage } from './types';
 
+// ─── Tool Call Logging ───────────────────────────────────────────────────────
+
+export interface ToolCallLog {
+    tool: string;
+    arguments: Record<string, unknown>;
+    result: string;
+    success: boolean;
+    duration_ms: number;
+}
+
 // ─── Tool Definitions (OpenAI-compatible format) ─────────────────────────────
 
 export interface ToolDefinition {
@@ -451,6 +461,7 @@ interface ToolUseResult {
     result: string;
     usage: TokenUsage;
     toolCallsMade: number;
+    toolCallLogs: ToolCallLog[];
 }
 
 /**
@@ -481,6 +492,7 @@ export async function executeWithToolLoop(
     let totalPromptTokens = 0;
     let totalCompletionTokens = 0;
     let toolCallsMade = 0;
+    const toolCallLogs: ToolCallLog[] = [];
 
     for (let round = 0; round < MAX_ROUNDS; round++) {
         const response = await callLLM(messages, tools);
@@ -504,6 +516,7 @@ export async function executeWithToolLoop(
                     costEstimateUSD,
                 },
                 toolCallsMade,
+                toolCallLogs,
             };
         }
 
@@ -518,7 +531,22 @@ export async function executeWithToolLoop(
         for (const toolCall of assistantMessage.tool_calls) {
             toolCallsMade++;
             console.log(`[ToolExecutor] Executing tool: ${toolCall.function.name} (round ${(round + 1).toString()}, call #${toolCallsMade.toString()})`);
+
+            const callStart = Date.now();
             const result = await executeToolCall(toolCall, customTools, serperApiKey);
+            const durationMs = Date.now() - callStart;
+
+            let parsedArgs: Record<string, unknown> = {};
+            try { parsedArgs = JSON.parse(toolCall.function.arguments) as Record<string, unknown>; } catch { /* ignore */ }
+
+            toolCallLogs.push({
+                tool: toolCall.function.name,
+                arguments: parsedArgs,
+                result: result.length > 500 ? result.slice(0, 500) + '…' : result,
+                success: !result.startsWith('Error'),
+                duration_ms: durationMs,
+            });
+
             messages.push({
                 role: 'tool',
                 tool_call_id: toolCall.id,
@@ -541,5 +569,6 @@ export async function executeWithToolLoop(
             costEstimateUSD,
         },
         toolCallsMade,
+        toolCallLogs,
     };
 }

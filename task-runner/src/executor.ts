@@ -7,7 +7,7 @@ import { writeTaskUsageRecord } from './usageWriter';
 import { dispatchWebhooks, replyToSourceChannel } from './webhookDispatcher';
 import { executeWithToolLoop, getToolDefinitions } from './toolExecutor';
 import { loadInputFiles, buildFileContext, extractAndSaveArtifacts } from './fileAttachments';
-import type { CustomToolConfig } from './toolExecutor';
+import type { CustomToolConfig, ToolCallLog } from './toolExecutor';
 import type { Task, Agent, ApiKey, TokenUsage } from './types';
 
 interface AgentTaskRecord {
@@ -307,7 +307,10 @@ export async function processTask(task: Task) {
             .update({
                 status: 'completed',
                 result: executionResult.result,
-                metadata: { usage: executionResult.usage },
+                metadata: {
+                    usage: executionResult.usage,
+                    tool_calls: (executionResult as { toolCallLogs?: ToolCallLog[] }).toolCallLogs ?? [],
+                },
             })
             .eq('id', task.id);
 
@@ -424,7 +427,7 @@ async function executeToolUseTask(
     customTools?: CustomToolConfig[],
     maxTokens?: number | null,
     serperApiKey?: string,
-): Promise<{ result: string; usage: TokenUsage }> {
+): Promise<{ result: string; usage: TokenUsage; toolCallLogs: ToolCallLog[] }> {
     // Determine base URL for OpenAI-compatible providers
     const baseURLMap: Record<string, string> = {
         openrouter: 'https://openrouter.ai/api/v1',
@@ -532,5 +535,6 @@ async function executeToolUseTask(
     return {
         result: toolLoopResult.result,
         usage: toolLoopResult.usage,
+        toolCallLogs: toolLoopResult.toolCallLogs,
     };
 }
