@@ -19,8 +19,10 @@ export function AuthCallback() {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN' && session) {
-                // Successfully authenticated — redirect to dashboard
-                navigate('/', { replace: true })
+                // Check for a pending redirect (e.g. invite link) saved by Auth page
+                const pendingRedirect = sessionStorage.getItem('crewform:authRedirect')
+                sessionStorage.removeItem('crewform:authRedirect')
+                navigate(pendingRedirect ?? '/', { replace: true })
             } else if (event === 'PASSWORD_RECOVERY') {
                 // User clicked a password reset link — redirect to reset form
                 navigate('/auth/reset-password', { replace: true })
