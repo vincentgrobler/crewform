@@ -474,6 +474,7 @@ function getActionColor(action: string): string {
 function ActivityTab() {
     const { data: logs, isLoading } = usePlatformAuditLog()
     const [search, setSearch] = useState('')
+    const [selectedWorkspace, setSelectedWorkspace] = useState<string>('all')
 
     if (isLoading) {
         return (
@@ -484,7 +485,16 @@ function ActivityTab() {
     }
 
     const entries = logs ?? []
-    const filtered = entries.filter(l =>
+
+    // Extract unique workspaces for the selector
+    const workspaceNames = [...new Set(entries.map(l => l.workspace_name))].sort()
+
+    // Filter by workspace, then by search
+    const byWorkspace = selectedWorkspace === 'all'
+        ? entries
+        : entries.filter(l => l.workspace_name === selectedWorkspace)
+
+    const filtered = byWorkspace.filter(l =>
         l.action.toLowerCase().includes(search.toLowerCase()) ||
         l.workspace_name.toLowerCase().includes(search.toLowerCase()) ||
         l.actor_email.toLowerCase().includes(search.toLowerCase()) ||
@@ -493,22 +503,44 @@ function ActivityTab() {
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-gray-400">
-                    {entries.length} recent event{entries.length !== 1 ? 's' : ''} across all workspaces
+                    {filtered.length} event{filtered.length !== 1 ? 's' : ''}
+                    {selectedWorkspace !== 'all' && (
+                        <span> in <strong className="text-gray-300">{selectedWorkspace}</strong></span>
+                    )}
+                    {selectedWorkspace === 'all' && ' across all workspaces'}
                 </p>
             </div>
 
-            {/* Search */}
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-                <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Filter by action, workspace, user..."
-                    className="w-full rounded-lg border border-border bg-surface-card py-2.5 pl-10 pr-4 text-sm text-gray-200 outline-none focus:border-brand-primary"
-                />
+            {/* Filters row */}
+            <div className="flex flex-wrap items-center gap-3">
+                {/* Workspace selector */}
+                <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-gray-500" />
+                    <select
+                        value={selectedWorkspace}
+                        onChange={(e) => setSelectedWorkspace(e.target.value)}
+                        className="rounded-lg border border-border bg-surface-card px-3 py-2 text-sm text-gray-200 outline-none focus:border-brand-primary"
+                    >
+                        <option value="all">All Workspaces</option>
+                        {workspaceNames.map(name => (
+                            <option key={name} value={name}>{name}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Search */}
+                <div className="relative flex-1 min-w-[200px]">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Filter by action, user, resource..."
+                        className="w-full rounded-lg border border-border bg-surface-card py-2 pl-10 pr-4 text-sm text-gray-200 outline-none focus:border-brand-primary"
+                    />
+                </div>
             </div>
 
             {/* Log table */}
