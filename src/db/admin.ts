@@ -214,9 +214,9 @@ export async function fetchAllUsers(): Promise<AdminUser[]> {
 
 /** Fetch platform-wide audit logs (super admin only, latest 200) */
 export async function fetchPlatformAuditLogs(): Promise<AuditLogEntry[]> {
-    // Super admin RLS policy allows reading all audit_logs
+    // The actual audit data lives in the `audit_log` table (singular).
     const logsResult = await supabase
-        .from('audit_logs')
+        .from('audit_log')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(200)
@@ -224,10 +224,11 @@ export async function fetchPlatformAuditLogs(): Promise<AuditLogEntry[]> {
     if (logsResult.error) throw logsResult.error
 
     const logs = logsResult.data as Array<{
-        id: string; workspace_id: string; actor_id: string | null;
-        action: string; resource_type: string; resource_id: string | null;
-        details: Record<string, unknown>; created_at: string
+        id: string; workspace_id: string; user_id: string | null;
+        action: string; details: Record<string, unknown>; created_at: string
     }>
+
+    if (logs.length === 0) return []
 
     // Fetch workspace names for display
     const wsIds = [...new Set(logs.map(l => l.workspace_id))]
@@ -243,23 +244,30 @@ export async function fetchPlatformAuditLogs(): Promise<AuditLogEntry[]> {
         }
     }
 
-    // Fetch actor emails from user_profiles
-    const actorIds = [...new Set(logs.filter(l => l.actor_id).map(l => l.actor_id as string))]
+    // Fetch actor names from user_profiles
+    const actorIds = [...new Set(logs.filter(l => l.user_id).map(l => l.user_id as string))]
     const profileResult = actorIds.length > 0
-        ? await supabase.from('user_profiles').select('id, full_name').in('id', actorIds)
+        ? await supabase.from('user_profiles').select('id, display_name').in('id', actorIds)
         : { data: [], error: null }
 
     const actorNames = new Map<string, string>()
     if (!profileResult.error) {
-        for (const p of profileResult.data as Array<{ id: string; full_name: string }>) {
-            actorNames.set(p.id, p.full_name)
+        for (const p of profileResult.data as Array<{ id: string; display_name: string }>) {
+            actorNames.set(p.id, p.display_name)
         }
     }
 
     return logs.map(l => ({
-        ...l,
+        id: l.id,
+        workspace_id: l.workspace_id,
+        actor_id: l.user_id,
+        action: l.action,
+        resource_type: (l.details as Record<string, unknown>)?.resource_type as string ?? l.action.split('.')[0] ?? '',
+        resource_id: (l.details as Record<string, unknown>)?.resource_id as string | null ?? null,
+        details: l.details,
+        created_at: l.created_at,
         workspace_name: wsNames.get(l.workspace_id) ?? 'Unknown',
-        actor_email: l.actor_id ? (actorNames.get(l.actor_id) ?? l.actor_id) : 'System',
+        actor_email: l.user_id ? (actorNames.get(l.user_id) ?? l.user_id) : 'System',
     }))
 }
 
