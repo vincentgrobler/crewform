@@ -306,12 +306,15 @@ async function start() {
         // Subscribe to tasks and team_runs for near-instant pickup.
         // Railway (and other PaaS) may drop idle WebSocket connections,
         // so we monitor channel health and reconnect automatically.
+        // If Realtime permanently fails, we give up and rely on polling + webhooks.
 
         const REALTIME_HEALTH_CHECK_MS = 60_000; // Check every 60s
         let realtimeReconnectAttempt = 0;
         let isReconnecting = false;
+        let realtimeDisabled = false; // Set true after max attempts — stops all reconnect attempts
         const REALTIME_MAX_RECONNECT_DELAY_MS = 30_000;
         const REALTIME_MAX_ATTEMPTS_BEFORE_RESET = 15; // Cap exponent growth
+        const REALTIME_GIVE_UP_AFTER = 5; // Stop retrying after N consecutive failures
 
         function createRealtimeChannel() {
             const ch = supabase
@@ -362,6 +365,7 @@ async function start() {
                     },
                 )
                 .subscribe((status) => {
+                    if (realtimeDisabled) return;
                     log(`Realtime channel status: ${status}`);
 
                     if (status === 'SUBSCRIBED') {
@@ -371,7 +375,6 @@ async function start() {
                         void poll();
                     } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED' || status === 'TIMED_OUT') {
                         if (!isReconnecting) {
-                            log('Realtime channel lost — scheduling reconnect...');
                             void reconnectRealtime();
                         }
                     }
@@ -381,17 +384,29 @@ async function start() {
         }
 
         async function reconnectRealtime() {
-            if (isReconnecting) return; // Prevent concurrent reconnect attempts
+            if (isReconnecting || realtimeDisabled) return;
             isReconnecting = true;
 
             realtimeReconnectAttempt++;
-            // Cap the attempt counter to prevent exponent overflow
+
+            // Give up after N consecutive failures — WebSocket likely blocked
+            if (realtimeReconnectAttempt > REALTIME_GIVE_UP_AFTER) {
+                realtimeDisabled = true;
+                isReconnecting = false;
+                log(`⚠️  Realtime failed after ${REALTIME_GIVE_UP_AFTER} attempts — disabling. Task pickup via polling (${POLL_MIN_MS / 1000}s) and webhooks.`);
+                try { await supabase.removeAllChannels(); } catch { /* best-effort */ }
+                (globalThis as Record<string, unknown>).__realtimeChannel = undefined;
+                // Tighten polling interval since Realtime is down
+                pollIntervalMs = POLL_MIN_MS;
+                return;
+            }
+
             const effectiveAttempt = Math.min(realtimeReconnectAttempt, REALTIME_MAX_ATTEMPTS_BEFORE_RESET);
             const delay = Math.min(
                 1000 * Math.pow(2, effectiveAttempt - 1),
                 REALTIME_MAX_RECONNECT_DELAY_MS,
             );
-            log(`Realtime reconnect attempt ${realtimeReconnectAttempt} in ${delay}ms`);
+            log(`Realtime reconnect attempt ${realtimeReconnectAttempt}/${REALTIME_GIVE_UP_AFTER} in ${delay}ms`);
             await new Promise(resolve => setTimeout(resolve, delay));
 
             // Remove ALL channels — ensures no leaked subscriptions
@@ -408,7 +423,6 @@ async function start() {
             // If subscription callback doesn't fire within 15s, allow another attempt
             setTimeout(() => {
                 if (isReconnecting) {
-                    log('Realtime reconnect timed out — allowing retry');
                     isReconnecting = false;
                 }
             }, 15_000);
@@ -416,13 +430,12 @@ async function start() {
 
         // Health check: detect silent disconnects
         setInterval(() => {
-            if (isReconnecting) return; // Don't pile on during reconnect
+            if (isReconnecting || realtimeDisabled) return;
 
             const ch = (globalThis as Record<string, unknown>).__realtimeChannel as
                 ReturnType<typeof supabase.channel> | undefined;
             if (!ch) return;
 
-            // Access internal state — Supabase JS exposes .state on RealtimeChannel
             const state = (ch as unknown as { state: string }).state;
             if (state && state !== 'joined' && state !== 'joining') {
                 log(`Realtime health check: channel state "${state}" — triggering reconnect`);
