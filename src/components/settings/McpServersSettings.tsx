@@ -2,8 +2,10 @@
 // Copyright (C) 2026 CrewForm
 
 import { useState } from 'react'
-import { Plus, Trash2, Pencil, ToggleLeft, ToggleRight, Plug, ExternalLink, Server } from 'lucide-react'
+import { Plus, Trash2, Pencil, ToggleLeft, ToggleRight, Plug, ExternalLink, Server, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useMcpServers, useCreateMcpServer, useUpdateMcpServer, useDeleteMcpServer } from '@/hooks/useMcpServers'
+import { discoverMcpTools } from '@/db/mcpServers'
+import type { McpServer } from '@/db/mcpServers'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { cn } from '@/lib/utils'
 
@@ -33,6 +35,22 @@ export function McpServersSettings() {
     const [showForm, setShowForm] = useState(false)
     const [editId, setEditId] = useState<string | null>(null)
     const [form, setForm] = useState<McpServerFormData>(EMPTY_FORM)
+    const [discoveringId, setDiscoveringId] = useState<string | null>(null)
+    const [discoveryStatus, setDiscoveryStatus] = useState<{ id: string; ok: boolean; message: string } | null>(null)
+
+    async function handleDiscover(server: McpServer) {
+        setDiscoveringId(server.id)
+        setDiscoveryStatus(null)
+        try {
+            const tools = await discoverMcpTools(server)
+            setDiscoveryStatus({ id: server.id, ok: true, message: `Found ${String(tools.length)} tools` })
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err)
+            setDiscoveryStatus({ id: server.id, ok: false, message: msg })
+        } finally {
+            setDiscoveringId(null)
+        }
+    }
 
     function openCreate() {
         setForm(EMPTY_FORM)
@@ -74,7 +92,13 @@ export function McpServersSettings() {
         } else {
             createMutation.mutate(
                 { workspace_id: workspaceId, name: form.name, description: form.description, url: form.url, transport: form.transport, config },
-                { onSuccess: () => { setShowForm(false) } },
+                {
+                    onSuccess: (newServer) => {
+                        setShowForm(false)
+                        // Auto-discover tools after creating
+                        void handleDiscover(newServer)
+                    },
+                },
             )
         }
     }
@@ -86,7 +110,7 @@ export function McpServersSettings() {
     return (
         <div>
             <div className="mb-2 flex items-center justify-between">
-                <div>
+                <div style={{ width: '80%' }}>
                     <h2 className="text-lg font-semibold text-gray-100">MCP Servers</h2>
                     <p className="text-sm text-gray-500">
                         Connect to{' '}
@@ -171,6 +195,21 @@ export function McpServersSettings() {
                                 <div className="flex items-center gap-1 ml-2">
                                     <button
                                         type="button"
+                                        onClick={() => void handleDiscover(server)}
+                                        disabled={discoveringId === server.id}
+                                        className={cn(
+                                            'flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors',
+                                            discoveringId === server.id
+                                                ? 'text-gray-500 cursor-wait'
+                                                : 'text-brand-primary hover:bg-brand-muted/20',
+                                        )}
+                                        title="Discover available tools"
+                                    >
+                                        <RefreshCw className={cn('h-3 w-3', discoveringId === server.id && 'animate-spin')} />
+                                        {discoveringId === server.id ? 'Discovering…' : 'Discover Tools'}
+                                    </button>
+                                    <button
+                                        type="button"
                                         onClick={() => toggleEnabled(server.id, server.is_enabled)}
                                         className="rounded p-1.5 text-gray-500 hover:text-gray-300"
                                         title={server.is_enabled ? 'Disable' : 'Enable'}
@@ -200,6 +239,20 @@ export function McpServersSettings() {
                                     </button>
                                 </div>
                             </div>
+                            {/* Discovery status feedback */}
+                            {discoveryStatus?.id === server.id && (
+                                <div className={cn(
+                                    'mt-2 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs',
+                                    discoveryStatus.ok
+                                        ? 'bg-green-500/10 text-green-400'
+                                        : 'bg-red-500/10 text-red-400',
+                                )}>
+                                    {discoveryStatus.ok
+                                        ? <CheckCircle2 className="h-3 w-3 shrink-0" />
+                                        : <AlertCircle className="h-3 w-3 shrink-0" />}
+                                    {discoveryStatus.message}
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
