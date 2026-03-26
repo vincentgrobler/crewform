@@ -45,12 +45,12 @@ export async function fetchMcpServers(workspaceId: string): Promise<McpServer[]>
         .order('created_at', { ascending: true })
 
     if (error) throw error
-    return (data ?? []) as McpServer[]
+    return data as McpServer[]
 }
 
 /** Create a new MCP server */
 export async function createMcpServer(input: CreateMcpServerInput): Promise<McpServer> {
-    const { data, error } = await supabase
+    const { data, error }: { data: unknown; error: unknown } = await supabase
         .from('mcp_servers')
         .insert(input)
         .select()
@@ -62,7 +62,7 @@ export async function createMcpServer(input: CreateMcpServerInput): Promise<McpS
 
 /** Update an MCP server */
 export async function updateMcpServer(id: string, input: UpdateMcpServerInput): Promise<McpServer> {
-    const { data, error } = await supabase
+    const { data, error }: { data: unknown; error: unknown } = await supabase
         .from('mcp_servers')
         .update(input)
         .eq('id', id)

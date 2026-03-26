@@ -46,7 +46,7 @@ export function McpServersSettings() {
             description: server.description || '',
             url: server.url,
             transport: server.transport as McpServerFormData['transport'],
-            headers: server.config?.headers ? JSON.stringify(server.config.headers, null, 2) : '',
+            headers: server.config.headers ? JSON.stringify(server.config.headers, null, 2) : '',
         })
         setEditId(server.id)
         setShowForm(true)
@@ -153,7 +153,7 @@ export function McpServersSettings() {
                                         <p className="mt-1 text-xs text-gray-500 ml-6">{server.description}</p>
                                     )}
                                     <p className="mt-0.5 text-[10px] text-gray-600 font-mono ml-6 truncate">{server.url}</p>
-                                    {server.tools_cache && server.tools_cache.length > 0 && (
+                                    {server.tools_cache.length > 0 && (
                                         <div className="mt-2 ml-6 flex flex-wrap gap-1">
                                             {(server.tools_cache as Array<{ name: string }>).slice(0, 8).map((tool) => (
                                                 <span key={tool.name} className="rounded bg-surface-elevated px-1.5 py-0.5 text-[10px] text-gray-500 font-mono">

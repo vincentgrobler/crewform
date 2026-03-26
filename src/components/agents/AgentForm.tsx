@@ -43,7 +43,7 @@ export function AgentForm({ initialData, onSubmit, onBack, activeProviders, work
 
     // MCP servers
     const { mcpServers } = useMcpServers(workspaceId ?? null)
-    const enabledMcpServers = mcpServers.filter(s => s.is_enabled && s.tools_cache && s.tools_cache.length > 0)
+    const enabledMcpServers = mcpServers.filter(s => s.is_enabled && s.tools_cache.length > 0)
 
     // Fetch live OpenRouter models when OpenRouter is active
     const isOpenRouterActive = activeProviders
