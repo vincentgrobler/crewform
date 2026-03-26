@@ -95,18 +95,19 @@ export async function discoverMcpTools(
 ): Promise<Array<{ name: string; description?: string }>> {
     const configHeaders = server.config.headers as Record<string, string> | undefined
 
-    const { data, error } = await supabase.functions.invoke('mcp-discover', {
+    const result = await supabase.functions.invoke('mcp-discover', {
         body: {
             server_url: server.url,
             server_headers: configHeaders,
         },
     })
 
-    if (error) {
-        throw new Error(error.message || 'Discovery request failed')
+    if (result.error) {
+        const errObj = result.error as { message?: string }
+        throw new Error(errObj.message ?? 'Discovery request failed')
     }
 
-    const response = data as { tools?: Array<{ name: string; description?: string }>; error?: string }
+    const response = result.data as { tools?: Array<{ name: string; description?: string }>; error?: string }
 
     if (response.error) {
         throw new Error(response.error)
