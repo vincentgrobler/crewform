@@ -4,6 +4,29 @@ All notable changes to CrewForm will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.0] - 2026-03-27
+
+### Added
+
+- **Tier Limits for Knowledge Base** — Free: 3 docs, Pro: 25 docs, Team+: Unlimited. Quota enforced on upload with upgrade prompt
+- **Tier Limits for A2A Publishing** — A2A agent publishing gated to Pro+ plans; consuming remains free on all tiers
+- **Embedding Provider Fallback** — `kb-process` Edge Function now tries all available providers (OpenAI → OpenRouter) instead of failing on the first quota error
+- **README Screenshot Gallery** — Added 6 product screenshots in a collapsible gallery (Dashboard, Agent Creation, Pipeline Setup/Run, Marketplace, A2A Settings)
+- **Landing Page Screenshots** — Added "See It In Action" section with 5 product screenshots and hover effects
+- **Pricing Table Updates** — Added MCP Protocol, AG-UI Protocol, Knowledge Base, A2A Consume, and A2A Publish rows to both README and in-app pricing table
+
+### Fixed
+
+- **Knowledge Base Upload** — Fixed silent upload failures caused by missing storage RLS policies for the `knowledge` bucket
+- **KB Processing Errors** — Replaced fire-and-forget processing with proper error handling; documents no longer get stuck on "pending" — errors surface via toast notifications
+- **Edge Function Auth** — Deployed `kb-process` with `--no-verify-jwt` to prevent 401 errors (function handles auth internally)
+- **Upload Button Styling** — Fixed upload button text color for brand consistency
+
+### Changed
+
+- **Provider Count** — Updated from 14 to 15 LLM providers (added Ollama)
+- **Landing Page Pricing** — Updated tier features with Knowledge Base limits, MCP Protocol, and A2A Publish
+
 ## [1.2.0] - 2026-03-27
 
 ### Added
