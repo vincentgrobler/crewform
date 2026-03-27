@@ -9,6 +9,25 @@ All notable changes to CrewForm will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.0] — 2026-03-27
+
+### Added
+
+- **Tier-Based Feature Limits** — Knowledge Base document limits (Free: 3, Pro: 25, Team+: Unlimited) and A2A Publishing gated to Pro+ plans
+- **Embedding Provider Fallback** — KB processing now falls back across available providers (OpenAI → OpenRouter) when quota is exceeded
+- **Product Screenshot Gallery** — 6 product screenshots added to README and landing page
+- **Pricing Table Updates** — MCP Protocol, AG-UI Protocol, Knowledge Base, A2A Consume/Publish rows added to all pricing surfaces
+
+### Fixed
+
+- **Knowledge Base Upload Pipeline** — Fixed silent upload failures (missing storage RLS policies), processing errors no longer stuck on "pending", edge function auth resolved
+- **Upload Button Styling** — Fixed button text color for brand consistency
+
+### Changed
+
+- **LLM Providers** — Updated from 14 to 15 providers (Ollama added)
+- **Landing Page Pricing** — Updated with KB limits, MCP, and A2A features per tier
+
 ## [0.1.0] — 2026-03-09
 
 ### Added
