@@ -14,7 +14,7 @@ import type { A2ARemoteAgent } from '@/db/a2aAgents'
 export function useA2AAgents(workspaceId: string | undefined) {
     return useQuery<A2ARemoteAgent[]>({
         queryKey: ['a2a-agents', workspaceId],
-        queryFn: () => fetchA2AAgents(workspaceId!),
+        queryFn: () => fetchA2AAgents(workspaceId ?? ''),
         enabled: !!workspaceId,
     })
 }
@@ -22,7 +22,7 @@ export function useA2AAgents(workspaceId: string | undefined) {
 export function useDiscoverAgent(workspaceId: string | undefined) {
     const qc = useQueryClient()
     return useMutation({
-        mutationFn: (baseUrl: string) => discoverAndRegisterAgent(workspaceId!, baseUrl),
+        mutationFn: (baseUrl: string) => discoverAndRegisterAgent(workspaceId ?? '', baseUrl),
         onSuccess: () => { void qc.invalidateQueries({ queryKey: ['a2a-agents'] }) },
     })
 }

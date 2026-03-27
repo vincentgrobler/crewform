@@ -5,18 +5,20 @@ import { supabase } from '@/lib/supabase'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
+export interface A2AAgentCard {
+    name: string
+    description?: string
+    version?: string
+    skills?: Array<{ id: string; name: string; description: string }>
+    [key: string]: unknown
+}
+
 export interface A2ARemoteAgent {
     id: string
     workspace_id: string
     name: string
     base_url: string
-    agent_card: {
-        name: string
-        description?: string
-        version?: string
-        skills?: Array<{ id: string; name: string; description: string }>
-        [key: string]: unknown
-    }
+    agent_card: A2AAgentCard
     is_enabled: boolean
     created_at: string
     updated_at: string
@@ -32,7 +34,7 @@ export async function fetchA2AAgents(workspaceId: string): Promise<A2ARemoteAgen
         .order('created_at', { ascending: false })
 
     if (error) throw new Error(error.message)
-    return (data ?? []) as A2ARemoteAgent[]
+    return (data as A2ARemoteAgent[] | null) ?? []
 }
 
 // ─── Mutations ──────────────────────────────────────────────────────────────
@@ -54,7 +56,7 @@ export async function discoverAndRegisterAgent(
         throw new Error(`Failed to fetch Agent Card: ${response.status} ${response.statusText}`)
     }
 
-    const card = await response.json()
+    const card = (await response.json()) as A2AAgentCard
 
     if (!card.name) {
         throw new Error('Invalid Agent Card: missing name')
@@ -67,7 +69,7 @@ export async function discoverAndRegisterAgent(
             workspace_id: workspaceId,
             name: card.name,
             base_url: baseUrl,
-            agent_card: card,
+            agent_card: card as unknown as Record<string, unknown>,
         })
         .select()
         .single()
@@ -109,11 +111,14 @@ export async function refreshAgentCard(id: string, baseUrl: string): Promise<voi
         throw new Error(`Failed to refresh Agent Card: ${response.status}`)
     }
 
-    const card = await response.json()
+    const card = (await response.json()) as A2AAgentCard
 
     const { error } = await supabase
         .from('a2a_remote_agents')
-        .update({ agent_card: card, name: card.name })
+        .update({
+            agent_card: card as unknown as Record<string, unknown>,
+            name: card.name,
+        })
         .eq('id', id)
 
     if (error) throw new Error(error.message)
