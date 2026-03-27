@@ -63,7 +63,7 @@ export async function discoverAndRegisterAgent(
     }
 
     // Insert into database
-    const { data, error } = await supabase
+    const result = await supabase
         .from('a2a_remote_agents')
         .insert({
             workspace_id: workspaceId,
@@ -74,8 +74,8 @@ export async function discoverAndRegisterAgent(
         .select()
         .single()
 
-    if (error) throw new Error(error.message)
-    return data as A2ARemoteAgent
+    if (result.error) throw new Error(result.error.message)
+    return result.data as unknown as A2ARemoteAgent
 }
 
 /** Toggle an agent's enabled status */
