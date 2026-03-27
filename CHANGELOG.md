@@ -4,6 +4,34 @@ All notable changes to CrewForm will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.0] - 2026-03-27
+
+### Added
+
+- **A2A Protocol Support** — Agent-to-Agent interoperability: publish agent cards (`/.well-known/agent.json`), delegate tasks to external A2A agents via the `a2a_delegate` tool, and manage remote agents in Settings → A2A Protocol
+- **AG-UI Protocol Support** — Real-time SSE streaming for frontend integration via `POST /ag-ui/:agentId/sse`, in-process event bus, and React hook (`useAgentStream.ts`) for live agent-to-UI communication
+- **RAG / Knowledge Base** — Upload documents (TXT, MD, CSV, JSON), auto-chunk and embed with pgvector, and search via the `knowledge_search` agent tool
+- **MCP Tool Discovery** — Browse and discover available tools from connected MCP servers directly in Settings UI
+- **Ollama / Local Model Support** — 11 popular local models (Llama 3.3, Qwen 2.5, DeepSeek R1, Mixtral, Phi-4, Gemma 2, etc.) via Ollama — zero API keys, fully local inference
+- **Abuse Dashboard** — Spike detection, key rotation alerts, and workspace suspension enforcement in the Super Admin panel
+- **Activity Workspace Filter** — Filter the Activity tab by workspace in the Super Admin panel
+- **MCP & Knowledge Base Docs** — Added MCP Protocol and Knowledge Base (RAG) documentation pages to Mintlify
+
+### Fixed
+
+- **Task Runner OOM** — Resolved out-of-memory crashes on Railway deployment
+- **Realtime Reconnect Loop** — Prevented infinite WebSocket reconnect loop; gracefully disables Realtime after 5 consecutive failures
+- **Channel Task Tracking** — Tasks originating from messaging channels (Discord, Slack, Telegram) now correctly update agent activity and analytics
+- **MCP Discovery CORS** — Proxied MCP tool discovery through Edge Function to bypass browser CORS restrictions
+- **Webhook Server Binding** — Bound webhook server to `0.0.0.0` for Railway/Docker compatibility
+- **Mintlify Branding** — Fixed CrewForm logo and favicon on docs site
+
+### Changed
+
+- **README** — Updated with MCP, RAG, A2A, AG-UI, and Ollama features; added self-hosting section with local model instructions
+- **Zapier Integration** — Added per-agent and per-team filtering for Zapier triggers and actions
+- **Landing Page** — Removed explicit pricing row; updated self-hosting section with Ollama
+
 ## [1.1.0] - 2026-03-20
 
 ### Added
