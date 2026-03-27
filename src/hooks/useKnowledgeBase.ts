@@ -8,6 +8,7 @@ import {
     uploadKnowledgeDocument,
     processKnowledgeDocument,
     deleteKnowledgeDocument,
+    updateDocumentStatus,
 } from '@/db/knowledgeBase'
 import type { KnowledgeDocument } from '@/db/knowledgeBase'
 
@@ -44,8 +45,14 @@ export function useUploadKnowledgeDocument() {
         }) => {
             // 1. Upload + DB record
             const doc = await uploadKnowledgeDocument(workspaceId, file, name, userId)
-            // 2. Trigger processing (fire-and-forget — status polled via refetchInterval)
-            void processKnowledgeDocument(doc.id)
+            // 2. Trigger processing — catch errors so document doesn't stay 'pending' forever
+            processKnowledgeDocument(doc.id).catch(async (err: Error) => {
+                console.error('[kb] Processing invocation failed:', err.message)
+                toast.error(`Processing failed: ${err.message}`)
+                // Mark document as errored so the UI reflects the failure
+                await updateDocumentStatus(doc.id, 'error', err.message).catch(() => {})
+                void qc.invalidateQueries({ queryKey: ['knowledge-documents', workspaceId] })
+            })
             return doc
         },
         onSuccess: (data, variables) => {
