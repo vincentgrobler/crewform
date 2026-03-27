@@ -32,12 +32,49 @@
   <p><em>The CrewForm dashboard — manage agents, track tasks, monitor performance, all in one place.</em></p>
 </div>
 
+<details>
+<summary><strong>📸 More Screenshots</strong></summary>
+<br/>
+<table>
+<tr>
+<td align="center" width="50%">
+<img src=".github/assets/screenshot-agent-create.png" alt="Agent Creation" width="400" />
+<br/><em>Create agents with models, prompts, and tools</em>
+</td>
+<td align="center" width="50%">
+<img src=".github/assets/screenshot-pipeline-setup.png" alt="Pipeline Setup" width="400" />
+<br/><em>Chain agents into pipeline teams</em>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%">
+<img src=".github/assets/screenshot-pipeline-run.png" alt="Pipeline Run" width="400" />
+<br/><em>Watch pipeline runs execute in real-time</em>
+</td>
+<td align="center" width="50%">
+<img src=".github/assets/screenshot-marketplace.png" alt="Marketplace" width="400" />
+<br/><em>Browse and install community agent templates</em>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%">
+<img src=".github/assets/screenshot-a2a.png" alt="A2A Settings" width="400" />
+<br/><em>Connect to external A2A agents</em>
+</td>
+<td align="center" width="50%">
+<img src=".github/assets/screenshot-dashboard.png" alt="Analytics Dashboard" width="400" />
+<br/><em>Track token usage, costs, and performance</em>
+</td>
+</tr>
+</table>
+</details>
+
 ## ✨ Features at a Glance
 
 <table>
 <tr>
 <td align="center" width="25%">
-🤖<br/><strong>14 LLM Providers</strong><br/>OpenAI, Anthropic, Gemini, Groq, Mistral, and more
+🤖<br/><strong>15 LLM Providers</strong><br/>OpenAI, Anthropic, Gemini, Groq, Ollama, and more
 </td>
 <td align="center" width="25%">
 🔀<br/><strong>3 Team Modes</strong><br/>Pipeline, Orchestrator, and Collaboration
@@ -229,6 +266,11 @@ CrewForm uses an **open-core** model: a free Community Edition under AGPL-3.0 an
 | Tasks/month | 50 | 1,000 | Unlimited | Unlimited |
 | Teams | 1 | 10 | Unlimited | Unlimited |
 | Members | 1 | 3 | 25 | Unlimited |
+| MCP Protocol | ✅ | ✅ | ✅ | ✅ |
+| AG-UI Protocol | ✅ | ✅ | ✅ | ✅ |
+| Knowledge Base | 3 docs | 25 docs | Unlimited | Unlimited |
+| A2A Consume | ✅ | ✅ | ✅ | ✅ |
+| A2A Publish | — | ✅ | ✅ | ✅ |
 | Pipeline Mode | ✅ | ✅ | ✅ | ✅ |
 | Orchestrator Mode | — | ✅ | ✅ | ✅ |
 | Collaboration Mode | — | — | ✅ | ✅ |
@@ -352,7 +394,7 @@ Yes! CrewForm supports Docker-based self-hosting. See our [self-hosting guide](h
 <details>
 <summary><strong>What LLM providers are supported?</strong></summary>
 
-CrewForm supports **14 providers**: OpenAI, Anthropic, Google Gemini, Groq, Mistral, Cohere, NVIDIA NIM, Perplexity, Together, OpenRouter, HuggingFace, MiniMax, Moonshot, and Venice. More providers can be added via the modular provider architecture.
+CrewForm supports **15 providers**: OpenAI, Anthropic, Google Gemini, Groq, Mistral, Cohere, NVIDIA NIM, Perplexity, Together, OpenRouter, HuggingFace, MiniMax, Moonshot, Venice, and **Ollama** (local models). More providers can be added via the modular provider architecture.
 </details>
 
 <details>
