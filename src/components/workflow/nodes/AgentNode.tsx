@@ -27,6 +27,7 @@ const ROLE_BADGES: Record<string, { label: string; className: string }> = {
     orchestrator: { label: 'Brain', className: 'bg-purple-500/15 text-purple-400' },
     worker: { label: 'Worker', className: 'bg-blue-500/15 text-blue-400' },
     reviewer: { label: 'Reviewer', className: 'bg-amber-500/15 text-amber-400' },
+    default: { label: 'Agent', className: 'bg-gray-500/15 text-gray-400' },
 }
 
 function AgentNodeComponent({ data, selected }: NodeProps) {
@@ -66,13 +67,11 @@ function AgentNodeComponent({ data, selected }: NodeProps) {
                 </div>
             </div>
 
-            {badge ? (
-                <div className="mt-2 flex">
-                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-medium uppercase tracking-wide ${badge.className}`}>
-                        {badge.label}
-                    </span>
-                </div>
-            ) : null}
+            <div className="mt-2 flex">
+                <span className={`rounded-full px-2 py-0.5 text-[9px] font-medium uppercase tracking-wide ${badge.className}`}>
+                    {badge.label}
+                </span>
+            </div>
 
             <Handle type="source" position={Position.Bottom} className="workflow-handle" />
         </div>
