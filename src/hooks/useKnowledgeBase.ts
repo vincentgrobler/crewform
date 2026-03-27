@@ -46,11 +46,12 @@ export function useUploadKnowledgeDocument() {
             // 1. Upload + DB record
             const doc = await uploadKnowledgeDocument(workspaceId, file, name, userId)
             // 2. Trigger processing — catch errors so document doesn't stay 'pending' forever
-            processKnowledgeDocument(doc.id).catch(async (err: Error) => {
-                console.error('[kb] Processing invocation failed:', err.message)
-                toast.error(`Processing failed: ${err.message}`)
+            processKnowledgeDocument(doc.id).catch(async (err: unknown) => {
+                const msg = err instanceof Error ? err.message : String(err)
+                console.error('[kb] Processing invocation failed:', msg)
+                toast.error(`Processing failed: ${msg}`)
                 // Mark document as errored so the UI reflects the failure
-                await updateDocumentStatus(doc.id, 'error', err.message).catch(() => {})
+                await updateDocumentStatus(doc.id, 'error', msg).catch(() => {})
                 void qc.invalidateQueries({ queryKey: ['knowledge-documents', workspaceId] })
             })
             return doc
