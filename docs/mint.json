@@ -69,6 +69,13 @@
             ]
         },
         {
+            "group": "Protocols",
+            "pages": [
+                "a2a-protocol",
+                "ag-ui-protocol"
+            ]
+        },
+        {
             "group": "Resources",
             "pages": [
                 "changelog"

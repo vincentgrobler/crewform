@@ -63,6 +63,20 @@
 🧠<br/><strong>Team Memory</strong><br/>pgvector semantic search across runs
 </td>
 </tr>
+<tr>
+<td align="center" width="25%">
+🤝<br/><strong>A2A Protocol</strong><br/>Agent-to-Agent interop with external AI systems
+</td>
+<td align="center" width="25%">
+🖥️<br/><strong>AG-UI Protocol</strong><br/>Real-time SSE streaming for frontend integration
+</td>
+<td align="center" width="25%">
+⚡<br/><strong>Zapier + Channels</strong><br/>7,000+ apps, Discord, Slack, Telegram, Email
+</td>
+<td align="center" width="25%">
+📊<br/><strong>Analytics</strong><br/>Track tokens, costs, and agent performance
+</td>
+</tr>
 </table>
 
 ## 🚀 Quick Start
@@ -118,13 +132,15 @@ CrewForm gives you everything you need to orchestrate multi-agent AI workflows �
 - 🏠 **Self-Hostable** — Deploy on your own infrastructure with Docker. Your data stays with you
 - 🔀 **3 Orchestration Modes** — Pipeline (sequential), Orchestrator (brain + workers), and Collaboration (multi-agent discussion)
 - 🔌 **MCP Protocol** — Connect agents to thousands of external tool servers via the Model Context Protocol
+- 🤝 **A2A Protocol** — Agent-to-Agent interoperability — expose agents to external AI systems and delegate tasks to remote agents
+- 🖥️ **AG-UI Protocol** — Real-time SSE event streaming for frontend integration — the standard for agent-to-UI communication
 - 📚 **Knowledge Base (RAG)** — Upload docs (TXT, MD, CSV, JSON), auto-chunk and embed with pgvector, then search via agents
 - 🏪 **Agent Marketplace** — Browse and install community-built agent templates, or publish your own
 - ⚡ **Integrations Ecosystem** — Zapier (7,000+ apps), Discord, Slack, Telegram, Email, webhooks, and output routes
 - 🔒 **Secure by Default** — AES-256-GCM key encryption, Row-Level Security, GDPR-ready
 - 📊 **Built-in Analytics** — Track token usage, costs, and performance per agent and task
 
-CrewForm is built for developers and teams who want production-ready AI agent orchestration. The AI agent ecosystem is rich with great tools — we encourage you to explore and choose what works best for your needs.
+CrewForm is the **first platform with all three agentic protocols** — MCP (tools) + A2A (agents) + AG-UI (frontend). Built for developers and teams who want production-ready AI agent orchestration.
 
 ## How It Works
 
@@ -233,6 +249,8 @@ CrewForm uses an **open-core** model: a free Community Edition under AGPL-3.0 an
 | [Channels](https://docs.crewform.tech/channels) | Discord, Slack, Telegram, Email triggers |
 | [Discord Integration](https://docs.crewform.tech/discord-integration) | Slash commands and bot setup |
 | [Output Routes](https://docs.crewform.tech/output-routes) | Deliver results to external destinations |
+| [A2A Protocol](https://docs.crewform.tech/a2a-protocol) | Agent-to-Agent interoperability |
+| [AG-UI Protocol](https://docs.crewform.tech/ag-ui-protocol) | Real-time SSE streaming for frontends |
 | [API Reference](https://docs.crewform.tech/api-reference) | REST API endpoints and authentication |
 | [Self-Hosting](https://docs.crewform.tech/self-hosting) | Docker Compose production deployment |
 | [Changelog](https://docs.crewform.tech/changelog) | Release notes and version history |
@@ -255,6 +273,9 @@ CrewForm uses an **open-core** model: a free Community Edition under AGPL-3.0 an
 │      Node.js · Multi-Provider LLM Support        │
 │     (Anthropic · Google · OpenAI · More)         │
 ├─────────────────────────────────────────────────┤
+│             Protocol Layer                       │
+│   MCP (Tools) · A2A (Agents) · AG-UI (Frontend)  │
+├─────────────────────────────────────────────────┤
 │                  Integrations                    │
 │   Channels · Output Routes · Zapier · Webhooks   │
 ├─────────────────────────────────────────────────┤
@@ -272,7 +293,7 @@ CrewForm uses an **open-core** model: a free Community Edition under AGPL-3.0 an
 | **Backend** | Supabase (Auth, Database, Realtime, Edge Functions) |
 | **Task Runner** | Node.js · Multi-provider LLM integration |
 | **Vector Search** | pgvector (team memory + knowledge base RAG) |
-| **Protocols** | MCP (Model Context Protocol) |
+| **Protocols** | MCP (Model Context Protocol) · A2A (Agent-to-Agent) · AG-UI (Agent-User Interface) |
 | **Integrations** | Zapier · Discord · Slack · Telegram · Email · Webhooks |
 | **Validation** | Zod |
 | **Deployment** | Vercel · Docker |
@@ -334,13 +355,13 @@ CrewForm supports **14 providers**: OpenAI, Anthropic, Google Gemini, Groq, Mist
 <details>
 <summary><strong>What integrations are available?</strong></summary>
 
-CrewForm integrates with **Zapier** (7,000+ apps), messaging channels (**Discord**, **Slack**, **Telegram**, **Email**, **Trello**), output routes (**webhooks**, **MS Teams**, **Asana**, **Trello**, and more), and the **MCP protocol** for connecting to thousands of external tool servers. You can trigger agents from external events and deliver results anywhere.
+CrewForm integrates with **Zapier** (7,000+ apps), messaging channels (**Discord**, **Slack**, **Telegram**, **Email**, **Trello**), output routes (**webhooks**, **MS Teams**, **Asana**, **Trello**, and more), and three agentic protocols: **MCP** (Model Context Protocol) for connecting to thousands of external tool servers, **A2A** (Agent-to-Agent) for delegating tasks to external AI agents, and **AG-UI** (Agent-User Interface) for real-time SSE streaming to any frontend.
 </details>
 
 <details>
 <summary><strong>How does CrewForm differ from CrewAI or LangGraph?</strong></summary>
 
-CrewForm is a **visual, UI-first platform** — you create agents, teams, and tasks through a web interface with no Python required. CrewAI and LangGraph are code-first libraries. CrewForm also includes built-in billing, RBAC, marketplace, messaging channels, MCP protocol support, RAG knowledge base, and a production-ready self-hosted deployment. See the [comparison table](#how-it-compares) above.
+CrewForm is a **visual, UI-first platform** — you create agents, teams, and tasks through a web interface with no Python required. CrewAI and LangGraph are code-first libraries. CrewForm also includes built-in billing, RBAC, marketplace, messaging channels, MCP protocol support, RAG knowledge base, A2A agent-to-agent interop, AG-UI real-time streaming, and a production-ready self-hosted deployment. CrewForm is the **first platform to support all three agentic protocols** (MCP + A2A + AG-UI).
 </details>
 
 ## License
