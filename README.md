@@ -96,6 +96,8 @@ docker compose up -d
 
 Open **http://localhost:3000** — done!
 
+⚡ **Local Models:** Install [Ollama](https://ollama.com) alongside CrewForm for fully local AI — zero API keys, zero data leaving your network. Run `ollama pull llama3.3` and select Ollama as a provider in Settings.
+
 ### Development
 
 ```bash
@@ -223,7 +225,6 @@ CrewForm uses an **open-core** model: a free Community Edition under AGPL-3.0 an
 
 | | Free | Pro | Team | Enterprise |
 |---|---|---|---|---|
-| **Price** | $0 | $39/mo | $99/mo | Custom |
 | Agents | 3 | 25 | Unlimited | Unlimited |
 | Tasks/month | 50 | 1,000 | Unlimited | Unlimited |
 | Teams | 1 | 10 | Unlimited | Unlimited |
