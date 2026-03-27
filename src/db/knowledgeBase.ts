@@ -77,6 +77,20 @@ export async function uploadKnowledgeDocument(
     return result.data as KnowledgeDocument
 }
 
+/** Update a document's status (used when processing invocation fails client-side) */
+export async function updateDocumentStatus(
+    documentId: string,
+    status: 'pending' | 'processing' | 'ready' | 'error',
+    errorMessage?: string,
+): Promise<void> {
+    const { error } = await supabase
+        .from('knowledge_documents')
+        .update({ status, error_message: errorMessage ?? null })
+        .eq('id', documentId)
+
+    if (error) throw error
+}
+
 /** Trigger processing (chunking + embedding) for a document */
 export async function processKnowledgeDocument(documentId: string): Promise<void> {
     const result = await supabase.functions.invoke('kb-process', {
