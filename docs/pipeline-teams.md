@@ -115,29 +115,47 @@ This is step 3 in a multi-step pipeline. 2 previous steps have completed.
 
 ## Visual Workflow Builder (Canvas)
 
-Pipeline teams include a **Visual Workflow Builder** — a drag-and-drop canvas for designing and managing your pipeline graph.
+Pipeline teams include a **Visual Workflow Builder** — an interactive canvas for designing, managing, and monitoring your pipeline graph in real-time. See the full [Visual Workflow Builder Guide](./visual-workflow-builder.md) for complete documentation.
 
 ### Canvas Features
 
 - **Drag agents** from the sidebar onto the canvas to add them as steps
 - **Connect nodes** by dragging edges to define execution order
-- **Delete nodes** to remove agents from the pipeline
+- **Delete nodes** via right-click context menu or keyboard shortcut
 - **Drag to rearrange** — reposition nodes freely; positions are saved automatically
+- **Glassmorphism styling** — frosted glass nodes with hover lift effects
+- **Searchable sidebar** — filter agents by name or model when you have many agents
 
-### Undo / Redo
+### Live Execution Visualization
 
-Every canvas action (add, delete, connect, auto-layout) is tracked in a 30-entry history stack.
+During a team run, the canvas transforms into a live monitoring dashboard:
+
+- **Node states** — Idle (default), Running (blue pulse), Completed (green ✓), Failed (red ✕)
+- **Camera auto-follow** — Canvas pans smoothly to the currently executing agent
+- **Execution timeline** — Horizontal progress rail showing step-by-step status
+- **Animated edges** — Flowing dashed edges indicate data flow direction
+
+### Observability Panels
+
+- **Transcript** (`T`) — Real-time message feed with filter buttons and tool call expansion
+- **Tool Heatmap** — Aggregated tool usage with success rates and latency stats
+
+### Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl+Z` (`⌘Z` on Mac) | Undo |
-| `Ctrl+Shift+Z` (`⌘⇧Z`) | Redo |
-
-You can also use the **⟲ Undo** and **⟳ Redo** buttons in the canvas toolbar.
+| `⌘ Z` / `Ctrl+Z` | Undo |
+| `⌘ ⇧ Z` / `Ctrl+Shift+Z` | Redo |
+| `⌘ A` / `Ctrl+A` | Select all |
+| `F` | Fit view |
+| `L` | Auto-layout |
+| `T` | Toggle transcript |
+| `?` | Keyboard shortcuts help |
+| `Escape` | Close panels / deselect |
 
 ### Auto-Layout
 
-Click the **Auto-Layout** button in the canvas toolbar to automatically arrange your nodes using the [dagre](https://github.com/dagrejs/dagre) layout algorithm. Pipeline teams use a **top-to-bottom** layout for clear sequential flow.
+Click the **Auto-Layout** button or press `L` to automatically arrange your nodes using the [dagre](https://github.com/dagrejs/dagre) layout algorithm. Pipeline teams use a **top-to-bottom** layout for clear sequential flow.
 
 ### Position Persistence
 

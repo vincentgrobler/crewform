@@ -9,6 +9,24 @@ All notable changes to CrewForm will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.7.0] — 2026-03-30
+
+### Added
+
+- **Visual Builder — Execution Observability** — Live per-node execution state visualization (idle/running/completed/failed) with pulsing border glow, status badges, and icon overlays on agent nodes
+- **On-Canvas Detail Popups** — Click any agent node to inspect its details, step configuration, and execution status in a glassmorphism floating card (replaces sidebar-only inspection)
+- **Right-Click Context Menus** — Context-aware actions (Delete, Auto-layout, Set as Brain, Fit View) for nodes and canvas background
+- **Execution Timeline** — Horizontal step-by-step progress rail below the canvas with clickable steps that pan the camera to specific agents
+- **Smooth Camera Following** — Canvas auto-pans to the currently executing agent node during runs, with debounced smooth transitions
+- **Glassmorphism Node Styling** — All node types (Agent, Start, End) upgraded with frosted glass backgrounds, hover lift effects, and gradient inner glow
+- **Live Transcript Panel** — Real-time inter-agent message feed during execution with filter buttons (All/Delegations/Results/System), tool call expansion, and auto-scroll
+- **Tool/MCP Activity Heatmap** — Aggregated tool usage statistics showing call counts, success rates, and average durations with color-coded health bars
+- **Enhanced Keyboard Shortcuts** — `F` (fit view), `L` (auto-layout), `T` (transcript), `?` (shortcuts help), `Ctrl+A` (select all), `Escape` (close all) with centralized handler
+- **Keyboard Shortcuts Overlay** — Glassmorphism help modal listing all available shortcuts, grouped by Navigation/Editing/Panels/Interaction
+- **Searchable Agent Sidebar** — Search/filter input (auto-appears when >5 agents) with agent count badge and filtered results
+- **Animated Edge Flow** — Dashed-to-solid edge animation during execution state transitions
+- **Start Node Idle Pulse** — Subtle breathing animation on the Play icon when idle
+
 ## [1.5.0] — 2026-03-27
 
 ### Added
