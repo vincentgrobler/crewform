@@ -57,7 +57,8 @@
                 "agents",
                 "pipeline-teams",
                 "orchestration-teams",
-                "collaboration-teams"
+                "collaboration-teams",
+                "visual-workflow-builder"
             ]
         },
         {

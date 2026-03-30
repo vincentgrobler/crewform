@@ -170,33 +170,37 @@ A three-worker orchestration team for producing research reports:
 
 ## Visual Workflow Builder (Canvas)
 
-Orchestration teams include a **Visual Workflow Builder** — a drag-and-drop canvas for designing your brain + worker graph.
+Orchestration teams include a **Visual Workflow Builder** — an interactive canvas for designing and monitoring your brain + worker graph in real-time. See the full [Visual Workflow Builder Guide](./visual-workflow-builder.md) for complete documentation.
 
 ### Canvas Features
 
 - **Drag agents** from the sidebar onto the canvas to add them as workers
 - **Connect nodes** by dragging edges to define delegation relationships
-- **Delete nodes** to remove agents from the team
-- **Drag to rearrange** — reposition nodes freely; positions are saved automatically
+- **Right-click context menu** — Delete, Auto-layout, Set as Brain, Fit View
+- **Glassmorphism styling** — frosted glass nodes with hover lift effects
+- **Searchable sidebar** — filter agents by name or model
 
-### Undo / Redo
+### Live Execution Visualization
 
-Every canvas action is tracked in a 30-entry history stack.
+During a team run, the canvas shows live execution state on each node:
 
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+Z` (`⌘Z` on Mac) | Undo |
-| `Ctrl+Shift+Z` (`⌘⇧Z`) | Redo |
+- **Node states** — Idle, Running (blue pulse), Completed (green ✓), Failed (red ✕)
+- **Camera auto-follow** — Canvas pans to the currently executing agent
+- **Execution timeline** — Step-by-step progress rail with clickable steps
+- **Transcript panel** (`T`) — Real-time brain↔worker message feed with delegation/result filters
+- **Tool heatmap** — Tool usage stats with success rates
 
-You can also use the toolbar buttons.
+### Keyboard Shortcuts
+
+Press `?` for the full shortcuts overlay. Key shortcuts: `F` (fit view), `L` (auto-layout), `T` (transcript), `⌘Z` (undo), `⌘A` (select all).
 
 ### Auto-Layout
 
-Click the **Auto-Layout** button to automatically arrange your brain and worker nodes using a **top-to-bottom** layout. The brain agent sits at the top with workers fanning out below.
+Click **Auto-Layout** or press `L` for a **top-to-bottom** layout — brain at the top, workers fanning out below.
 
 ### Position Persistence
 
-Node positions are saved automatically and restored when you revisit the team — stored in the existing `teams.config` JSONB column.
+Node positions are saved automatically and restored when you revisit — stored in `teams.config` JSONB column.
 
 ## Monitoring
 

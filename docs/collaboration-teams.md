@@ -148,33 +148,36 @@ A 3-agent collaboration team for reviewing technical architecture proposals:
 
 ## Visual Workflow Builder (Canvas)
 
-Collaboration teams include a **Visual Workflow Builder** — a drag-and-drop canvas for designing your discussion participant graph.
+Collaboration teams include a **Visual Workflow Builder** — an interactive canvas for designing and monitoring your discussion participant graph in real-time. See the full [Visual Workflow Builder Guide](./visual-workflow-builder.md) for complete documentation.
 
 ### Canvas Features
 
 - **Drag agents** from the sidebar onto the canvas to add participants
 - **Connect nodes** by dragging edges to define speaking relationships
-- **Delete nodes** to remove agents from the discussion
-- **Drag to rearrange** — reposition nodes freely; positions are saved automatically
+- **Right-click context menu** — Delete, Auto-layout, Fit View
+- **Glassmorphism styling** — frosted glass nodes with hover lift effects
+- **Searchable sidebar** — filter agents by name or model
 
-### Undo / Redo
+### Live Execution Visualization
 
-Every canvas action is tracked in a 30-entry history stack.
+During a discussion run, the canvas shows which agent is currently speaking:
 
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+Z` (`⌘Z` on Mac) | Undo |
-| `Ctrl+Shift+Z` (`⌘⇧Z`) | Redo |
+- **Node states** — Idle, Running (blue pulse), Completed (green ✓), Failed (red ✕)
+- **Camera auto-follow** — Canvas pans to the agent currently taking their turn
+- **Transcript panel** (`T`) — Real-time discussion thread with color-coded agent messages
+- **Tool heatmap** — Tool usage stats across the discussion
 
-You can also use the toolbar buttons.
+### Keyboard Shortcuts
+
+Press `?` for the full shortcuts overlay. Key shortcuts: `F` (fit view), `L` (auto-layout), `T` (transcript), `⌘Z` (undo), `⌘A` (select all).
 
 ### Auto-Layout
 
-Click the **Auto-Layout** button to automatically arrange your participants using a **left-to-right** layout — reflecting the peer-to-peer discussion flow.
+Click **Auto-Layout** or press `L` for a **left-to-right** layout — reflecting the peer-to-peer discussion flow.
 
 ### Position Persistence
 
-Node positions are saved automatically and restored when you revisit the team — stored in the existing `teams.config` JSONB column.
+Node positions are saved automatically and restored when you revisit — stored in `teams.config` JSONB column.
 
 ## Tips
 

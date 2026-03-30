@@ -122,7 +122,7 @@
 </tr>
 <tr>
 <td align="center" width="25%">
-🎨<br/><strong>Visual Workflow Canvas</strong><br/>Drag-and-drop agent orchestration with React Flow
+🎨<br/><strong>Visual Workflow Canvas</strong><br/>Drag-and-drop orchestration with live execution visualization
 </td>
 <td align="center" width="25%">
 🔄<br/><strong>Fallback Models</strong><br/>Auto-switch to backup models on failure
@@ -257,7 +257,7 @@ Each client gets their own workspace. Custom agents built around their tools and
 - 🏠 **Self-Hostable** — Run on your own infrastructure with Docker Compose
 - 🔒 **Secure by Default** — AES-256-GCM key encryption, Row-Level Security, GDPR-ready
 - ⚡ **Real-Time** — Watch your agents work in real-time with live task execution updates
-- 🎨 **Visual Workflow Canvas** — Drag-and-drop agents onto an interactive canvas, connect nodes, and edit step configs inline
+- 🎨 **Visual Workflow Canvas** — Drag-and-drop agents onto an interactive canvas with live execution visualization, glassmorphism nodes, transcript panel, tool activity heatmap, keyboard shortcuts, and camera auto-follow
 - 📊 **Usage Tracking** — Monitor token usage, costs, and performance per agent and task
 
 ### Enterprise Edition (Paid Plans)
@@ -319,6 +319,7 @@ CrewForm uses an **open-core** model: a free Community Edition under AGPL-3.0 an
 | [AG-UI Protocol](https://docs.crewform.tech/ag-ui-protocol) | Real-time SSE streaming for frontends |
 | [API Reference](https://docs.crewform.tech/api-reference) | REST API endpoints and authentication |
 | [Self-Hosting](https://docs.crewform.tech/self-hosting) | Docker Compose production deployment |
+| [Visual Workflow Builder](https://docs.crewform.tech/visual-workflow-builder) | Interactive canvas with live execution observability |
 | [Changelog](https://docs.crewform.tech/changelog) | Release notes and version history |
 
 ## Architecture
