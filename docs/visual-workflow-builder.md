@@ -39,7 +39,7 @@ All nodes use **glassmorphism styling** — frosted glass backgrounds with backd
 
 Drag agents from the sidebar palette onto the canvas. The sidebar shows all agents in your workspace with:
 
-- **Search/filter** — Appears automatically when you have more than 5 agents. Filter by name or model.
+- **Search/filter** — Appears automatically when you have more than five agents. Filter by name or model.
 - **Agent count badge** — Shows `filtered/total` count
 - **Drag handle** — Grab and drop agents directly onto the canvas
 
@@ -114,7 +114,7 @@ Toggle with the 📊 button in the toolbar.
 Aggregated tool/MCP usage statistics across the entire run:
 
 - **Call count** per tool
-- **Success rate** — Color-coded bar (green >90%, amber 70-90%, red <70%)
+- **Success rate** — Color-coded bar (green above 90%, amber 70–90%, red below 70%)
 - **Average duration** in milliseconds
 - **Overall success rate** summary bar at the top
 - Sorted by most-used tools
