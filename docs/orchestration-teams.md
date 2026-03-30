@@ -187,7 +187,7 @@ During a team run, the canvas shows live execution state on each node:
 - **Node states** — Idle, Running (blue pulse), Completed (green ✓), Failed (red ✕)
 - **Camera auto-follow** — Canvas pans to the currently executing agent
 - **Execution timeline** — Step-by-step progress rail with clickable steps
-- **Transcript panel** (`T`) — Real-time brain↔worker message feed with delegation/result filters
+- **Transcript panel** (`T`) — Real-time brain-to-worker message feed with delegation/result filters
 - **Tool heatmap** — Tool usage stats with success rates
 
 ### Keyboard Shortcuts
