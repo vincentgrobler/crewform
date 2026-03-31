@@ -80,7 +80,7 @@
 <table>
 <tr>
 <td align="center" width="25%">
-🤖<br/><strong>15 LLM Providers</strong><br/>OpenAI, Anthropic, Gemini, Groq, Ollama, and more
+🤖<br/><strong>16 LLM Providers</strong><br/>OpenAI, Anthropic, Gemini, Groq, Ollama, and more
 </td>
 <td align="center" width="25%">
 🔀<br/><strong>3 Team Modes</strong><br/>Pipeline, Orchestrator, and Collaboration
@@ -180,6 +180,7 @@ npm run dev
 - [Contributing](#contributing)
 - [Community](#community)
 - [FAQ](#faq)
+- [How CrewForm Compares](#how-crewform-compares)
 - [License](#license)
 
 ## Why CrewForm?
@@ -430,6 +431,24 @@ CrewForm integrates with **Zapier** (7,000+ apps), messaging channels (**Discord
 
 CrewForm is a **visual, UI-first platform** — you create agents, teams, and tasks through a web interface with no Python required. CrewAI and LangGraph are code-first libraries. CrewForm also includes built-in billing, RBAC, marketplace, messaging channels, MCP protocol support, RAG knowledge base, A2A agent-to-agent interop, AG-UI real-time streaming, and a production-ready self-hosted deployment. CrewForm is the **first platform to support all three agentic protocols** (MCP + A2A + AG-UI).
 </details>
+
+## How CrewForm Compares
+
+| Capability | CrewForm | Most Alternatives |
+|---|---|---|
+| **Visual UI** | ✅ Drag-and-drop workflow canvas with live execution | Often code-only or basic flow editors |
+| **Multi-Agent Teams** | ✅ 3 modes — Pipeline, Orchestrator, Collaboration | Usually single-mode or code-defined |
+| **All 3 Agentic Protocols** | ✅ MCP + A2A + AG-UI — native | Typically zero or one |
+| **BYOK (zero markup)** | ✅ 16 providers, your keys, your cost | Often limited providers or markup fees |
+| **Local Models (Ollama)** | ✅ Native — zero API keys, fully air-gapped | Varies |
+| **Self-Hosting** | ✅ One-command Docker Compose | Often cloud-only or complex setup |
+| **RAG / Knowledge Base** | ✅ Built-in with pgvector | Sometimes available, often requires plugins |
+| **Agent Marketplace** | ✅ Browse, install, and publish templates | Rare in open-source tools |
+| **Team Memory** | ✅ pgvector semantic search across runs | Typically not available |
+| **Integrations** | ✅ Zapier (7K+ apps), Discord, Slack, Telegram, Trello, webhooks | Usually API-only |
+| **Open Source** | ✅ AGPL-3.0 | Varies |
+
+> **CrewForm is the first platform to support all three agentic protocols** (MCP + A2A + AG-UI) — giving your agents access to thousands of tools, cross-framework interop, and real-time UI streaming out of the box.
 
 ## License
 
