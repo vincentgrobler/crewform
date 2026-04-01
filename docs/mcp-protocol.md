@@ -100,3 +100,11 @@ MCP servers are stored in the `mcp_servers` table with workspace-scoped RLS. Eac
 - Connection config (URL, transport, auth)
 - Cached tool definitions
 - Enabled/disabled status
+
+## MCP Server Publishing
+
+CrewForm can also act as an MCP **Server** — exposing your agents as tools that Claude Desktop, Cursor, and other MCP clients can call.
+
+<Card title="MCP Server Publishing" icon="server" href="/mcp-server-publishing">
+  Learn how to expose your agents as MCP tools for external clients.
+</Card>

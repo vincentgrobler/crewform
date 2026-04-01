@@ -4,6 +4,30 @@ All notable changes to CrewForm will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.7.1] - 2026-04-01
+
+### Added
+
+- **MCP Server Publishing** — Expose your CrewForm agents as MCP tools so external clients (Claude Desktop, Cursor, other agent frameworks) can call them
+  - New `mcpServer.ts` handler implementing MCP Streamable HTTP transport (`POST /mcp`)
+  - Supports `initialize`, `tools/list`, `tools/call`, and `ping` JSON-RPC methods
+  - Agents opt-in via `is_mcp_published` flag — each published agent becomes an MCP tool with auto-generated name, description, and input schema
+  - Auth via dedicated MCP API keys or existing A2A keys (Bearer token)
+  - Tasks created with full audit trail and AG-UI event streaming
+- **MCP API Key Generation** — Generate, regenerate, and revoke MCP API keys from the Settings UI
+  - One-click key generation with `cf_mcp_` prefix
+  - Key shown once with copy button; masked preview afterward
+  - Regenerate/Revoke actions with confirmation for key rotation
+- **MCP Connection Config** — Auto-generated Claude Desktop / Cursor config snippet with copy button in Settings → MCP Servers
+- **Ollama Auto-Discovery** — Dynamically detect installed Ollama models via `GET /api/tags` and merge them into the model selector
+- **Custom Base URL** — Per-provider base URL field for Ollama (and future providers), enabling remote Ollama instances on different hosts
+- **MCP Publish Toggle** — "MCP Publish" / "MCP Published" button on each agent's detail page to opt-in/opt-out of MCP exposure
+
+### Changed
+
+- LLM providers updated from 15 to 16 (Ollama with auto-discovery)
+- Task runner now dynamically resolves Ollama base URLs from the API key record instead of hardcoded localhost
+
 ## [1.6.0] - 2026-04-01
 
 ### Added
