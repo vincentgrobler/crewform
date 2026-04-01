@@ -73,6 +73,7 @@
             "group": "Protocols",
             "pages": [
                 "mcp-protocol",
+                "mcp-server-publishing",
                 "a2a-protocol",
                 "ag-ui-protocol",
                 "knowledge-base"

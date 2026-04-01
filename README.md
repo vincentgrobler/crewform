@@ -97,7 +97,7 @@
 🏠<br/><strong>Self-Hostable</strong><br/>Docker Compose — your data, your infra
 </td>
 <td align="center" width="25%">
-🔌<br/><strong>MCP Protocol</strong><br/>Connect to thousands of MCP tool servers
+🔌<br/><strong>MCP Protocol</strong><br/>Use external tools & expose agents as MCP tools
 </td>
 <td align="center" width="25%">
 📚<br/><strong>Knowledge Base (RAG)</strong><br/>Upload docs, chunk, embed, and search
@@ -201,7 +201,7 @@ CrewForm gives you everything you need to orchestrate multi-agent AI workflows �
 - 🔑 **BYOK (Bring Your Own Key)** — Connect your own LLM provider keys. Pay your provider directly at their standard rates, zero markup
 - 🏠 **Self-Hostable** — Deploy on your own infrastructure with Docker. Your data stays with you
 - 🔀 **3 Orchestration Modes** — Pipeline (sequential), Orchestrator (brain + workers), and Collaboration (multi-agent discussion)
-- 🔌 **MCP Protocol** — Connect agents to thousands of external tool servers via the Model Context Protocol
+- 🔌 **MCP Protocol** — Connect agents to thousands of external tool servers, **and** expose your agents as MCP tools for Claude Desktop, Cursor, and other MCP clients
 - 🤝 **A2A Protocol** — Agent-to-Agent interoperability — expose agents to external AI systems and delegate tasks to remote agents
 - 🖥️ **AG-UI Protocol** — Real-time SSE event streaming for frontend integration — the standard for agent-to-UI communication
 - 📚 **Knowledge Base (RAG)** — Upload docs (TXT, MD, CSV, JSON), auto-chunk and embed with pgvector, then search via agents
@@ -263,7 +263,7 @@ Each client gets their own workspace. Custom agents built around their tools and
 - 🏪 **Marketplace** — Browse and install agent templates built by the community
 - 👥 **Pipeline Mode** — Chain agents together in sequential workflows
 - ✅ **Single Tasks** — Send a prompt to any agent and get results in real-time
-- 🔌 **MCP Protocol** — Connect agents to external MCP tool servers for dynamic tool discovery
+- 🔌 **MCP Protocol** — Connect agents to external MCP tool servers for dynamic tool discovery, and expose agents as MCP tools for Claude Desktop and Cursor
 - 📚 **Knowledge Base (RAG)** — Upload documents, auto-chunk and embed, and search via agents
 - 🏠 **Self-Hostable** — Run on your own infrastructure with Docker Compose
 - 🔒 **Secure by Default** — AES-256-GCM key encryption, Row-Level Security, GDPR-ready
@@ -328,6 +328,7 @@ CrewForm uses an **open-core** model: a free Community Edition under AGPL-3.0 an
 | [Discord Integration](https://docs.crewform.tech/discord-integration) | Slash commands and bot setup |
 | [Output Routes](https://docs.crewform.tech/output-routes) | Deliver results to external destinations |
 | [MCP Protocol](https://docs.crewform.tech/mcp-protocol) | Connect agents to external tool servers |
+| [MCP Server Publishing](https://docs.crewform.tech/mcp-server-publishing) | Expose agents as MCP tools for Claude Desktop, Cursor |
 | [Knowledge Base](https://docs.crewform.tech/knowledge-base) | RAG document upload, chunking, and search |
 | [A2A Protocol](https://docs.crewform.tech/a2a-protocol) | Agent-to-Agent interoperability |
 | [AG-UI Protocol](https://docs.crewform.tech/ag-ui-protocol) | Real-time SSE streaming for frontends |

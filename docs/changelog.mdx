@@ -9,6 +9,22 @@ All notable changes to CrewForm will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.7.1] — 2026-04-01
+
+### Added
+
+- **MCP Server Publishing** — Expose CrewForm agents as MCP tools so Claude Desktop, Cursor, and other MCP clients can call them directly. New `/mcp` endpoint with Streamable HTTP transport, `tools/list` and `tools/call` support
+- **MCP API Key Generation** — Generate, regenerate, and revoke MCP API keys from the UI with one-click copy
+- **MCP Connection Config** — Auto-generated config snippet for Claude Desktop / Cursor with copy button
+- **Ollama Auto-Discovery** — Dynamically detect installed Ollama models and merge them into the model selector
+- **Custom Base URL** — Per-provider base URL for Ollama, enabling remote instances on different hosts
+- **MCP Publish Toggle** — Per-agent opt-in/opt-out button on agent detail pages
+
+### Changed
+
+- LLM providers updated to 16 (Ollama with auto-discovery and custom base URL)
+- Task runner dynamically resolves Ollama base URLs from API key records
+
 ## [1.7.0] — 2026-03-30
 
 ### Added
