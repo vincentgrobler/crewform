@@ -3,7 +3,7 @@
 
 import { useState } from 'react'
 import { Plus, Trash2, Pencil, ToggleLeft, ToggleRight, Plug, ExternalLink, Server, RefreshCw, CheckCircle2, AlertCircle, Cpu } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMcpServers, useCreateMcpServer, useUpdateMcpServer, useDeleteMcpServer } from '@/hooks/useMcpServers'
 import { discoverMcpTools } from '@/db/mcpServers'
 import type { McpServer } from '@/db/mcpServers'
@@ -359,6 +359,10 @@ export function McpServersSettings() {
 function McpServerPublishing() {
     const { workspaceId } = useWorkspace()
     const [copied, setCopied] = useState(false)
+    const [copiedKey, setCopiedKey] = useState(false)
+    const [newKey, setNewKey] = useState<string | null>(null)
+    const [isGenerating, setIsGenerating] = useState(false)
+    const queryClient = useQueryClient()
 
     // Fetch agents that are MCP-published
     const { data: publishedAgents, isLoading } = useQuery({
@@ -376,18 +380,18 @@ function McpServerPublishing() {
         enabled: !!workspaceId,
     })
 
-    // Fetch MCP server API key
-    const { data: mcpKey } = useQuery({
+    // Fetch existing MCP server API key
+    const { data: mcpKeyRecord } = useQuery({
         queryKey: ['api-keys', workspaceId, 'mcp-server'],
         queryFn: async () => {
             if (!workspaceId) return null
             const { data } = await supabase
                 .from('api_keys')
-                .select('encrypted_key')
+                .select('id, encrypted_key')
                 .eq('workspace_id', workspaceId)
                 .eq('provider', 'mcp-server')
                 .single()
-            return (data as { encrypted_key: string } | null)?.encrypted_key ?? null
+            return data as { id: string; encrypted_key: string } | null
         },
         enabled: !!workspaceId,
     })
@@ -396,7 +400,7 @@ function McpServerPublishing() {
     const { data: a2aKey } = useQuery({
         queryKey: ['api-keys', workspaceId, 'a2a-fallback'],
         queryFn: async () => {
-            if (!workspaceId || mcpKey) return null
+            if (!workspaceId || mcpKeyRecord) return null
             const { data } = await supabase
                 .from('api_keys')
                 .select('encrypted_key')
@@ -405,10 +409,11 @@ function McpServerPublishing() {
                 .single()
             return (data as { encrypted_key: string } | null)?.encrypted_key ?? null
         },
-        enabled: !!workspaceId && mcpKey === null,
+        enabled: !!workspaceId && mcpKeyRecord === null,
     })
 
-    const apiKey = mcpKey ?? a2aKey ?? 'YOUR_MCP_API_KEY'
+    const apiKey = mcpKeyRecord?.encrypted_key ?? a2aKey ?? 'YOUR_MCP_API_KEY'
+    const hasKey = !!(mcpKeyRecord?.encrypted_key ?? a2aKey)
     const taskRunnerUrl = (import.meta.env.VITE_TASK_RUNNER_URL as string) || ''
     const mcpEndpoint = taskRunnerUrl ? `${taskRunnerUrl}/mcp` : 'https://YOUR_TASK_RUNNER_URL/mcp'
     const hasRealUrl = !!taskRunnerUrl
@@ -430,6 +435,59 @@ function McpServerPublishing() {
         setTimeout(() => setCopied(false), 2000)
     }
 
+    async function generateKey() {
+        if (!workspaceId) return
+        setIsGenerating(true)
+        try {
+            // Generate a random 32-byte hex key
+            const rawKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('')
+            const prefixedKey = `cf_mcp_${rawKey}`
+
+            // Delete existing mcp-server key if any
+            if (mcpKeyRecord?.id) {
+                await supabase
+                    .from('api_keys')
+                    .delete()
+                    .eq('id', mcpKeyRecord.id)
+            }
+
+            // Insert new key
+            const { error } = await supabase
+                .from('api_keys')
+                .insert({
+                    workspace_id: workspaceId,
+                    provider: 'mcp-server',
+                    encrypted_key: prefixedKey,
+                })
+
+            if (error) throw error
+
+            setNewKey(prefixedKey)
+            void queryClient.invalidateQueries({ queryKey: ['api-keys', workspaceId, 'mcp-server'] })
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err)
+            console.error('Failed to generate MCP key:', msg)
+        } finally {
+            setIsGenerating(false)
+        }
+    }
+
+    async function revokeKey() {
+        if (!mcpKeyRecord?.id) return
+        const { error } = await supabase
+            .from('api_keys')
+            .delete()
+            .eq('id', mcpKeyRecord.id)
+        if (error) {
+            console.error('Failed to revoke key:', error.message)
+            return
+        }
+        setNewKey(null)
+        void queryClient.invalidateQueries({ queryKey: ['api-keys', workspaceId, 'mcp-server'] })
+    }
+
     return (
         <div>
             <div className="mb-2">
@@ -437,6 +495,86 @@ function McpServerPublishing() {
                 <p className="text-sm text-gray-500">
                     Expose your agents as MCP tools so external clients (Claude Desktop, Cursor, other agents) can call them.
                 </p>
+            </div>
+
+            {/* API Key */}
+            <div className="mt-4">
+                <h3 className="text-sm font-medium text-gray-400 mb-2">API Key</h3>
+
+                {/* Newly generated key banner */}
+                {newKey && (
+                    <div className="mb-3 rounded-lg border border-green-500/30 bg-green-500/10 p-4">
+                        <p className="mb-2 text-sm font-medium text-green-300">
+                            🔑 Your MCP API key — Copy it now, it won&apos;t be shown again!
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <code className="flex-1 rounded bg-gray-900 px-3 py-2 font-mono text-sm text-green-200 select-all break-all">
+                                {newKey}
+                            </code>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void navigator.clipboard.writeText(newKey)
+                                    setCopiedKey(true)
+                                    setTimeout(() => setCopiedKey(false), 2000)
+                                }}
+                                className="shrink-0 rounded-md bg-green-600 p-2 text-white hover:bg-green-700"
+                            >
+                                {copiedKey ? <CheckCircle2 className="h-4 w-4" /> : 'Copy'}
+                            </button>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => { setNewKey(null); setCopiedKey(false) }}
+                            className="mt-2 text-xs text-green-400 hover:text-green-300"
+                        >
+                            I&apos;ve copied it — dismiss
+                        </button>
+                    </div>
+                )}
+
+                {hasKey && !newKey ? (
+                    <div className="flex items-center justify-between rounded-lg border border-border bg-surface-elevated px-4 py-3">
+                        <div className="flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-brand-primary" />
+                            <span className="text-sm text-gray-300">MCP API key is configured</span>
+                            <code className="rounded bg-surface-card px-1.5 py-0.5 text-[10px] font-mono text-gray-500">
+                                {apiKey.slice(0, 12)}•••••••
+                            </code>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => void generateKey()}
+                                disabled={isGenerating}
+                                className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                            >
+                                Regenerate
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (confirm('Revoke MCP API key? External clients will lose access.')) {
+                                        void revokeKey()
+                                    }
+                                }}
+                                className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                            >
+                                Revoke
+                            </button>
+                        </div>
+                    </div>
+                ) : !newKey && (
+                    <button
+                        type="button"
+                        onClick={() => void generateKey()}
+                        disabled={isGenerating}
+                        className="flex items-center gap-2 rounded-lg border border-dashed border-border px-4 py-3 text-sm text-gray-400 hover:border-brand-primary hover:text-gray-200 transition-colors w-full justify-center"
+                    >
+                        <Plus className="h-4 w-4" />
+                        {isGenerating ? 'Generating…' : 'Generate MCP API Key'}
+                    </button>
+                )}
             </div>
 
             {/* Published agents */}
