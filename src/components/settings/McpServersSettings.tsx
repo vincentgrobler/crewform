@@ -409,8 +409,9 @@ function McpServerPublishing() {
     })
 
     const apiKey = mcpKey ?? a2aKey ?? 'YOUR_MCP_API_KEY'
-    const taskRunnerUrl = import.meta.env.VITE_TASK_RUNNER_URL as string || 'http://localhost:3001'
-    const mcpEndpoint = `${taskRunnerUrl}/mcp`
+    const taskRunnerUrl = (import.meta.env.VITE_TASK_RUNNER_URL as string) || ''
+    const mcpEndpoint = taskRunnerUrl ? `${taskRunnerUrl}/mcp` : 'https://YOUR_TASK_RUNNER_URL/mcp'
+    const hasRealUrl = !!taskRunnerUrl
 
     const configSnippet = JSON.stringify({
         mcpServers: {
@@ -506,6 +507,11 @@ function McpServerPublishing() {
                             <span className="font-medium text-gray-300">Auth:</span>{' '}
                             Bearer token (uses your A2A or MCP-server API key)
                         </p>
+                        {!hasRealUrl && (
+                            <p className="text-xs text-orange-400 mt-2">
+                                ⚠ Replace <code className="text-orange-300">YOUR_TASK_RUNNER_URL</code> with your deployed task runner URL (e.g. your Railway service URL).
+                            </p>
+                        )}
                     </div>
                 </div>
             )}
