@@ -394,7 +394,7 @@ export function validateConfig(
             if (pc.steps.length < 1) {
                 return { valid: false, error: 'Pipeline must have at least one step.' }
             }
-            const missing = pc.steps.find((s) => !s.agent_id)
+            const missing = pc.steps.find((s) => s.type !== 'fan_out' && !s.agent_id)
             if (missing) {
                 return { valid: false, error: `Step "${missing.step_name || 'unnamed'}" needs an agent assigned.` }
             }
@@ -448,34 +448,48 @@ function resolveAgentId(node: Node, agents: Agent[]): string {
 
 /**
  * Walk edges from 'start' to 'end' to determine the pipeline step order.
- * Falls back to y-position ordering if edges don't form a clean chain.
+ * Handles fan-out branching where one node has multiple outgoing edges.
+ * Returns nodes in pipeline order, with fan-out branch/merge nodes grouped.
  */
 function resolvePipelineOrder(nodes: Node[], edges: Edge[]): Node[] {
-    const agentNodes = nodes.filter((n) => n.type === 'agentNode')
-
-    // Build adjacency from source → target
-    const edgeMap = new Map<string, string>()
+    // Build adjacency from source → targets (multi-value for fan-out)
+    const edgeMap = new Map<string, string[]>()
     for (const e of edges) {
-        edgeMap.set(e.source, e.target)
+        const existing = edgeMap.get(e.source) ?? []
+        existing.push(e.target)
+        edgeMap.set(e.source, existing)
     }
 
-    // Walk from 'start'
+    // Walk from 'start', collecting nodes in order
     const ordered: Node[] = []
-    let currentId = edgeMap.get('start')
     const visited = new Set<string>()
 
-    while (currentId && currentId !== 'end' && !visited.has(currentId)) {
-        visited.add(currentId)
-        const node = agentNodes.find((n) => n.id === currentId)
-        if (node) ordered.push(node)
-        currentId = edgeMap.get(currentId)
+    function walkFrom(nodeId: string) {
+        if (!nodeId || nodeId === 'end' || visited.has(nodeId)) return
+
+        visited.add(nodeId)
+        const node = nodes.find((n) => n.id === nodeId)
+        if (node && node.type === 'agentNode') {
+            ordered.push(node)
+        }
+        // Also include startNode placeholders used as merge points
+        if (node && node.type === 'startNode' && nodeId !== 'start') {
+            ordered.push(node)
+        }
+
+        const targets = edgeMap.get(nodeId) ?? []
+        if (targets.length === 1) {
+            // Sequential — follow the single path
+            walkFrom(targets[0])
+        } else if (targets.length > 1) {
+            // Fan-out — visit all branches, then they'll converge at merge
+            for (const target of targets) {
+                walkFrom(target)
+            }
+        }
     }
 
-    // If walk didn't capture all agents, fall back to y-position sort
-    if (ordered.length !== agentNodes.length) {
-        return [...agentNodes].sort((a, b) => a.position.y - b.position.y)
-    }
-
+    walkFrom('start')
     return ordered
 }
 
@@ -486,30 +500,97 @@ export function graphToPipelineConfig(
     existingConfig: PipelineConfig,
 ): PipelineConfig {
     const orderedNodes = resolvePipelineOrder(nodes, edges)
+    const steps: PipelineStep[] = []
 
-    const steps: PipelineStep[] = orderedNodes.map((node, idx) => {
-        const agentId = resolveAgentId(node, agents)
+    // Group fan-out nodes by their step index prefix
+    const processedFanOutGroups = new Set<string>()
 
-        // Preserve existing step config if this agent was already in the pipeline
-        const existingStep = existingConfig.steps.find((s) => s.agent_id === agentId)
+    for (const node of orderedNodes) {
+        const fanOutMatch = node.id.match(/^fanout-(\d+)-(branch-\d+|merge)$/)
 
-        return {
-            agent_id: agentId,
-            step_name: existingStep?.step_name ?? `Step ${idx + 1}`,
-            instructions: existingStep?.instructions ?? '',
-            expected_output: existingStep?.expected_output ?? '',
-            on_failure: existingStep?.on_failure ?? 'stop',
-            max_retries: existingStep?.max_retries ?? 1,
-            // Preserve fan-out config
-            ...(existingStep?.type === 'fan_out' ? {
-                type: 'fan_out' as const,
-                parallel_agents: existingStep.parallel_agents,
-                merge_agent_id: existingStep.merge_agent_id,
-                fan_out_failure: existingStep.fan_out_failure,
-                merge_instructions: existingStep.merge_instructions,
-            } : {}),
+        if (fanOutMatch) {
+            const fanOutIdx = fanOutMatch[1]
+            const groupKey = `fanout-${fanOutIdx}`
+
+            // Only process each fan-out group once
+            if (processedFanOutGroups.has(groupKey)) continue
+            processedFanOutGroups.add(groupKey)
+
+            // Find existing fan-out step config (may not exist if step was just created on canvas)
+            const stepIdx = parseInt(fanOutIdx)
+            const existingStep: PipelineStep | undefined = stepIdx < existingConfig.steps.length
+                ? existingConfig.steps[stepIdx]
+                : undefined
+
+            // Collect all branch nodes for this fan-out group
+            const branchNodes = orderedNodes.filter(
+                (n) => n.id.startsWith(`fanout-${fanOutIdx}-branch-`)
+            )
+            const mergeNode = orderedNodes.find(
+                (n) => n.id === `fanout-${fanOutIdx}-merge`
+            )
+
+            // Resolve agent IDs from branch nodes
+            const parallelAgentIds = branchNodes.map((n) => resolveAgentId(n, agents)).filter(Boolean)
+
+            // Resolve merge agent ID
+            const mergeAgentId = mergeNode && mergeNode.type === 'agentNode'
+                ? resolveAgentId(mergeNode, agents)
+                : existingStep ? existingStep.merge_agent_id : undefined
+
+            if (existingStep) {
+                steps.push({
+                    agent_id: existingStep.agent_id,
+                    step_name: existingStep.step_name,
+                    instructions: existingStep.instructions,
+                    expected_output: existingStep.expected_output,
+                    on_failure: existingStep.on_failure,
+                    max_retries: existingStep.max_retries,
+                    type: 'fan_out',
+                    parallel_agents: parallelAgentIds,
+                    merge_agent_id: mergeAgentId,
+                    fan_out_failure: existingStep.fan_out_failure ?? 'fail_fast',
+                    merge_instructions: existingStep.merge_instructions ?? '',
+                })
+            } else {
+                steps.push({
+                    agent_id: 'fan_out_placeholder',
+                    step_name: `Fan-Out ${steps.length + 1}`,
+                    instructions: '',
+                    expected_output: '',
+                    on_failure: 'stop',
+                    max_retries: 1,
+                    type: 'fan_out',
+                    parallel_agents: parallelAgentIds,
+                    merge_agent_id: mergeAgentId,
+                    fan_out_failure: 'fail_fast',
+                    merge_instructions: '',
+                })
+            }
+        } else if (node.type === 'agentNode') {
+            // Regular sequential step
+            const agentId = resolveAgentId(node, agents)
+            const existingStep = existingConfig.steps.find((s) => s.agent_id === agentId)
+
+            steps.push({
+                agent_id: agentId,
+                step_name: existingStep?.step_name ?? `Step ${steps.length + 1}`,
+                instructions: existingStep?.instructions ?? '',
+                expected_output: existingStep?.expected_output ?? '',
+                on_failure: existingStep?.on_failure ?? 'stop',
+                max_retries: existingStep?.max_retries ?? 1,
+                // Preserve fan-out config if this step was a fan-out
+                ...(existingStep?.type === 'fan_out' ? {
+                    type: 'fan_out' as const,
+                    parallel_agents: existingStep.parallel_agents,
+                    merge_agent_id: existingStep.merge_agent_id,
+                    fan_out_failure: existingStep.fan_out_failure,
+                    merge_instructions: existingStep.merge_instructions,
+                } : {}),
+            })
         }
-    })
+        // Skip startNode merge points (synthetic nodes, not real steps)
+    }
 
     return {
         ...existingConfig,
