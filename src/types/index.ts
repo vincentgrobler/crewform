@@ -77,6 +77,7 @@ export interface Agent {
   install_count: number
   rating_avg: number
   price_cents: number | null // null or 0 = free, >0 = paid (USD cents)
+  marketplace_readme: string | null // Markdown README for marketplace detail page
   output_route_ids: string[] | null // null = all routes, [] = none, [...ids] = specific
   created_at: string
   updated_at: string
@@ -214,7 +215,7 @@ export interface Task {
   scheduled_for: string | null
 }
 
-export type TaskStatus = 'pending' | 'dispatched' | 'running' | 'completed' | 'failed' | 'cancelled'
+export type TaskStatus = 'pending' | 'dispatched' | 'running' | 'waiting_for_input' | 'completed' | 'failed' | 'cancelled'
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
 
 // ─── Agent Task (execution record) ───────────────────────────────────────────

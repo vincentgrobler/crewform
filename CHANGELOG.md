@@ -19,6 +19,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - `useAgentStream` hook now exposes `pendingInteraction` state and `respond()` callback
   - Tasks transition to `waiting_for_input` status while awaiting user response (5-minute default timeout)
   - Migration `069`: `waiting_for_input` task status + `interaction_context` JSONB column
+- **Marketplace Agent README** — Agents can now include rich Markdown documentation visible to potential users:
+  - New `marketplace_readme` field on the Agent model (Migration `070`)
+  - Markdown textarea with live preview in the Publish Agent modal
+  - README section with formatted rendering in the Agent Detail modal
+- **License Key Validation** — EE license keys are now cryptographically verified:
+  - HMAC-SHA256 signature verification on task runner startup (when `CREWFORM_LICENSE_SECRET` is set)
+  - New `validate-license` Edge Function for on-demand key verification
+  - 24-hour periodic re-validation with 7-day offline grace period
+  - Validation status display (last validated, stale indicator) in the License Admin panel
+  - Invalid/forged keys are automatically marked as `invalid` in the database
 
 ### Changed
 
@@ -26,6 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Documentation
 
+- **API Reference** — Added AG-UI Protocol endpoints section (`POST /ag-ui/:agentId/sse`, `POST /ag-ui/:agentId/respond`, `GET /ag-ui/health`), added `waiting_for_input` to task statuses
 - **Agents Guide** — Added MCP Server Publishing section (publish toggle, tool name mapping, config snippet, client setup)
 - **Visual Workflow Builder** — Added Fan-Out Visualization section (fan-out/branch/merge node types, branching pattern, per-branch execution states)
 - **AG-UI Protocol** — Added Rich Interactions section (interaction types, `/respond` endpoint, React hook usage, timeout behavior)

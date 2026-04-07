@@ -2,7 +2,7 @@
 // Copyright (C) 2026 CrewForm
 
 import { useState, useEffect } from 'react'
-import { X, Upload, ShieldCheck, ShieldAlert, Loader2, Plus, Tag } from 'lucide-react'
+import { X, Upload, ShieldCheck, ShieldAlert, Loader2, Plus, Tag, FileText, Eye, Edit3 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/hooks/useAuth'
 import { useSubmitAgent } from '@/hooks/useMarketplace'
@@ -30,6 +30,8 @@ export function PublishAgentModal({ agent, onClose }: PublishAgentModalProps) {
     const submitMutation = useSubmitAgent()
     const [tags, setTags] = useState<string[]>([])
     const [newTag, setNewTag] = useState('')
+    const [readme, setReadme] = useState('')
+    const [readmePreview, setReadmePreview] = useState(false)
     const [scanResult, setScanResult] = useState<{ safe: boolean; flags: string[] } | null>(null)
 
     // Run injection scan when agent changes
@@ -50,6 +52,11 @@ export function PublishAgentModal({ agent, onClose }: PublishAgentModalProps) {
         }
     }, [agent?.marketplace_tags])
 
+    // Pre-fill existing README
+    useEffect(() => {
+        setReadme(agent?.marketplace_readme ?? '')
+    }, [agent?.marketplace_readme])
+
     if (!agent) return null
 
     const addTag = (tag: string) => {
@@ -67,7 +74,7 @@ export function PublishAgentModal({ agent, onClose }: PublishAgentModalProps) {
     const handleSubmit = () => {
         if (!user) return
         submitMutation.mutate(
-            { agentId: agent.id, tags, userId: user.id },
+            { agentId: agent.id, tags, readme, userId: user.id },
             {
                 onSuccess: () => {
                     toast.success('Submitted for review! You\'ll be notified when it\'s approved.')
@@ -100,6 +107,49 @@ export function PublishAgentModal({ agent, onClose }: PublishAgentModalProps) {
                     <div className="rounded-lg border border-border bg-surface-card p-3">
                         <p className="text-sm font-medium text-gray-200">{agent.name}</p>
                         <p className="mt-1 text-xs text-gray-500">{agent.description}</p>
+                    </div>
+
+                    {/* README */}
+                    <div>
+                        <div className="mb-2 flex items-center justify-between">
+                            <label className="flex items-center gap-1 text-xs font-medium text-gray-400">
+                                <FileText className="h-3 w-3" />
+                                README (optional — Markdown supported)
+                            </label>
+                            {readme.trim() && (
+                                <button
+                                    type="button"
+                                    onClick={() => setReadmePreview(!readmePreview)}
+                                    className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-300"
+                                >
+                                    {readmePreview ? <Edit3 className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                                    {readmePreview ? 'Edit' : 'Preview'}
+                                </button>
+                            )}
+                        </div>
+                        {readmePreview ? (
+                            <div
+                                className="prose prose-invert prose-sm max-w-none rounded-lg border border-border bg-surface-card p-3 text-gray-300"
+                                dangerouslySetInnerHTML={{ __html: readme
+                                    .replace(/^### (.*$)/gm, '<h4 class="text-gray-200 text-sm font-semibold mt-3 mb-1">$1</h4>')
+                                    .replace(/^## (.*$)/gm, '<h3 class="text-gray-100 text-sm font-bold mt-4 mb-1">$1</h3>')
+                                    .replace(/^# (.*$)/gm, '<h2 class="text-gray-100 text-base font-bold mt-4 mb-2">$1</h2>')
+                                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                                    .replace(/`(.*?)`/g, '<code class="rounded bg-surface-overlay px-1 py-0.5 text-[11px] text-brand-primary">$1</code>')
+                                    .replace(/^- (.*$)/gm, '<li class="ml-4 list-disc text-xs text-gray-400">$1</li>')
+                                    .replace(/\n/g, '<br />')
+                                }}
+                            />
+                        ) : (
+                            <textarea
+                                value={readme}
+                                onChange={(e) => setReadme(e.target.value)}
+                                placeholder={`## What This Agent Does\n\nDescribe your agent's capabilities...\n\n## Example Prompts\n\n- "Review this pull request"\n- "Analyze the sales data"\n\n## Limitations\n\n- Max 4096 tokens per response`}
+                                rows={6}
+                                className="w-full rounded-lg border border-border bg-surface-card px-3 py-2 text-xs text-gray-200 placeholder-gray-600 outline-none focus:border-brand-primary font-mono"
+                            />
+                        )}
                     </div>
 
                     {/* Injection scan result */}

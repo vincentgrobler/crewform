@@ -19,6 +19,15 @@ export interface EELicense {
     created_at: string
 }
 
+export interface LicenseValidationResult {
+    valid: boolean
+    plan?: string
+    seats?: number
+    features?: string[]
+    validUntil?: string | null
+    error?: string
+}
+
 // ─── Queries ────────────────────────────────────────────────────────────────
 
 /**
@@ -50,3 +59,37 @@ export async function fetchEELicense(workspaceId: string): Promise<EELicense | n
 
     return license
 }
+
+/**
+ * Validate a licence key by calling the validate-license Edge Function.
+ * Returns the validation result including decoded payload or error.
+ */
+export async function validateLicenseKey(
+    licenseKey: string,
+    workspaceId?: string,
+): Promise<LicenseValidationResult> {
+    const result = await supabase.functions.invoke('validate-license', {
+        body: { licenseKey, workspaceId },
+    })
+
+    if (result.error) {
+        const err = result.error as { message?: string }
+        return { valid: false, error: err.message ?? 'Validation failed' }
+    }
+
+    return result.data as LicenseValidationResult
+}
+
+/**
+ * Get the validated_at timestamp from a licence's metadata.
+ * Returns null if never validated.
+ */
+export function getValidatedAt(license: EELicense): Date | null {
+    const ts = license.metadata.validated_at
+    if (typeof ts === 'string') {
+        const d = new Date(ts)
+        return isNaN(d.getTime()) ? null : d
+    }
+    return null
+}
+
