@@ -212,6 +212,52 @@ LLM raw output → {{task_result}} slot in template → Final formatted result
 
 Missing variables are left as `{{variable_name}}` in the output, so templates degrade gracefully.
 
+## MCP Server Publishing
+
+You can expose any agent as an **MCP tool** that Claude Desktop, Cursor, or any MCP-compatible client can call directly.
+
+### Publishing an Agent
+
+1. Open the agent in **Agents → [Agent Name]**
+2. Click the **MCP Publish** button in the header bar
+3. The button changes to **MCP Published** (green) — the agent is now exposed as an MCP tool
+
+Click again to unpublish. The agent immediately appears/disappears from the MCP tool list.
+
+### What Happens
+
+When published, the agent becomes callable via the MCP protocol:
+
+| Property | Value |
+|----------|-------|
+| **Tool Name** | Lowercase agent name, alphanumeric + underscores (e.g., "Code Reviewer" → `code_reviewer`) |
+| **Description** | Agent's description field |
+| **Input** | A `message` string — the prompt or task to send |
+| **Execution** | Full agent execution — same model, system prompt, tools, knowledge base, and voice profile as running from the UI |
+
+### Connecting External Clients
+
+1. Go to **Settings → MCP Servers**
+2. Click **Generate MCP API Key** to create a `cf_mcp_` prefixed key
+3. Copy the auto-generated config snippet into your client:
+
+```json
+{
+  "mcpServers": {
+    "crewform": {
+      "url": "https://runner.crewform.tech/mcp",
+      "headers": {
+        "Authorization": "Bearer cf_mcp_your_key_here"
+      }
+    }
+  }
+}
+```
+
+Each API key is scoped to a single workspace — only that workspace's published agents are visible.
+
+See the full [MCP Server Publishing Guide](./mcp-server-publishing.md) for detailed setup instructions.
+
 ## Using Agents in Teams
 
 Agents become more powerful when combined into teams. See the [Pipeline Teams Guide](./pipeline-teams.md) for multi-agent workflows.
