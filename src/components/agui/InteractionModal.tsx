@@ -4,6 +4,14 @@
 import { useState, useEffect } from 'react'
 import './InteractionModal.css'
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function formatValue(value: unknown, fallback = '—'): string {
+    if (value === null || value === undefined) return fallback
+    if (typeof value === 'object') return JSON.stringify(value)
+    return String(value as string | number | boolean)
+}
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface InteractionRequest {
@@ -112,7 +120,7 @@ export function InteractionModal({ interaction, onRespond }: InteractionModalPro
                                                         <input
                                                             type="text"
                                                             className="interaction-data-input"
-                                                            value={String(value ?? '')}
+                                                            value={formatValue(value, '')}
                                                             onChange={(e) => {
                                                                 setEditedData(prev => ({
                                                                     ...(prev ?? interaction.data ?? {}),
@@ -121,7 +129,7 @@ export function InteractionModal({ interaction, onRespond }: InteractionModalPro
                                                             }}
                                                         />
                                                     ) : (
-                                                        <span>{String(value ?? '—')}</span>
+                                                        <span>{formatValue(value)}</span>
                                                     )}
                                                 </td>
                                             </tr>
