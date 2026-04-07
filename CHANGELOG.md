@@ -4,6 +4,32 @@ All notable changes to CrewForm will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- **AG-UI Rich Interactions** — Agents can now pause execution and request user input via three interaction types:
+  - **Approval** — Agent asks for permission before proceeding (Approve / Reject buttons)
+  - **Data Confirmation** — Agent presents data for user to verify or edit before continuing
+  - **Choice Selection** — Agent presents options for the user to pick from
+  - New `INTERACTION_REQUEST`, `INTERACTION_RESPONSE`, and `INTERACTION_TIMEOUT` AG-UI event types
+  - New `POST /ag-ui/:agentId/respond` endpoint for submitting interaction responses
+  - Executor helper functions: `requestApproval()`, `requestDataConfirmation()`, `requestChoice()`
+  - `InteractionModal` component with glassmorphism styling, countdown timer, and slide-up animation
+  - `useAgentStream` hook now exposes `pendingInteraction` state and `respond()` callback
+  - Tasks transition to `waiting_for_input` status while awaiting user response (5-minute default timeout)
+  - Migration `069`: `waiting_for_input` task status + `interaction_context` JSONB column
+
+### Changed
+
+- **AG-UI Protocol Version** — Health endpoint now reports version `1.1` (up from `1.0`)
+
+### Documentation
+
+- **Agents Guide** — Added MCP Server Publishing section (publish toggle, tool name mapping, config snippet, client setup)
+- **Visual Workflow Builder** — Added Fan-Out Visualization section (fan-out/branch/merge node types, branching pattern, per-branch execution states)
+- **AG-UI Protocol** — Added Rich Interactions section (interaction types, `/respond` endpoint, React hook usage, timeout behavior)
+
 ## [1.7.1] - 2026-04-01
 
 ### Added
