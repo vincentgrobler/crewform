@@ -5,7 +5,7 @@ import { processPipelineRun } from './pipelineExecutor';
 import { processOrchestratorRun } from './orchestratorExecutor';
 import { processCollaborationRun } from './collaborationExecutor';
 import { writeTeamRunAudit } from './auditWriter';
-import { isFeatureEnabled } from './license';
+import { isFeatureEnabled, validateLicensesOnStartup } from './license';
 import { handleA2ARequest } from './a2aServer';
 import { handleAgUiRequest } from './agUiServer';
 import { handleMcpServerRequest } from './mcpServer';
@@ -305,6 +305,10 @@ async function start() {
     try {
         const id = await registerRunner();
         log(`Registered with ID ${id}`);
+
+        // Validate EE licenses (HMAC signature check if CREWFORM_LICENSE_SECRET is set)
+        await validateLicensesOnStartup();
+
         log(`MAX_CONCURRENT=${MAX_CONCURRENT}`);
         log(`Webhook server on port ${PORT}`);
         log(`Polling fallback: ${POLL_MIN_MS}ms (min) → ${POLL_MAX_MS}ms (max)`);

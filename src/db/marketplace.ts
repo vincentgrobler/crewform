@@ -19,7 +19,7 @@ const MARKETPLACE_AGENT_COLUMNS = [
     'model', 'provider', 'temperature', 'max_tokens', 'tags', 'tools',
     'voice_profile', 'voice_profile_id', 'output_template_id',
     'status', 'config', 'is_published', 'marketplace_tags',
-    'install_count', 'rating_avg', 'price_cents',
+    'install_count', 'rating_avg', 'price_cents', 'marketplace_readme',
     'created_at', 'updated_at',
 ].join(',')
 
@@ -302,11 +302,16 @@ export async function submitAgentForReview(
     agentId: string,
     tags: string[],
     userId: string,
+    readme?: string,
 ): Promise<MarketplaceSubmission> {
-    // Update agent tags
+    // Update agent tags and readme
+    const updateFields: Record<string, unknown> = { marketplace_tags: tags }
+    if (readme !== undefined) {
+        updateFields.marketplace_readme = readme || null
+    }
     const updateResult = await supabase
         .from('agents')
-        .update({ marketplace_tags: tags })
+        .update(updateFields)
         .eq('id', agentId)
 
     if (updateResult.error) throw updateResult.error

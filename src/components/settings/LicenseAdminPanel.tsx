@@ -3,10 +3,11 @@
 
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Sparkles, ShieldCheck, Copy, Check, Trash2, Loader2 } from 'lucide-react'
+import { Sparkles, ShieldCheck, Copy, Check, Trash2, Loader2, RefreshCw, AlertTriangle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useEELicense } from '@/hooks/useEELicense'
+import { getValidatedAt, validateLicenseKey } from '@/db/eeLicense'
 import { FEATURE_MIN_PLAN } from '@/lib/featureFlags'
 
 // ─── Plan presets ────────────────────────────────────────────────────────────
@@ -35,6 +36,8 @@ export function LicenseAdminPanel() {
     const [validUntil, setValidUntil] = useState('')
     const [generatedKey, setGeneratedKey] = useState('')
     const [copied, setCopied] = useState(false)
+    const [validating, setValidating] = useState(false)
+    const [validationResult, setValidationResult] = useState<{ valid: boolean; error?: string } | null>(null)
 
     // Generate license mutation
     const generateMutation = useMutation({
@@ -77,6 +80,25 @@ export function LicenseAdminPanel() {
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
     }
+
+    async function handleValidate() {
+        if (!license) return
+        setValidating(true)
+        setValidationResult(null)
+        try {
+            const result = await validateLicenseKey(license.license_key, license.workspace_id)
+            setValidationResult(result)
+            if (result.valid) {
+                void queryClient.invalidateQueries({ queryKey: ['ee-license'] })
+            }
+        } catch (err) {
+            setValidationResult({ valid: false, error: err instanceof Error ? err.message : 'Validation failed' })
+        }
+        setValidating(false)
+    }
+
+    const validatedAt = license ? getValidatedAt(license) : null
+    const isStale = validatedAt ? (Date.now() - validatedAt.getTime() > 7 * 24 * 60 * 60 * 1000) : true
 
     if (isLoading) {
         return (
@@ -131,6 +153,49 @@ export function LicenseAdminPanel() {
                             )}
                         </button>
                     </div>
+
+                    {/* Validation status */}
+                    <div className="mt-3 flex items-center justify-between rounded-lg border border-border bg-surface-primary px-3 py-2">
+                        <div className="flex items-center gap-2">
+                            {validatedAt && !isStale ? (
+                                <ShieldCheck className="h-3.5 w-3.5 text-green-400" />
+                            ) : (
+                                <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+                            )}
+                            <span className="text-xs text-gray-400">
+                                {validatedAt
+                                    ? `Last validated: ${validatedAt.toLocaleString()}`
+                                    : 'Not yet validated'}
+                                {isStale && validatedAt && ' (stale)'}
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => void handleValidate()}
+                            disabled={validating}
+                            className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[10px] font-medium text-gray-400 transition hover:text-gray-200 disabled:opacity-50"
+                        >
+                            {validating ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                                <RefreshCw className="h-3 w-3" />
+                            )}
+                            Validate
+                        </button>
+                    </div>
+
+                    {/* Validation result */}
+                    {validationResult && (
+                        <div className={`mt-2 rounded-lg border px-3 py-2 text-xs ${
+                            validationResult.valid
+                                ? 'border-green-500/20 bg-green-500/5 text-green-400'
+                                : 'border-red-500/20 bg-red-500/5 text-red-400'
+                        }`}>
+                            {validationResult.valid
+                                ? '✅ License signature verified successfully'
+                                : `❌ ${validationResult.error ?? 'Validation failed'}`}
+                        </div>
+                    )}
                 </div>
             )}
 

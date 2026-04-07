@@ -2,7 +2,7 @@
 // Copyright (C) 2026 CrewForm
 
 import { useState } from 'react'
-import { Star, Download, Bot, Cpu, Tag, Lock, Loader2 } from 'lucide-react'
+import { Star, Download, Bot, Cpu, Tag, Lock, Loader2, FileText } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useAgentReviews, useSubmitRating } from '@/hooks/useMarketplace'
@@ -101,6 +101,32 @@ export function AgentDetailModal({ agent, onClose, onInstall, isInstalling }: Ag
                     </h3>
                     <p className="text-sm leading-relaxed text-gray-300">{agent.description}</p>
                 </section>
+
+                {/* README */}
+                {agent.marketplace_readme && (
+                    <section>
+                        <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-gray-500">
+                            <FileText className="h-4 w-4" />
+                            README
+                        </h3>
+                        <div
+                            className="rounded-lg border border-border bg-surface-overlay p-4 text-sm leading-relaxed text-gray-300"
+                            dangerouslySetInnerHTML={{ __html: agent.marketplace_readme
+                                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                                .replace(/^### (.*$)/gm, '<h4 class="text-gray-200 text-sm font-semibold mt-3 mb-1">$1</h4>')
+                                .replace(/^## (.*$)/gm, '<h3 class="text-gray-100 text-sm font-bold mt-4 mb-1">$1</h3>')
+                                .replace(/^# (.*$)/gm, '<h2 class="text-gray-100 text-base font-bold mt-4 mb-2">$1</h2>')
+                                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                                .replace(/`(.*?)`/g, '<code class="rounded bg-surface-card px-1 py-0.5 text-[11px] text-brand-primary">$1</code>')
+                                .replace(/^- (.*$)/gm, '<li class="ml-4 list-disc text-xs text-gray-400">$1</li>')
+                                .replace(/^\d+\. (.*$)/gm, '<li class="ml-4 list-decimal text-xs text-gray-400">$1</li>')
+                                .replace(/\n\n/g, '<br /><br />')
+                                .replace(/\n/g, '<br />')
+                            }}
+                        />
+                    </section>
+                )}
 
                 {/* System Prompt — PROTECTED */}
                 <section>

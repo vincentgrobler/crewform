@@ -160,7 +160,7 @@ curl -H "X-API-Key: cf_..." -H "X-API-Version: 2" \
 }
 ```
 
-**Task statuses:** `pending`, `dispatched`, `running`, `completed`, `failed`, `cancelled`
+**Task statuses:** `pending`, `dispatched`, `running`, `waiting_for_input`, `completed`, `failed`, `cancelled`
 
 **Task priorities:** `low`, `medium`, `high`, `urgent`
 
@@ -287,6 +287,100 @@ curl -s -X POST \
   -H "Content-Type: application/json" \
   -d '{"team_id":"<uuid>","input_task":"Research AI trends"}' \
   "https://your-project.supabase.co/functions/v1/api-runs"
+```
+
+---
+
+### AG-UI Protocol — Task Runner Endpoints
+
+> **Base URL:** `https://<your-task-runner>/ag-ui`
+
+These endpoints are served by the task runner (not Edge Functions). They handle real-time agent streaming and user interactions.
+
+#### SSE Stream — `POST /ag-ui/:agentId/sse`
+
+Open an SSE connection to stream AG-UI events for a task execution.
+
+**Headers:**
+```
+Authorization: Bearer <ag-ui or a2a API key>
+Content-Type: application/json
+```
+
+**Body:**
+```json
+{
+  "threadId": "<task-uuid>",
+  "runId": "optional-run-id"
+}
+```
+
+**Response:** Server-Sent Events stream with AG-UI events:
+```
+data: {"type":"RUN_STARTED","timestamp":1711000000,"threadId":"..."}
+data: {"type":"TEXT_MESSAGE_CONTENT","timestamp":1711000001,"content":"Hello..."}
+data: {"type":"INTERACTION_REQUEST","interactionId":"uuid","interactionType":"approval",...}
+data: {"type":"RUN_FINISHED","timestamp":1711000010}
+```
+
+See [AG-UI Protocol](/ag-ui-protocol) for the full event type reference.
+
+#### Submit Interaction Response — `POST /ag-ui/:agentId/respond`
+
+Submit a user response to a pending interaction request. The task must be in `waiting_for_input` status.
+
+**Headers:**
+```
+Authorization: Bearer <ag-ui or a2a API key>
+Content-Type: application/json
+```
+
+**Body (approval):**
+```json
+{
+  "threadId": "<task-uuid>",
+  "interactionId": "<interaction-uuid>",
+  "approved": true
+}
+```
+
+**Body (data confirmation):**
+```json
+{
+  "threadId": "<task-uuid>",
+  "interactionId": "<interaction-uuid>",
+  "approved": true,
+  "data": { "name": "Corrected Name", "email": "updated@example.com" }
+}
+```
+
+**Body (choice):**
+```json
+{
+  "threadId": "<task-uuid>",
+  "interactionId": "<interaction-uuid>",
+  "selectedOptionId": "option-2"
+}
+```
+
+**Success Response:**
+```json
+{ "ok": true, "interactionId": "<interaction-uuid>" }
+```
+
+**Error Responses:**
+
+| Status | Error |
+|--------|-------|
+| 400 | `threadId and interactionId are required` |
+| 401 | `Unauthorized — provide Bearer token` |
+| 404 | `Task not found` |
+| 409 | `Task is not waiting for input (status: ...)` |
+
+#### Health Check — `GET /ag-ui/health`
+
+```json
+{ "status": "ok", "protocol": "ag-ui", "version": "1.1" }
 ```
 
 ---
@@ -428,9 +522,9 @@ Content-Type: application/json
 }
 ```
 
-**Task statuses:** `pending`, `running`, `completed`, `failed`, `cancelled`
+**Task statuses:** `pending`, `dispatched`, `running`, `waiting_for_input`, `completed`, `failed`, `cancelled`
 
-**Task priorities:** `low`, `medium`, `high`, `critical`
+**Task priorities:** `low`, `medium`, `high`, `urgent`
 
 ### Get Task Detail
 

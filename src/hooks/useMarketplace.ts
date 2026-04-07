@@ -38,8 +38,8 @@ export function useMarketplaceTags() {
 /** Submit an agent for marketplace review */
 export function useSubmitAgent() {
     const queryClient = useQueryClient()
-    return useMutation<MarketplaceSubmission, Error, { agentId: string; tags: string[]; userId: string }>({
-        mutationFn: ({ agentId, tags, userId }) => submitAgentForReview(agentId, tags, userId),
+    return useMutation<MarketplaceSubmission, Error, { agentId: string; tags: string[]; readme?: string; userId: string }>({
+        mutationFn: ({ agentId, tags, readme, userId }) => submitAgentForReview(agentId, tags, userId, readme),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: ['my-submissions'] })
         },
