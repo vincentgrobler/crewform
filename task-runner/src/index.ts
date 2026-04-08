@@ -10,6 +10,7 @@ import { handleA2ARequest } from './a2aServer';
 import { handleAgUiRequest } from './agUiServer';
 import { handleMcpServerRequest } from './mcpServer';
 import { handleChatRequest } from './chatServer';
+import { handleKbSearchRequest } from './kbSearchEndpoint';
 import {
     registerRunner, deregisterRunner, getRunnerId, getInstanceName,
     runRecoverySweep, RECOVERY_INTERVAL_MS, MAX_CONCURRENT, decrementLoad,
@@ -271,6 +272,10 @@ function createWebhookServer(): http.Server {
                 void handleChatRequest(req, res).then((chatHandled) => {
                     if (chatHandled) return;
 
+                // KB Search endpoint
+                void handleKbSearchRequest(req, res).then((kbHandled) => {
+                    if (kbHandled) return;
+
                 // Health check
                 if (req.method === 'GET' && req.url === '/health') {
                     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -321,6 +326,7 @@ function createWebhookServer(): http.Server {
                 // 404 for everything else
                 res.writeHead(404, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ error: 'Not found' }));
+                }); // end handleKbSearchRequest.then
                 }); // end handleChatRequest.then
                 }); // end handleMcpServerRequest.then
             }); // end handleAgUiRequest.then
