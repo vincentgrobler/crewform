@@ -183,7 +183,7 @@ export function ChatWidgetSettings() {
   // ─── Embed Snippet ────────────────────────────────────────────────────
 
   const getEmbedSnippet = (widget: ChatWidgetConfig) => {
-    const runnerUrl = import.meta.env.VITE_TASK_RUNNER_URL ?? 'https://runner.crewform.tech'
+    const runnerUrl = (import.meta.env.VITE_TASK_RUNNER_URL as string | undefined) ?? 'https://runner.crewform.tech'
     return `<script\n  src="${runnerUrl}/chat/widget.js"\n  data-key="${widget.api_key}"\n  data-theme="${widget.theme.mode}"\n  data-position="${widget.theme.bubblePosition}"\n  async\n></script>`
   }
 
