@@ -15,6 +15,7 @@ export interface KnowledgeDocument {
     status: 'pending' | 'processing' | 'ready' | 'error'
     error_message: string | null
     chunk_count: number
+    tags: string[]
     created_by: string | null
     created_at: string
     updated_at: string
@@ -122,6 +123,19 @@ export async function deleteKnowledgeDocument(doc: KnowledgeDocument): Promise<v
         .from('knowledge_documents')
         .delete()
         .eq('id', doc.id)
+
+    if (error) throw error
+}
+
+/** Update tags for a document */
+export async function updateDocumentTags(
+    documentId: string,
+    tags: string[],
+): Promise<void> {
+    const { error } = await supabase
+        .from('knowledge_documents')
+        .update({ tags })
+        .eq('id', documentId)
 
     if (error) throw error
 }
