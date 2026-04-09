@@ -674,6 +674,91 @@ async function deliverAsana(
 
 // ── Trello ──────────────────────────────────────────────────────────────────
 
+interface TrelloSection {
+    title: string;
+    content: string;
+}
+
+/**
+ * Emoji lookup for Trello card titles based on section heading keywords.
+ */
+const SECTION_EMOJIS: [string, string][] = [
+    ['architect',    '🏗️'],
+    ['overview',     '🏗️'],
+    ['database',     '🗄️'],
+    ['schema',       '🗄️'],
+    ['table',        '🗄️'],
+    ['api',          '🔌'],
+    ['endpoint',     '🔌'],
+    ['route',        '🔌'],
+    ['rest',         '🔌'],
+    ['test',         '🧪'],
+    ['qa',           '🧪'],
+    ['quality',      '🧪'],
+    ['sprint',       '📝'],
+    ['story',        '📝'],
+    ['stories',      '📝'],
+    ['ticket',       '📝'],
+    ['backlog',      '📝'],
+    ['acceptance',   '📝'],
+    ['security',     '🔒'],
+    ['auth',         '🔐'],
+    ['vulnerab',     '🔒'],
+    ['implement',    '⚙️'],
+    ['technical',    '⚙️'],
+    ['decision',     '⚙️'],
+    ['depend',       '🔗'],
+    ['order',        '🔗'],
+    ['risk',         '⚠️'],
+    ['consider',     '💡'],
+    ['recommend',    '💡'],
+    ['librar',       '📦'],
+];
+
+function sectionEmoji(heading: string): string {
+    const lower = heading.toLowerCase();
+    for (const [keyword, emoji] of SECTION_EMOJIS) {
+        if (lower.includes(keyword)) return emoji;
+    }
+    return '📄';
+}
+
+/**
+ * Parse structured markdown output into logical sections for multi-card creation.
+ * Splits by top-level headings (# or ##). Returns empty array if the output
+ * doesn't have enough structure to justify splitting.
+ */
+function parseOutputSections(output: string): TrelloSection[] {
+    const headingRegex = /^(#{1,2})\s+(.+)$/gm;
+    const matches = [...output.matchAll(headingRegex)];
+
+    // Need at least 2 headings to justify splitting into multiple cards
+    if (matches.length < 2) return [];
+
+    const sections: TrelloSection[] = [];
+
+    // Preamble — any text before the first heading
+    const preamble = output.substring(0, matches[0].index!).trim();
+    if (preamble) {
+        sections.push({ title: '📋 Overview', content: preamble });
+    }
+
+    // Each heading becomes a card
+    for (let i = 0; i < matches.length; i++) {
+        const heading = matches[i][2].trim();
+        const contentStart = matches[i].index! + matches[i][0].length;
+        const contentEnd = i + 1 < matches.length ? matches[i + 1].index! : output.length;
+        const content = output.substring(contentStart, contentEnd).trim();
+
+        sections.push({
+            title: `${sectionEmoji(heading)} ${heading}`,
+            content,
+        });
+    }
+
+    return sections;
+}
+
 async function deliverTrello(
     route: OutputRoute,
     payload: WebhookPayload,
@@ -684,7 +769,7 @@ async function deliverTrello(
     const reviewListId = route.config.review_list_id as string | undefined;
 
     const emoji = payload.status === 'completed' ? '✅' : '❌';
-    const auth = `key=${apiKey}&token=${token}`;
+    const auth = `key=${encodeURIComponent(apiKey)}&token=${encodeURIComponent(token)}`;
 
     // Check if there's an existing card mapping (bidirectional flow)
     const taskOrRunId = payload.task_id ?? payload.team_run_id;
@@ -728,34 +813,118 @@ async function deliverTrello(
         }
 
         return { ok: commentResp.ok, statusCode: commentResp.status };
-    } else {
-        // Create new card on the configured list
-        const description = [
+    }
+
+    // ── Create new cards ────────────────────────────────────────────────
+    const output = payload.result_full || payload.error || 'No output';
+    const targetList = reviewListId && payload.status === 'completed' ? reviewListId : listId;
+    const sections = parseOutputSections(output);
+
+    if (sections.length >= 2) {
+        // ── Multi-card creation: one card per markdown section ───────
+        // 1. Summary card first
+        const taskLabel = payload.task_title.length > 200
+            ? payload.task_title.substring(0, 200) + '…'
+            : payload.task_title;
+
+        const summaryDesc = [
             `**${payload.team_run_id ? 'Team' : 'Agent'}:** ${payload.agent_name}`,
             `**Status:** ${payload.status}`,
             `**Event:** ${payload.event}`,
+            `**Cards Created:** ${sections.length + 1}`,
             '',
             '---',
             '',
-            payload.result_full || payload.error || 'No output',
+            `**Task:**`,
+            payload.task_title,
+            '',
+            `> This run generated **${sections.length}** section cards below this summary.`,
         ].join('\n');
 
-        const resp = await fetch(
+        const summaryResp = await fetch(
             `https://api.trello.com/1/cards?${auth}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    idList: listId,
-                    name: `${emoji} ${payload.task_title}`,
-                    desc: description.length > 16384 ? description.substring(0, 16384) : description,
+                    idList: targetList,
+                    name: `${emoji} ${taskLabel}`,
+                    desc: summaryDesc,
+                    pos: 'bottom',
                 }),
                 signal: AbortSignal.timeout(10000),
             },
         );
 
-        return { ok: resp.ok, statusCode: resp.status };
+        if (!summaryResp.ok) {
+            return { ok: false, statusCode: summaryResp.status };
+        }
+
+        // 2. Section cards
+        let lastStatus = summaryResp.status;
+        let allOk = true;
+
+        for (let i = 0; i < sections.length; i++) {
+            const section = sections[i];
+            const desc = section.content.length > 16384
+                ? section.content.substring(0, 16384)
+                : section.content;
+
+            // Small delay between cards to stay within Trello rate limits
+            await sleep(150);
+
+            const resp = await fetch(
+                `https://api.trello.com/1/cards?${auth}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idList: targetList,
+                        name: section.title,
+                        desc,
+                        pos: 'bottom',
+                    }),
+                    signal: AbortSignal.timeout(10000),
+                },
+            );
+
+            lastStatus = resp.status;
+            if (!resp.ok) {
+                allOk = false;
+                console.error(`[Trello] Failed to create card "${section.title}": ${resp.status}`);
+                break;
+            }
+        }
+
+        return { ok: allOk, statusCode: lastStatus };
     }
+
+    // ── Fallback: single card (unstructured output) ─────────────────
+    const description = [
+        `**${payload.team_run_id ? 'Team' : 'Agent'}:** ${payload.agent_name}`,
+        `**Status:** ${payload.status}`,
+        `**Event:** ${payload.event}`,
+        '',
+        '---',
+        '',
+        output,
+    ].join('\n');
+
+    const resp = await fetch(
+        `https://api.trello.com/1/cards?${auth}`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                idList: targetList,
+                name: `${emoji} ${payload.task_title}`,
+                desc: description.length > 16384 ? description.substring(0, 16384) : description,
+            }),
+            signal: AbortSignal.timeout(10000),
+        },
+    );
+
+    return { ok: resp.ok, statusCode: resp.status };
 }
 
 // ─── Logging ────────────────────────────────────────────────────────────────
