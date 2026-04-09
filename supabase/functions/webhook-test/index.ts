@@ -201,6 +201,30 @@ Deno.serve(async (req: Request) => {
                 });
                 break;
             }
+            case 'trello': {
+                const apiKey = routeRecord.config.api_key as string;
+                const token = routeRecord.config.token as string;
+                const listId = routeRecord.config.list_id as string;
+                if (!apiKey || !token || !listId) {
+                    return badRequest('Trello API Key, Token, and Default List ID are all required');
+                }
+                const trelloBody = {
+                    name: '[CrewForm] Webhook Test',
+                    desc: '✅ This is a test card created by CrewForm to verify your Trello integration is working correctly.\n\nYou can safely delete this card.',
+                    idList: listId,
+                    pos: 'top',
+                };
+                resp = await fetch(
+                    `https://api.trello.com/1/cards?key=${encodeURIComponent(apiKey)}&token=${encodeURIComponent(token)}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(trelloBody),
+                        signal: AbortSignal.timeout(10000),
+                    },
+                );
+                break;
+            }
             default:
                 return badRequest(`Unsupported destination type: ${routeRecord.destination_type}`);
         }
