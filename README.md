@@ -209,7 +209,7 @@ npm run dev
 - [Contributing](#contributing)
 - [Community](#community)
 - [FAQ](#faq)
-- [CrewForm vs Others](#crewform-vs-others)
+- [How CrewForm Compares](#how-crewform-compares)
 - [License](#license)
 
 ## Why CrewForm?
@@ -487,26 +487,27 @@ CrewForm integrates with **Zapier** (7,000+ apps), messaging channels (**Discord
 CrewForm is a **visual, UI-first platform** — you create agents, teams, and tasks through a web interface with no Python required. CrewAI and LangGraph are code-first libraries. CrewForm also includes built-in billing, RBAC, marketplace, messaging channels, MCP protocol support, RAG knowledge base, A2A agent-to-agent interop, AG-UI real-time streaming, and a production-ready self-hosted deployment. CrewForm is the **first platform to support all three agentic protocols** (MCP + A2A + AG-UI).
 </details>
 
-## CrewForm vs Others
+## How CrewForm Compares
 
-| Capability | CrewForm | Dify | n8n | CrewAI | LangGraph |
-|---|---|---|---|---|---|
-| **Visual UI** | ✅ Drag-and-drop canvas + live execution | ✅ Flow editor | ✅ Flow editor | ❌ Code-only | ❌ Code-only |
-| **Multi-Agent Teams** | ✅ 3 modes (Pipeline, Orchestrator, Collab) | ❌ Single-agent | ❌ Node-based | ✅ Code-defined | ✅ Code-defined |
-| **MCP Protocol** | ✅ Client + Server (bidirectional) | ❌ | ✅ Client only | ❌ | ❌ |
-| **A2A Protocol** | ✅ Bidirectional (consume + publish) | ❌ | ❌ | ❌ | ❌ |
-| **AG-UI Protocol** | ✅ SSE + rich interactions | ❌ | ❌ | ❌ | ❌ |
-| **LLM Providers** | ✅ 16 + Ollama (local) | ~10 | Via nodes | Code | Code |
-| **BYOK (zero markup)** | ✅ Your keys, your cost | ✅ | ✅ | ✅ | ✅ |
-| **Local Models (Ollama)** | ✅ Native, air-gapped | ✅ | ✅ | ✅ | ✅ |
-| **RAG / Knowledge Base** | ✅ Hybrid search + retrieval tester | ✅ | Via nodes | Code | Code |
-| **Chat Widget** | ✅ One script tag, streaming | ✅ | ❌ | ❌ | ❌ |
-| **Observability** | ✅ OTLP + Langfuse | ✅ LangSmith | ❌ | ✅ | ✅ |
-| **Fan-Out (Parallel)** | ✅ Built-in branching + merge | ❌ | ✅ | ❌ | ✅ |
-| **Agent Marketplace** | ✅ Browse, install, publish | ✅ Templates | ✅ Templates | ❌ | ❌ |
-| **Data Portability** | ✅ JSON export/import | ✅ DSL export | ✅ JSON export | N/A | N/A |
-| **Self-Hosting** | ✅ Docker Compose | ✅ Docker | ✅ Docker | N/A (library) | N/A (library) |
-| **Open Source** | ✅ AGPL-3.0 | ✅ Apache-2.0 | ✅ Fair-code | ✅ MIT | ✅ MIT |
+| Capability | CrewForm | Others |
+|---|---|---|
+| **Visual UI** | ✅ Drag-and-drop canvas + live execution | Often code-only or basic flow editors |
+| **Multi-Agent Teams** | ✅ 3 modes — Pipeline, Orchestrator, Collaboration | Usually single-mode or code-defined |
+| **MCP Protocol** | ✅ Client + Server (bidirectional) | Typically client-only or unsupported |
+| **A2A Protocol** | ✅ Bidirectional (consume + publish) | Not supported |
+| **AG-UI Protocol** | ✅ SSE + rich interactions | Not supported |
+| **All 3 Protocols** | ✅ MCP + A2A + AG-UI — native | Zero or one |
+| **LLM Providers** | ✅ 16 + Ollama (local) | Often limited or requires plugins |
+| **BYOK (zero markup)** | ✅ Your keys, your cost | Often limited providers or markup fees |
+| **Local Models (Ollama)** | ✅ Native, fully air-gapped | Varies |
+| **RAG / Knowledge Base** | ✅ Hybrid search + retrieval tester | Sometimes available, often requires plugins |
+| **Chat Widget** | ✅ One script tag, streaming, domain security | Rare — usually requires custom dev |
+| **Observability** | ✅ OTLP + Langfuse | Sometimes available |
+| **Fan-Out (Parallel)** | ✅ Built-in branching + merge | Rare in UI-first platforms |
+| **Agent Marketplace** | ✅ Browse, install, publish | Rare in open-source tools |
+| **Data Portability** | ✅ JSON export/import for agents and teams | Usually locked to platform |
+| **Self-Hosting** | ✅ One-command Docker Compose | Often cloud-only or complex setup |
+| **Open Source** | ✅ AGPL-3.0 | Varies |
 
 > **CrewForm is the only platform with all three agentic protocols** (MCP + A2A + AG-UI) — giving your agents access to thousands of tools, cross-framework interop, and real-time UI streaming out of the box.
 
