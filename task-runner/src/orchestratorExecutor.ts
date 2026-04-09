@@ -138,6 +138,7 @@ export async function processOrchestratorRun(run: TeamRun): Promise<void> {
     let totalTokens = 0;
     let totalCost = 0;
     let teamData: { name: string; config: OrchestratorConfig; mode: string; output_route_ids: string[] | null } | null = null;
+    let finalOutput: string | null = null; // Track the finalized output for webhook dispatch
 
     try {
         // 1. Fetch team to get config
@@ -221,7 +222,8 @@ export async function processOrchestratorRun(run: TeamRun): Promise<void> {
 
             if (!toolCall) {
                 // Brain gave a text response without a tool call — treat as final answer
-                await finalizeRun(run.id, brainResult.result, totalTokens, totalCost);
+                finalOutput = brainResult.result;
+                await finalizeRun(run.id, finalOutput, totalTokens, totalCost);
                 isDone = true;
                 break;
             }
@@ -261,6 +263,10 @@ export async function processOrchestratorRun(run: TeamRun): Promise<void> {
 
             if (toolResult.isDone) {
                 isDone = true;
+                // Capture the output from final_answer for webhook dispatch
+                if (!finalOutput && toolResult.result) {
+                    finalOutput = toolResult.result;
+                }
             }
 
             // Update run progress
@@ -288,6 +294,7 @@ export async function processOrchestratorRun(run: TeamRun): Promise<void> {
                 totalTokens,
                 totalCost,
             );
+            finalOutput = lastOutputs || 'Orchestrator reached maximum loop count without producing a final answer.';
         }
 
         // Write usage record
@@ -306,15 +313,22 @@ export async function processOrchestratorRun(run: TeamRun): Promise<void> {
         console.log(`[Orchestrator] Completed run ${run.id} (${loopCount} loops, ${totalTokens} tokens)`);
 
         // Store output as team memory (fire-and-forget)
-        const completedRun = await supabase.from('team_runs').select('output').eq('id', run.id).single();
-        const runOutput = (completedRun.data as { output: string | null } | null)?.output;
+        // Use finalOutput we tracked inline, or fall back to re-fetching from DB
+        let runOutput = finalOutput;
+        if (!runOutput) {
+            const completedRun = await supabase.from('team_runs').select('output').eq('id', run.id).single();
+            runOutput = (completedRun.data as { output: string | null } | null)?.output ?? null;
+        }
+
+        console.log(`[Orchestrator] Run ${run.id} output length: ${runOutput?.length ?? 0} chars`);
+
         if (runOutput) {
             void storeTeamMemory(run.team_id, run.id, run.workspace_id, runOutput);
         }
 
         // Fire team_run.completed webhook (fire-and-forget)
         void dispatchTeamRunWebhooks(
-            { id: run.id, team_id: run.team_id, workspace_id: run.workspace_id, status: 'completed', input_task: run.input_task, output: runOutput ?? undefined },
+            { id: run.id, team_id: run.team_id, workspace_id: run.workspace_id, status: 'completed', input_task: run.input_task, output: runOutput },
             teamData.name,
             'team_run.completed',
             teamData.output_route_ids,
@@ -529,8 +543,9 @@ async function executeToolCall(
 
         case 'final_answer': {
             const output = args.output as string;
+            console.log(`[Orchestrator] final_answer received, output length: ${output?.length ?? 0} chars`);
             await finalizeRun(run.id, output, 0, 0); // tokens/cost already tracked
-            return { result: 'Final answer submitted.', tokensUsed: 0, costUsed: 0, isDone: true };
+            return { result: output, tokensUsed: 0, costUsed: 0, isDone: true };
         }
 
         default:
@@ -675,7 +690,7 @@ async function finalizeRun(
 
     const current = currentResponse.data as { tokens_total: number; cost_estimate_usd: number } | null;
 
-    await supabase
+    const { error } = await supabase
         .from('team_runs')
         .update({
             status: 'completed',
@@ -685,4 +700,10 @@ async function finalizeRun(
             completed_at: new Date().toISOString(),
         })
         .eq('id', runId);
+
+    if (error) {
+        console.error(`[Orchestrator] finalizeRun failed for ${runId}:`, error.message);
+    } else {
+        console.log(`[Orchestrator] finalizeRun saved output for ${runId} (${output.length} chars)`);
+    }
 }
