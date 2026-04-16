@@ -15,6 +15,7 @@
  *       GITHUB_REPO_ID, GITHUB_DISCUSSION_CATEGORY_IDS (JSON map)
  */
 
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { handleCors } from '../_shared/cors.ts';
 import { validateBody, z } from '../_shared/validate.ts';
 import { ok, badRequest, methodNotAllowed, serverError, unauthorized } from '../_shared/response.ts';
@@ -220,7 +221,6 @@ Deno.serve(async (req: Request) => {
 
         // We don't need to fully resolve workspace context — just extract the
         // token to validate the user and get their email for the report.
-        const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
         const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
         const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
         const token = authHeader.replace('Bearer ', '');
