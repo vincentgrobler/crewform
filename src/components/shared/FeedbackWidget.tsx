@@ -93,7 +93,7 @@ export function FeedbackWidget() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
-  const activeCat = CATEGORIES.find((c) => c.id === category)!
+  const activeCat = CATEGORIES.find((c) => c.id === category) ?? CATEGORIES[2]
   const userEmail = user?.email ?? ''
 
   // Close on Escape
@@ -159,7 +159,8 @@ export function FeedbackWidget() {
       })
 
       if (res.error) {
-        throw new Error(res.error.message ?? 'Failed to submit feedback')
+        const errMsg = res.error instanceof Error ? res.error.message : 'Failed to submit feedback'
+        throw new Error(errMsg)
       }
 
       setMessage('')
@@ -236,9 +237,13 @@ export function FeedbackWidget() {
             {/* Greeting */}
             <p className="mb-3 text-sm text-gray-400">
               Hey <span className="font-semibold text-gray-200">
-                {(user?.user_metadata as Record<string, unknown>)?.full_name as string
-                  ?? (user?.user_metadata as Record<string, unknown>)?.name as string
-                  ?? 'Crew'}
+                {(() => {
+                  const meta = (user?.user_metadata ?? {}) as Record<string, unknown>
+                  const name = typeof meta.full_name === 'string' ? meta.full_name
+                    : typeof meta.name === 'string' ? meta.name
+                    : 'Crew'
+                  return name
+                })()}
               </span>, what do you think?
             </p>
 
