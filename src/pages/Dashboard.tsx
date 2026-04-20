@@ -21,6 +21,7 @@ import { QuickActions } from '@/components/dashboard/QuickActions'
 import { ErrorState } from '@/components/shared/ErrorState'
 import { RoleGate } from '@/components/ui/RoleGate'
 import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard'
+import { DemoBanner } from '@/components/dashboard/DemoBanner'
 
 /**
  * Dashboard page — stat cards, agent performance grid, activity timeline, quick actions.
@@ -60,6 +61,9 @@ export function Dashboard() {
         </div>
         <p className="text-sm text-gray-500">{today}</p>
       </div>
+
+      {/* Demo workspace banner — owners only */}
+      {isOwner && <DemoBanner />}
 
       {/* Error state */}
       {statsError && (
