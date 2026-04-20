@@ -14,6 +14,7 @@ The first platform with native **MCP** (Tools) + **A2A** (Agent-to-Agent) + **AG
 [![Discord](https://img.shields.io/discord/1476188192100323488?color=5865F2&label=Discord&logo=discord&logoColor=white)](https://discord.gg/TAFasJCTWs)
 [![Built with Supabase](https://img.shields.io/badge/Built_with-Supabase-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com)
 [![Deployed on Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000?logo=vercel&logoColor=white)](https://vercel.com)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/pH5MkZ?referralCode=g38HaT&utm_medium=integration&utm_source=template&utm_campaign=generic)
 [![Docs](https://img.shields.io/badge/Docs-Mintlify-0D9373?logo=mintlify&logoColor=white)](https://docs.crewform.tech)
 [![Zapier](https://img.shields.io/badge/Zapier-Integrated-FF4A00?logo=zapier&logoColor=white)](https://zapier.com)
 
@@ -194,6 +195,14 @@ npm run dev
 ```
 
 > 📖 See the [Self-Hosting Guide](https://docs.crewform.tech/self-hosting) for production deployment details.
+
+### One-Click Deploy
+
+Deploy the CrewForm task runner to Railway with a single click:
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/pH5MkZ?referralCode=g38HaT&utm_medium=integration&utm_source=template&utm_campaign=generic)
+
+You'll need to provide your own Supabase credentials and LLM API keys after deployment.
 
 ## Table of Contents
 
@@ -415,7 +424,7 @@ CrewForm uses an **open-core** model: a free Community Edition under AGPL-3.0 an
 | **Observability** | OpenTelemetry · Langfuse · Datadog · Jaeger |
 | **Integrations** | Zapier · Discord · Slack · Telegram · Email · Webhooks · Chat Widget |
 | **Validation** | Zod |
-| **Deployment** | Vercel · Docker Compose |
+| **Deployment** | Vercel · Docker Compose · Railway |
 
 ## Contributing
 
