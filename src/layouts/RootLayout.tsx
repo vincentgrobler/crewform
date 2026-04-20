@@ -406,6 +406,19 @@ export function RootLayout() {
         {/* User footer — hidden when collapsed */}
         {!collapsed && (
           <div className="border-t border-gray-800 p-4">
+            {/* Status page link */}
+            <a
+              href="https://crewform.instatus.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mb-3 flex items-center gap-2 rounded-lg px-1 py-1 text-xs text-gray-500 transition-colors hover:text-gray-300"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
+              All systems operational
+            </a>
             <div className="flex items-center gap-3">
               {avatarUrl ? (
                 <img
@@ -436,9 +449,21 @@ export function RootLayout() {
           </div>
         )}
 
-        {/* Collapsed footer — just sign out icon */}
+        {/* Collapsed footer — sign out + status dot */}
         {collapsed && (
-          <div className="border-t border-gray-800 p-2">
+          <div className="border-t border-gray-800 p-2 space-y-1">
+            <a
+              href="https://crewform.instatus.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="System Status"
+              className="flex w-full items-center justify-center rounded-lg p-2.5 text-gray-500 transition-colors hover:bg-gray-800 hover:text-gray-300"
+            >
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              </span>
+            </a>
             <button
               type="button"
               onClick={() => void signOut()}
