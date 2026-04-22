@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Save, Trash2, Upload, DownloadCloud, Activity, Settings2, AlertCircle, Loader2, History, Zap, Plus, Pencil, X, CheckCircle2, XCircle, Clock, Cpu, Coins, Mic, FileOutput, Download } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, Upload, DownloadCloud, Activity, Settings2, AlertCircle, Loader2, History, Zap, Plus, Pencil, X, CheckCircle2, XCircle, Clock, Cpu, Coins, Mic, FileOutput, Download, LayoutTemplate } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAgent } from '@/hooks/useAgent'
 import { useUpdateAgent } from '@/hooks/useUpdateAgent'
@@ -15,6 +15,7 @@ import { PromptHistoryPanel } from '@/components/agents/PromptHistoryPanel'
 import { TriggersPanel } from '@/components/agents/TriggersPanel'
 import { ChannelSelector } from '@/components/shared/ChannelSelector'
 import { PublishAgentModal } from '@/components/marketplace/PublishAgentModal'
+import { CreateTemplateModal } from '@/components/marketplace/CreateTemplateModal'
 import { CustomToolEditor } from '@/components/agents/CustomToolEditor'
 import { VoiceProfileTab } from '@/components/agents/VoiceProfileTab'
 import { OutputTemplateTab } from '@/components/agents/OutputTemplateTab'
@@ -67,6 +68,7 @@ export function AgentDetail() {
     const [activeTab, setActiveTab] = useState<TabKey>('config')
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [showPublishModal, setShowPublishModal] = useState(false)
+    const [showCreateTemplate, setShowCreateTemplate] = useState(false)
     const [formData, setFormData] = useState<AgentFormData | null>(null)
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
     const [hasChanges, setHasChanges] = useState(false)
@@ -342,6 +344,17 @@ export function AgentDetail() {
                         Export
                     </button>
 
+                    {/* Save as Template */}
+                    <button
+                        type="button"
+                        onClick={() => setShowCreateTemplate(true)}
+                        className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-surface-elevated hover:text-brand-primary"
+                        title="Bundle this agent into a reusable template"
+                    >
+                        <LayoutTemplate className="h-4 w-4" />
+                        Template
+                    </button>
+
                     {/* Delete button */}
                     <button
                         type="button"
@@ -440,6 +453,13 @@ export function AgentDetail() {
                     onClose={() => setShowPublishModal(false)}
                 />
             )}
+
+            {/* Create Template modal */}
+            <CreateTemplateModal
+                open={showCreateTemplate}
+                onClose={() => setShowCreateTemplate(false)}
+                preSelectedAgentIds={[agent.id]}
+            />
 
             {/* Delete dialog */}
             {showDeleteDialog && (
