@@ -280,7 +280,7 @@ export async function installTemplate(
 
         // Add team members
         for (let i = 0; i < teamDef.steps.length; i++) {
-            const step = teamDef.steps[i] as (typeof teamDef.steps)[number]
+            const step = teamDef.steps[i]
             const agent = createdAgents[step.agent_index] as Agent | undefined
             if (!agent) continue
 
