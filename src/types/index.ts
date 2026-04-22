@@ -18,6 +18,7 @@ export interface Workspace {
   is_beta: boolean
   suspended_at: string | null
   suspended_reason: string | null
+  trial_expires_at: string | null
   settings: Record<string, unknown>
   created_at: string
   updated_at: string

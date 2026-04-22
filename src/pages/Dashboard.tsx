@@ -22,6 +22,7 @@ import { ErrorState } from '@/components/shared/ErrorState'
 import { RoleGate } from '@/components/ui/RoleGate'
 import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard'
 import { DemoBanner } from '@/components/dashboard/DemoBanner'
+import { TrialBanner } from '@/components/dashboard/TrialBanner'
 
 /**
  * Dashboard page — stat cards, agent performance grid, activity timeline, quick actions.
@@ -64,6 +65,9 @@ export function Dashboard() {
 
       {/* Demo workspace banner — owners only */}
       {isOwner && <DemoBanner />}
+
+      {/* Trial banner — shows when workspace has active/expired trial */}
+      <TrialBanner />
 
       {/* Error state */}
       {statsError && (

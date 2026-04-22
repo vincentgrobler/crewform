@@ -59,10 +59,24 @@ export function useWorkspace() {
         void queryClient.invalidateQueries({ queryKey: ['workspace'] })
     }, [queryClient])
 
+    // Trial computation
+    const trialExpiresAt = workspace?.trial_expires_at
+        ? new Date(workspace.trial_expires_at)
+        : null
+    const trialActive = trialExpiresAt != null && trialExpiresAt > new Date()
+    const trialDaysLeft = trialActive
+        ? Math.max(0, Math.ceil((trialExpiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+        : 0
+    const effectivePlan = trialActive ? 'team' : (workspace?.plan ?? 'free')
+
     return {
         workspace: workspace ?? null,
         workspaceId: workspace?.id ?? null,
         isSuspended: !!workspace?.suspended_at,
+        effectivePlan,
+        trialActive,
+        trialDaysLeft,
+        trialExpiresAt,
         isLoading,
         error,
         setActiveWorkspace,
