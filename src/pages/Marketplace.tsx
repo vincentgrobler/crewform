@@ -63,7 +63,7 @@ export function Marketplace() {
   const { tags: agentTags } = useMarketplaceTags()
   const { tags: teamTags } = useMarketplaceTeamTags()
 
-  const { templates, isLoading: templatesLoading, error: templatesError, refetch: refetchTemplates } = usePublishedTemplates({
+  const { templates, isLoading: templatesLoading, error: templatesError } = usePublishedTemplates({
     search: deferredSearch,
     sort: sort === 'installs' ? 'installs' : sort === 'newest' ? 'newest' : 'name',
   })

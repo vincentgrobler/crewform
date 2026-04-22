@@ -26,7 +26,7 @@ export function TemplateInstallModal({ template, onClose, onSuccess }: TemplateI
     const vars = template.variables
 
     // Initialize defaults
-    const getVal = (v: TemplateVariable) => values[v.key] ?? v.default ?? ''
+    const getVal = (v: TemplateVariable) => values[v.key] ?? v.default
 
     const allRequiredFilled = vars
         .filter((v) => v.required)
@@ -150,7 +150,7 @@ export function TemplateInstallModal({ template, onClose, onSuccess }: TemplateI
             {/* Error */}
             {installMutation.isError && (
                 <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-                    {installMutation.error?.message ?? 'Installation failed. Please try again.'}
+                    {installMutation.error instanceof Error ? installMutation.error.message : 'Installation failed. Please try again.'}
                 </div>
             )}
 

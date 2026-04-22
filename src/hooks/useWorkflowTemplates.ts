@@ -11,29 +11,16 @@ import {
     updateWorkflowTemplate,
     deleteWorkflowTemplate,
     installTemplate,
-    type WorkflowTemplateQueryOptions,
-    type CreateWorkflowTemplateInput,
 } from '@/db/workflowTemplates'
+import type { WorkflowTemplateQueryOptions, CreateWorkflowTemplateInput } from '@/db/workflowTemplates'
 import type { WorkflowTemplate } from '@/types'
-
-// ─── Query Keys ─────────────────────────────────────────────────────────────
-
-const KEYS = {
-    all: ['workflow-templates'] as const,
-    published: (opts: WorkflowTemplateQueryOptions) =>
-        [...KEYS.all, 'published', opts] as const,
-    detail: (id: string) => [...KEYS.all, 'detail', id] as const,
-    workspace: (workspaceId: string) =>
-        [...KEYS.all, 'workspace', workspaceId] as const,
-    categories: [...KEYS.all, 'categories'] as const,
-}
 
 // ─── Queries ────────────────────────────────────────────────────────────────
 
 /** Browse published templates (marketplace) */
 export function usePublishedTemplates(options: WorkflowTemplateQueryOptions = {}) {
     const { data, isLoading, error, refetch } = useQuery({
-        queryKey: KEYS.published(options),
+        queryKey: ['workflow-templates', 'published', options.search, options.category, options.tag, options.sort],
         queryFn: () => fetchPublishedTemplates(options),
     })
 
@@ -48,8 +35,8 @@ export function usePublishedTemplates(options: WorkflowTemplateQueryOptions = {}
 /** Fetch a single template by ID */
 export function useTemplateDetail(id: string | null) {
     const { data, isLoading, error } = useQuery({
-        queryKey: KEYS.detail(id ?? ''),
-        queryFn: () => fetchTemplateById(id!),
+        queryKey: ['workflow-templates', 'detail', id],
+        queryFn: () => (id ? fetchTemplateById(id) : null),
         enabled: !!id,
     })
 
@@ -63,8 +50,8 @@ export function useTemplateDetail(id: string | null) {
 /** Fetch templates created by a workspace */
 export function useWorkspaceTemplates(workspaceId: string | undefined) {
     const { data, isLoading, error } = useQuery({
-        queryKey: KEYS.workspace(workspaceId ?? ''),
-        queryFn: () => fetchWorkspaceTemplates(workspaceId!),
+        queryKey: ['workflow-templates', 'workspace', workspaceId],
+        queryFn: () => (workspaceId ? fetchWorkspaceTemplates(workspaceId) : []),
         enabled: !!workspaceId,
     })
 
@@ -78,7 +65,7 @@ export function useWorkspaceTemplates(workspaceId: string | undefined) {
 /** Fetch unique template categories */
 export function useTemplateCategories() {
     const { data, isLoading } = useQuery({
-        queryKey: KEYS.categories,
+        queryKey: ['workflow-templates', 'categories'],
         queryFn: fetchTemplateCategories,
     })
 
@@ -98,8 +85,8 @@ export function useCreateTemplate() {
         mutationFn: (input: CreateWorkflowTemplateInput) =>
             createWorkflowTemplate(input),
         onSuccess: (template: WorkflowTemplate) => {
-            void qc.invalidateQueries({ queryKey: KEYS.workspace(template.workspace_id) })
-            void qc.invalidateQueries({ queryKey: KEYS.all })
+            void qc.invalidateQueries({ queryKey: ['workflow-templates', 'workspace', template.workspace_id] })
+            void qc.invalidateQueries({ queryKey: ['workflow-templates'] })
         },
     })
 }
@@ -117,8 +104,8 @@ export function useUpdateTemplate() {
             updates: Partial<Omit<CreateWorkflowTemplateInput, 'workspace_id'>>
         }) => updateWorkflowTemplate(id, updates),
         onSuccess: (template: WorkflowTemplate) => {
-            void qc.invalidateQueries({ queryKey: KEYS.detail(template.id) })
-            void qc.invalidateQueries({ queryKey: KEYS.all })
+            void qc.invalidateQueries({ queryKey: ['workflow-templates', 'detail', template.id] })
+            void qc.invalidateQueries({ queryKey: ['workflow-templates'] })
         },
     })
 }
@@ -130,7 +117,7 @@ export function useDeleteTemplate() {
     return useMutation({
         mutationFn: (id: string) => deleteWorkflowTemplate(id),
         onSuccess: () => {
-            void qc.invalidateQueries({ queryKey: KEYS.all })
+            void qc.invalidateQueries({ queryKey: ['workflow-templates'] })
         },
     })
 }
@@ -153,7 +140,7 @@ export function useInstallTemplate() {
             // Invalidate agents + teams since new ones were created
             void qc.invalidateQueries({ queryKey: ['agents'] })
             void qc.invalidateQueries({ queryKey: ['teams'] })
-            void qc.invalidateQueries({ queryKey: KEYS.all })
+            void qc.invalidateQueries({ queryKey: ['workflow-templates'] })
         },
     })
 }

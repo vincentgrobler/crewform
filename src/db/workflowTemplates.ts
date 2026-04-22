@@ -8,8 +8,8 @@ import type {
     TemplateVariable,
     PipelineConfig,
     PipelineStep,
+    Agent,
 } from '@/types'
-import type { Agent } from '@/types'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -249,8 +249,8 @@ export async function installTemplate(
         const teamDef = resolved.team
 
         // Build pipeline config with real agent IDs
-        const steps: PipelineStep[] = teamDef.steps.map((step, idx) => ({
-            agent_id: createdAgents[step.agent_index]?.id ?? createdAgents[0]?.id ?? '',
+        const steps: PipelineStep[] = teamDef.steps.map((step) => ({
+            agent_id: createdAgents[step.agent_index]?.id ?? '',
             step_name: step.step_name,
             instructions: step.instructions,
             expected_output: step.expected_output,
@@ -280,9 +280,8 @@ export async function installTemplate(
 
         // Add team members
         for (let i = 0; i < teamDef.steps.length; i++) {
-            const step = teamDef.steps[i]
-            if (!step) continue
-            const agent = createdAgents[step.agent_index]
+            const step = teamDef.steps[i] as (typeof teamDef.steps)[number]
+            const agent = createdAgents[step.agent_index] as Agent | undefined
             if (!agent) continue
 
             await supabase
@@ -329,17 +328,10 @@ export async function installTemplate(
     }
 
     // 6. Increment install count (fire-and-forget)
-    void supabase.rpc('increment_counter', {
-        table_name: 'workflow_templates',
-        row_id: templateId,
-        column_name: 'install_count',
-    }).catch(() => {
-        // Fallback: direct update
-        void supabase
-            .from('workflow_templates')
-            .update({ install_count: template.install_count + 1 })
-            .eq('id', templateId)
-    })
+    void supabase
+        .from('workflow_templates')
+        .update({ install_count: template.install_count + 1 })
+        .eq('id', templateId)
 
     return {
         agents: createdAgents,
