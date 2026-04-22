@@ -147,7 +147,7 @@ export async function checkQuota(
     // Fetch workspace to get plan and beta flag
     const wsResult = await supabase
         .from('workspaces')
-        .select('plan, is_beta')
+        .select('plan, is_beta, trial_expires_at')
         .eq('id', workspaceId)
         .single()
 
@@ -156,15 +156,16 @@ export async function checkQuota(
         return { allowed: false, current: 0, limit: 0, resource }
     }
 
-    const ws = wsResult.data as { plan: string; is_beta: boolean }
+    const ws = wsResult.data as { plan: string; is_beta: boolean; trial_expires_at: string | null }
 
     // Beta workspaces bypass all quota limits
     if (ws.is_beta) {
         return { allowed: true, current: 0, limit: -1, resource }
     }
 
-    // Use workspace.plan as the single source of truth
-    const plan = ws.plan || 'free'
+    // Trial check: if trial is active, use 'team' tier
+    const trialActive = ws.trial_expires_at != null && new Date(ws.trial_expires_at) > new Date()
+    const plan = trialActive ? 'team' : (ws.plan || 'free')
 
     // Get limit for this resource
     const limit = await getPlanLimit(plan, resource)
