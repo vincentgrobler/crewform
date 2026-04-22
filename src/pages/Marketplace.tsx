@@ -2,7 +2,7 @@
 // Copyright (C) 2026 CrewForm
 
 import { useState, useDeferredValue } from 'react'
-import { Store, Loader2, CheckCircle2, XCircle, Upload, BarChart3, Bot, Users2, LayoutTemplate } from 'lucide-react'
+import { Store, Loader2, CheckCircle2, XCircle, Upload, BarChart3, Bot, Users2, LayoutTemplate, Plus } from 'lucide-react'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useAuth } from '@/hooks/useAuth'
 import { useMarketplaceAgents, useMarketplaceTags, useMySubmissions, useMarketplaceTeams, useMarketplaceTeamTags } from '@/hooks/useMarketplace'
@@ -16,6 +16,7 @@ import { TeamDetailModal } from '@/components/marketplace/TeamDetailModal'
 import { CreatorDashboard } from '@/components/marketplace/CreatorDashboard'
 import { TemplateCard } from '@/components/marketplace/TemplateCard'
 import { TemplateInstallModal } from '@/components/marketplace/TemplateInstallModal'
+import { CreateTemplateModal } from '@/components/marketplace/CreateTemplateModal'
 import { usePublishedTemplates } from '@/hooks/useWorkflowTemplates'
 import { ErrorState } from '@/components/shared/ErrorState'
 import type { MarketplaceSortOption } from '@/db/marketplace'
@@ -43,6 +44,7 @@ export function Marketplace() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null)
   const [selectedTemplate, setSelectedTemplate] = useState<WorkflowTemplate | null>(null)
+  const [showCreateTemplate, setShowCreateTemplate] = useState(false)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   const deferredSearch = useDeferredValue(search)
@@ -131,9 +133,19 @@ export function Marketplace() {
     <div className="p-6 lg:p-8">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <Store className="h-6 w-6 text-brand-primary" />
-          <h1 className="text-2xl font-semibold text-gray-100">Marketplace</h1>
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="flex items-center gap-3">
+            <Store className="h-6 w-6 text-brand-primary" />
+            <h1 className="text-2xl font-semibold text-gray-100">Marketplace</h1>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowCreateTemplate(true)}
+            className="flex items-center gap-2 rounded-lg bg-brand-primary px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-brand-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            Create Template
+          </button>
         </div>
         <p className="text-sm text-gray-500">
           Browse, install, and publish agents, teams, and workflow templates with the CrewForm community.
@@ -359,6 +371,11 @@ export function Marketplace() {
           setSelectedTemplate(null)
           setTimeout(() => setToast(null), 4000)
         }}
+      />
+
+      <CreateTemplateModal
+        open={showCreateTemplate}
+        onClose={() => setShowCreateTemplate(false)}
       />
 
       {/* Toast notification */}
