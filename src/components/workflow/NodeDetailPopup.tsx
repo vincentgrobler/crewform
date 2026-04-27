@@ -26,9 +26,13 @@ import {
     ArrowUpFromLine,
     ChevronDown,
     ChevronRight,
+    GitBranch,
+    Globe,
 } from 'lucide-react'
 import type { Agent, Team, PipelineConfig, PipelineStep, TeamMessage } from '@/types'
 import type { AgentNodeData } from './nodes/AgentNode'
+import type { ConditionalNodeData, ConditionOperator } from './nodes/ConditionalNode'
+import type { HttpNodeData } from './nodes/HttpNode'
 import type { ExecutionNodeState } from './useExecutionState'
 
 interface NodeDetailPopupProps {
@@ -73,7 +77,8 @@ export function NodeDetailPopup({ node, team, agents, executionStates, runMessag
     // Can delete?
     const protectedIds = new Set(['start', 'end', 'brain'])
     const isBrain = nodeData.role === 'brain' || nodeData.role === 'orchestrator'
-    const canDelete = isAgentNode && !protectedIds.has(node.id) && !(isBrain && team.mode === 'orchestrator')
+    const canDelete = (isAgentNode || node.type === 'conditionalNode' || node.type === 'httpNode')
+        && !protectedIds.has(node.id) && !(isBrain && team.mode === 'orchestrator')
 
     // I/O: filter messages for this agent
     const { inputText, outputText } = getNodeIO(agentId, runMessages)
@@ -101,7 +106,7 @@ export function NodeDetailPopup({ node, team, agents, executionStates, runMessag
         }
     }, [onClose])
 
-    if (!isAgentNode) return null
+    if (!isAgentNode && node.type !== 'conditionalNode' && node.type !== 'httpNode') return null
 
     return (
         <div
@@ -123,6 +128,14 @@ export function NodeDetailPopup({ node, team, agents, executionStates, runMessag
                             alt={nodeData.label}
                             className="h-10 w-10 rounded-lg object-cover"
                         />
+                    ) : node.type === 'conditionalNode' ? (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/15">
+                            <GitBranch className="h-5 w-5 text-amber-400" />
+                        </div>
+                    ) : node.type === 'httpNode' ? (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-500/15">
+                            <Globe className="h-5 w-5 text-cyan-400" />
+                        </div>
                     ) : (
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-muted">
                             <Bot className="h-5 w-5 text-brand-primary" />
@@ -286,6 +299,92 @@ export function NodeDetailPopup({ node, team, agents, executionStates, runMessag
                         Brain agent cannot be removed from the orchestrator.
                     </p>
                 </div>
+            )}
+
+            {/* Conditional node config */}
+            {node.type === 'conditionalNode' && (
+                <>
+                    {/* Header override for conditional */}
+                    <hr className="border-white/5 mb-2" />
+                    <div className="space-y-1.5 mb-3">
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-gray-600">Condition Config</p>
+                        {((node.data as unknown as ConditionalNodeData).conditions ?? []).map((c, i) => {
+                            const opLabel: Record<ConditionOperator, string> = {
+                                contains: 'contains', not_contains: 'not contains',
+                                equals: '==', not_equals: '!=',
+                                starts_with: 'starts with', ends_with: 'ends with',
+                                regex: 'regex', gt: '>', lt: '<',
+                                is_empty: 'is empty', is_not_empty: 'is not empty',
+                                llm_judge: 'LLM judge',
+                            }
+                            return (
+                                <div key={i} className="rounded-md bg-amber-500/5 border border-amber-500/10 px-2.5 py-2">
+                                    <div className="flex items-center gap-1 text-[10px]">
+                                        <span className="text-amber-400 font-mono">{c.field}</span>
+                                        <span className="text-gray-600">{opLabel[c.operator]}</span>
+                                        {c.value && <span className="text-gray-400 font-mono">"{c.value}"</span>}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                        <p className="text-[10px] text-gray-600 italic">
+                            Condition editing coming soon — configure via API.
+                        </p>
+                    </div>
+                </>
+            )}
+
+            {/* HTTP node config */}
+            {node.type === 'httpNode' && (
+                <>
+                    <hr className="border-white/5 mb-2" />
+                    <div className="space-y-1.5 mb-3">
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-gray-600">HTTP Config</p>
+                        {(() => {
+                            const httpData = node.data as unknown as HttpNodeData
+                            const methodColors: Record<string, string> = {
+                                GET: 'text-green-400', POST: 'text-blue-400',
+                                PUT: 'text-amber-400', DELETE: 'text-red-400',
+                                PATCH: 'text-purple-400',
+                            }
+                            return (
+                                <>
+                                    <div className="rounded-md bg-cyan-500/5 border border-cyan-500/10 px-2.5 py-2">
+                                        <div className="flex items-center gap-1.5 text-[10px]">
+                                            <span className={`font-bold ${methodColors[httpData.method] ?? 'text-gray-400'}`}>
+                                                {httpData.method || 'GET'}
+                                            </span>
+                                            <span className="text-gray-400 font-mono truncate">
+                                                {httpData.url || 'No URL set'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {httpData.headers?.length > 0 && (
+                                        <div>
+                                            <p className="text-[10px] text-gray-600">Headers ({httpData.headers.length})</p>
+                                            {httpData.headers.slice(0, 3).map((h, i) => (
+                                                <p key={i} className="text-[10px] text-gray-500 font-mono">
+                                                    {h.key}: {h.value}
+                                                </p>
+                                            ))}
+                                            {httpData.headers.length > 3 && (
+                                                <p className="text-[10px] text-gray-600">+{httpData.headers.length - 3} more</p>
+                                            )}
+                                        </div>
+                                    )}
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-[10px] text-gray-600">
+                                            Timeout: <span className="text-gray-400">{httpData.timeout || 30}s</span>
+                                        </span>
+                                    </div>
+                                    <p className="text-[10px] text-gray-600 italic">
+                                        HTTP editing coming soon — configure via API.
+                                    </p>
+                                </>
+                            )
+                        })()}
+                    </div>
+                </>
             )}
 
             {/* Actions */}

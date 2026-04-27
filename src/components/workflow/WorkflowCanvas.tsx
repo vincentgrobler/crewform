@@ -30,6 +30,8 @@ import { AgentNode } from './nodes/AgentNode'
 import { StartNode } from './nodes/StartNode'
 import { EndNode } from './nodes/EndNode'
 import { NoteNode } from './nodes/NoteNode'
+import { ConditionalNode } from './nodes/ConditionalNode'
+import { HttpNode } from './nodes/HttpNode'
 import { useWorkflowGraph, graphToConfig, validateConfig, getHandleIds, updateEdgeHandles } from './useWorkflowGraph'
 import { useCanvasHistory } from './useCanvasHistory'
 import { useAutoLayout } from './useAutoLayout'
@@ -68,6 +70,8 @@ const NODE_TYPES: NodeTypes = {
     startNode: StartNode,
     endNode: EndNode,
     noteNode: NoteNode,
+    conditionalNode: ConditionalNode,
+    httpNode: HttpNode,
 }
 
 type TeamConfig = PipelineConfig | OrchestratorConfig | CollaborationConfig
@@ -620,6 +624,66 @@ function WorkflowCanvasInner({ team, agents, onSaveConfig, onCanvasError, active
         })
     }, [reactFlowInstance, setNodes])
 
+    // ─── Add conditional node ─────────────────────────────────────────────────
+
+    const handleAddConditional = useCallback((screenX: number, screenY: number) => {
+        const position = reactFlowInstance.screenToFlowPosition({
+            x: screenX,
+            y: screenY,
+        })
+
+        const nodeId = `conditional-${Date.now()}`
+        const newNode: Node = {
+            id: nodeId,
+            type: 'conditionalNode',
+            position,
+            data: {
+                label: 'Condition',
+                conditions: [{
+                    field: 'output',
+                    operator: 'contains',
+                    value: '',
+                }],
+            },
+            draggable: true,
+        }
+
+        setNodes((currentNodes) => {
+            pushState(currentNodes, edges)
+            return [...currentNodes, newNode]
+        })
+    }, [reactFlowInstance, setNodes, pushState, edges])
+
+    // ─── Add HTTP request node ────────────────────────────────────────────────
+
+    const handleAddHttp = useCallback((screenX: number, screenY: number) => {
+        const position = reactFlowInstance.screenToFlowPosition({
+            x: screenX,
+            y: screenY,
+        })
+
+        const nodeId = `http-${Date.now()}`
+        const newNode: Node = {
+            id: nodeId,
+            type: 'httpNode',
+            position,
+            data: {
+                label: 'HTTP Request',
+                url: '',
+                method: 'GET',
+                headers: [],
+                body: '',
+                timeout: 30,
+            },
+            draggable: true,
+        }
+
+        setNodes((currentNodes) => {
+            pushState(currentNodes, edges)
+            return [...currentNodes, newNode]
+        })
+    }, [reactFlowInstance, setNodes, pushState, edges])
+
     // ─── Render ──────────────────────────────────────────────────────────────
 
     const selectedNode = nodes.find((n) => n.id === selectedNodeId)
@@ -859,6 +923,8 @@ function WorkflowCanvasInner({ team, agents, onSaveConfig, onCanvasError, active
                     agents={agents}
                     onInsertAgent={insertAgentBetween}
                     onAddNote={handleAddNote}
+                    onAddConditional={handleAddConditional}
+                    onAddHttp={handleAddHttp}
                 />
             )}
 

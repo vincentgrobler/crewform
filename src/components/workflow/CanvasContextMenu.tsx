@@ -22,6 +22,8 @@ import {
     Plus,
     Bot,
     StickyNote,
+    GitBranch,
+    Globe,
 } from 'lucide-react'
 import type { Node } from '@xyflow/react'
 import type { AgentNodeData } from './nodes/AgentNode'
@@ -52,6 +54,10 @@ interface CanvasContextMenuProps {
     onInsertAgent?: (sourceId: string, targetId: string, agent: Agent) => void
     /** Add a sticky note at the given canvas position */
     onAddNote?: (x: number, y: number) => void
+    /** Add a conditional node at the given canvas position */
+    onAddConditional?: (x: number, y: number) => void
+    /** Add an HTTP request node at the given canvas position */
+    onAddHttp?: (x: number, y: number) => void
 }
 
 interface MenuItem {
@@ -76,6 +82,8 @@ export function CanvasContextMenu({
     agents,
     onInsertAgent,
     onAddNote,
+    onAddConditional,
+    onAddHttp,
 }: CanvasContextMenuProps) {
     const menuRef = useRef<HTMLDivElement>(null)
     const [showAgentPicker, setShowAgentPicker] = useState(false)
@@ -188,8 +196,22 @@ export function CanvasContextMenu({
                 icon: StickyNote,
                 onClick: () => { onAddNote(state.x, state.y); onClose() },
             })
-            items.push('separator')
         }
+        if (onAddConditional) {
+            items.push({
+                label: 'Add Conditional',
+                icon: GitBranch,
+                onClick: () => { onAddConditional(state.x, state.y); onClose() },
+            })
+        }
+        if (onAddHttp) {
+            items.push({
+                label: 'Add HTTP Request',
+                icon: Globe,
+                onClick: () => { onAddHttp(state.x, state.y); onClose() },
+            })
+        }
+        items.push('separator')
         items.push({
             label: 'Fit View',
             icon: Maximize2,
