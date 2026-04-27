@@ -284,3 +284,47 @@
 .workflow-popup-enter {
     animation: popup-enter 0.15s ease-out;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   Conditional Node
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.workflow-conditional-node {
+    position: relative;
+}
+
+/* True branch handle — green */
+.workflow-handle-true {
+    background: #22c55e !important;
+    border-color: var(--color-surface-card, #1a1a1a) !important;
+}
+
+.workflow-handle-true:hover {
+    box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+}
+
+/* False branch handle — red */
+.workflow-handle-false {
+    background: #ef4444 !important;
+    border-color: var(--color-surface-card, #1a1a1a) !important;
+}
+
+.workflow-handle-false:hover {
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+}
+
+/* Conditional node selection */
+.react-flow__node.selected .workflow-conditional-node {
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.4),
+        0 0 20px rgba(245, 158, 11, 0.1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   HTTP Request Node
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* HTTP node selection */
+.react-flow__node.selected .workflow-http-node {
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.4),
+        0 0 20px rgba(34, 211, 238, 0.1);
+}
