@@ -91,31 +91,76 @@ function cronMatchesDate(expression: string, date: Date): boolean {
 }
 
 /**
+ * Maximum lookback window for catch-up (48 hours).
+ * If the runner was down for longer, older triggers are skipped to prevent flooding.
+ */
+const MAX_CATCHUP_MS = 48 * 60 * 60 * 1000;
+
+/**
  * Check if a CRON trigger is due to fire.
  * A trigger is due if:
- * 1. The current time matches the CRON expression
- * 2. It hasn't fired in the current matching minute
+ * 1. The current time matches the CRON expression, OR
+ * 2. A firing was MISSED while the runner was offline (catch-up)
+ *
+ * Catch-up: scans each minute between last_fired_at and now (capped at 48h).
+ * If any minute matched the cron expression and the trigger didn't fire, it fires now.
+ * This ensures daily/weekly triggers work even when the runner isn't always-on.
  */
 function isTriggerDue(cronExpression: string, lastFiredAt: string | null): boolean {
     const now = new Date();
 
-    if (!cronMatchesDate(cronExpression, now)) return false;
-
-    // Check if already fired in this minute
-    if (lastFiredAt) {
-        const last = new Date(lastFiredAt);
-        if (
-            last.getFullYear() === now.getFullYear() &&
-            last.getMonth() === now.getMonth() &&
-            last.getDate() === now.getDate() &&
-            last.getHours() === now.getHours() &&
-            last.getMinutes() === now.getMinutes()
-        ) {
-            return false; // Already fired this minute
+    // ── 1. Current-minute match (existing real-time check) ──
+    if (cronMatchesDate(cronExpression, now)) {
+        if (lastFiredAt) {
+            const last = new Date(lastFiredAt);
+            // Already fired this minute — skip
+            if (
+                last.getFullYear() === now.getFullYear() &&
+                last.getMonth() === now.getMonth() &&
+                last.getDate() === now.getDate() &&
+                last.getHours() === now.getHours() &&
+                last.getMinutes() === now.getMinutes()
+            ) {
+                return false;
+            }
         }
+        return true;
     }
 
-    return true;
+    // ── 2. Catch-up: check for missed firings while runner was offline ──
+    if (!lastFiredAt) {
+        // Never fired — don't spam on first boot. Only fire on current-minute match.
+        return false;
+    }
+
+    const lastFired = new Date(lastFiredAt);
+    const gapMs = now.getTime() - lastFired.getTime();
+
+    // Only catch up if there's a meaningful gap (> 2 minutes, since we eval every 60s)
+    if (gapMs < 2 * 60 * 1000) return false;
+
+    // Cap lookback to prevent flooding after long outages
+    const lookbackStart = new Date(Math.max(lastFired.getTime(), now.getTime() - MAX_CATCHUP_MS));
+
+    // Scan each minute from lookback start to now, looking for a missed cron match
+    // For daily triggers with a 48h lookback, this is at most 2,880 iterations — trivial.
+    const scanTime = new Date(lookbackStart);
+    scanTime.setSeconds(0, 0);
+    // Start from the minute after last fired
+    scanTime.setMinutes(scanTime.getMinutes() + 1);
+
+    while (scanTime < now) {
+        if (cronMatchesDate(cronExpression, scanTime)) {
+            console.log(
+                `[TriggerScheduler] Catch-up: missed firing at ${scanTime.toISOString()} ` +
+                `(last fired: ${lastFiredAt}, now: ${now.toISOString()})`,
+            );
+            return true; // Missed this one — fire now
+        }
+        scanTime.setMinutes(scanTime.getMinutes() + 1);
+    }
+
+    return false;
 }
 
 // ─── Template Rendering ─────────────────────────────────────────────────────

@@ -512,6 +512,10 @@ async function start() {
         setInterval(() => { void runRecoverySweep(); }, RECOVERY_INTERVAL_MS);
         setInterval(() => { void evaluateTriggers(); }, TRIGGER_EVAL_INTERVAL_MS);
 
+        // Immediate trigger catch-up: fire any crons missed while runner was offline
+        log('Running startup trigger catch-up sweep...');
+        void evaluateTriggers();
+
         // Initial poll (slow fallback chain starts here)
         void poll();
     } catch (err: unknown) {
