@@ -97,7 +97,15 @@ export function cronToHuman(cron: string): string {
 
 function getOrdinal(n: number): string {
     if (isNaN(n)) return String(n)
-    const s = ['th', 'st', 'nd', 'rd']
     const v = n % 100
-    return `${String(n)}${s[(v - 20) % 10] ?? s[v] ?? s[0]}`
+    let suffix = 'th'
+    if (v >= 11 && v <= 13) {
+        suffix = 'th'
+    } else {
+        const lastDigit = v % 10
+        if (lastDigit === 1) suffix = 'st'
+        else if (lastDigit === 2) suffix = 'nd'
+        else if (lastDigit === 3) suffix = 'rd'
+    }
+    return `${String(n)}${suffix}`
 }
