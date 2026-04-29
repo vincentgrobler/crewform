@@ -190,6 +190,17 @@ docker compose up -d
 
 Open **http://localhost:3000** — done!
 
+#### 🔬 Research Crew Edition
+
+Want to start with a pre-configured pipeline? The Research Crew variant includes 3 agents (Researcher → Analyst → Writer) ready to go:
+
+```bash
+cp .env.example .env  # Edit with your API keys
+docker compose -f docker-compose.yml -f docker-compose.research-crew.yml up -d
+```
+
+Open http://localhost:3000, create a task with any topic, and watch the Research Crew produce a polished article.
+
 ⚡ **Local Models:** Install [Ollama](https://ollama.com) alongside CrewForm for fully local AI — zero API keys, zero data leaving your network. Run `ollama pull llama3.3` and select Ollama as a provider in Settings.
 
 ### Development
