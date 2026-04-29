@@ -9,6 +9,7 @@ import {
 import { useTriggers, useCreateTrigger, useToggleTrigger, useDeleteTrigger, useTriggerLog } from '@/hooks/useTriggers'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { cn } from '@/lib/utils'
+import { cronToHuman } from '@/lib/cronToHuman'
 import { WebhookExample } from '@/components/triggers/WebhookExample'
 import { getApiUrl } from '@/lib/apiUrl'
 import type { AgentTrigger, TriggerType } from '@/db/triggers'
@@ -181,8 +182,13 @@ function CreateTriggerForm({
                         value={cronExpression}
                         onChange={(e) => setCronExpression(e.target.value)}
                         placeholder="* * * * *"
-                        className="mb-2 w-full rounded-lg border border-border bg-surface-primary px-3 py-2 font-mono text-sm text-gray-200 outline-none focus:border-brand-primary"
+                        className="mb-1 w-full rounded-lg border border-border bg-surface-primary px-3 py-2 font-mono text-sm text-gray-200 outline-none focus:border-brand-primary"
                     />
+                    {cronExpression.trim().split(/\s+/).length === 5 && (
+                        <p className="mb-2 text-xs text-brand-primary">
+                            → {cronToHuman(cronExpression)}
+                        </p>
+                    )}
                     <div className="flex flex-wrap gap-1">
                         {CRON_PRESETS.map((preset) => (
                             <button
@@ -351,7 +357,7 @@ function TriggerCard({
                         <span className={meta.color}>{meta.label}</span>
                         {trigger.cron_expression && (
                             <code className="rounded bg-surface-raised px-1.5 py-0.5 font-mono text-[10px] text-gray-400">
-                                {trigger.cron_expression}
+                                {cronToHuman(trigger.cron_expression)}
                             </code>
                         )}
                         {trigger.last_fired_at && (
