@@ -7,6 +7,7 @@ import { useWorkspace } from '@/hooks/useWorkspace'
 import { useTeamTriggers, useCreateTeamTrigger, useToggleTrigger, useDeleteTrigger, useTriggerLog } from '@/hooks/useTriggers'
 import type { AgentTrigger, TriggerType } from '@/db/triggers'
 import { cn } from '@/lib/utils'
+import { cronToHuman } from '@/lib/cronToHuman'
 import { WebhookExample } from '@/components/triggers/WebhookExample'
 import { getApiUrl } from '@/lib/apiUrl'
 
@@ -156,7 +157,11 @@ function CreateTeamTriggerForm({
                         placeholder="0 9 * * *"
                         className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-gray-200 focus:border-brand-primary focus:outline-none"
                     />
-                    <p className="mt-1 text-xs text-gray-600">e.g. &quot;0 9 * * *&quot; = daily at 9am</p>
+                    {cronExpression.trim().split(/\s+/).length === 5 && (
+                        <p className="mt-1 text-xs text-brand-primary">
+                            → {cronToHuman(cronExpression)}
+                        </p>
+                    )}
                 </div>
             )}
 
@@ -270,7 +275,7 @@ function TeamTriggerCard({
                             {trigger.enabled ? 'Enabled' : 'Disabled'}
                         </span>
                         {trigger.cron_expression && (
-                            <span className="font-mono">{trigger.cron_expression}</span>
+                            <span className="font-mono" title={trigger.cron_expression}>{cronToHuman(trigger.cron_expression)}</span>
                         )}
                         {trigger.last_fired_at && (
                             <span>Last: {new Date(trigger.last_fired_at).toLocaleString()}</span>

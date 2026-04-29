@@ -23,6 +23,7 @@ import { useWorkspace } from '@/hooks/useWorkspace'
 import { useCreateTemplate } from '@/hooks/useWorkflowTemplates'
 import type { PipelineConfig, TemplateVariable, TemplateAgentDef, TemplateTeamDef, TemplateTriggerDef, TemplateDefinition, Team } from '@/types'
 import { cn } from '@/lib/utils'
+import { cronToHuman } from '@/lib/cronToHuman'
 
 interface CreateTemplateModalProps {
     open: boolean
@@ -677,15 +678,22 @@ export function CreateTemplateModal({ open, onClose, preSelectedAgentIds, preSel
                                         <option value="webhook">Webhook</option>
                                     </select>
                                     {triggerType === 'cron' && (
-                                        <input
-                                            type="text"
-                                            value={cronExpression}
-                                            onChange={(e) => setCronExpression(e.target.value)}
-                                            placeholder="0 9 * * 5"
-                                            className="flex-1 rounded-lg border border-border bg-surface-overlay px-3 py-2 font-mono text-xs text-gray-200 outline-none focus:border-brand-primary"
-                                        />
+                                        <>
+                                            <input
+                                                type="text"
+                                                value={cronExpression}
+                                                onChange={(e) => setCronExpression(e.target.value)}
+                                                placeholder="0 9 * * 5"
+                                                className="flex-1 rounded-lg border border-border bg-surface-overlay px-3 py-2 font-mono text-xs text-gray-200 outline-none focus:border-brand-primary"
+                                            />
+                                        </>
                                     )}
                                 </div>
+                                {triggerType === 'cron' && cronExpression.trim().split(/\s+/).length === 5 && (
+                                    <p className="-mt-1 text-xs text-brand-primary">
+                                        → {cronToHuman(cronExpression)}
+                                    </p>
+                                )}
                                 <input
                                     type="text"
                                     value={taskTitleTemplate}
@@ -754,7 +762,7 @@ export function CreateTemplateModal({ open, onClose, preSelectedAgentIds, preSel
                             <div className="flex items-center gap-2 rounded bg-surface-overlay p-2">
                                 <Clock className="h-3.5 w-3.5 text-blue-400" />
                                 <span className="text-xs font-medium text-gray-200">
-                                    {triggerType === 'cron' ? `CRON: ${cronExpression}` : 'Webhook'}
+                                    {triggerType === 'cron' ? cronToHuman(cronExpression) : 'Webhook'}
                                 </span>
                             </div>
                         )}

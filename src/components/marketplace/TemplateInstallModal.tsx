@@ -6,6 +6,7 @@ import { Loader2, Download, CheckCircle2, Bot, Users2, Clock, Variable } from 'l
 import { SlidePanel } from '@/components/shared/SlidePanel'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useInstallTemplate } from '@/hooks/useWorkflowTemplates'
+import { cronToHuman } from '@/lib/cronToHuman'
 import type { WorkflowTemplate, TemplateVariable } from '@/types'
 
 interface TemplateInstallModalProps {
@@ -139,7 +140,7 @@ export function TemplateInstallModal({ template, onClose, onSuccess }: TemplateI
                                     {def.trigger.type === 'cron' ? 'Scheduled Trigger' : 'Webhook Trigger'}
                                 </p>
                                 {def.trigger.cron_expression && (
-                                    <p className="font-mono text-xs text-gray-500">{def.trigger.cron_expression}</p>
+                                    <p className="text-xs text-gray-500" title={def.trigger.cron_expression}>{cronToHuman(def.trigger.cron_expression)}</p>
                                 )}
                             </div>
                         </div>
