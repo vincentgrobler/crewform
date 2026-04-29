@@ -44,6 +44,9 @@ coverage
 # Docs (separate repo)
 crewform-docs/
 
+# Demo knowledge base docs (local only)
+demo-kb-docs/
+
 # Landing page (private, separate repo)
 crewform-landing/
 zapier-app/node_modules/
