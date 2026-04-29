@@ -5,6 +5,7 @@ import { useState, useMemo } from 'react'
 import { AlertCircle, Plus, Pencil, Trash2, X, Plug } from 'lucide-react'
 import type { AgentFormData } from '@/lib/agentSchema'
 import { agentSchema, MODEL_OPTIONS, BUILT_IN_TOOLS, getActiveModelOptions, mergeModelOptions } from '@/lib/agentSchema'
+import { isKnownModel, getStaleSuggestion } from '@/lib/modelValidation'
 import { useOpenRouterModels } from '@/hooks/useOpenRouterModels'
 import { useOllamaModels } from '@/hooks/useOllamaModels'
 import { useCustomTools, useCreateCustomTool, useUpdateCustomTool, useDeleteCustomTool } from '@/hooks/useCustomTools'
@@ -69,6 +70,16 @@ export function AgentForm({ initialData, onSubmit, onBack, activeProviders, work
             ...(ollamaModels.length > 0 ? [{ provider: 'Ollama', models: ollamaModels }] : []),
         ])
     }, [activeProviders, openRouterModels, ollamaModels])
+
+    // Check if current model is recognized in the catalog
+    const allDynamicModelValues = useMemo(
+        () => [...openRouterModels, ...ollamaModels].map(m => m.value),
+        [openRouterModels, ollamaModels],
+    )
+    const modelKnown = useMemo(
+        () => !formData.model || isKnownModel(formData.model, allDynamicModelValues),
+        [formData.model, allDynamicModelValues],
+    )
 
     const [tagInput, setTagInput] = useState('')
 
@@ -194,6 +205,19 @@ export function AgentForm({ initialData, onSubmit, onBack, activeProviders, work
                     </div>
                 )}
                 {errors.model && <p className="mt-1 text-xs text-status-error-text">{errors.model}</p>}
+                {!errors.model && !modelKnown && formData.model && (
+                    <div className="mt-2 flex items-start gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-3 py-2">
+                        <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-yellow-400" />
+                        <div>
+                            <p className="text-xs font-medium text-yellow-300">
+                                Model &quot;{formData.model}&quot; is not in the current catalog
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-yellow-400/70">
+                                {getStaleSuggestion(formData.model)}
+                            </p>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Fallback Model selector */}

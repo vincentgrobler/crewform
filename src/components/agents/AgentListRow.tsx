@@ -2,7 +2,9 @@
 // Copyright (C) 2026 CrewForm
 
 import { Link } from 'react-router-dom'
+import { AlertTriangle } from 'lucide-react'
 import { StatusIndicator } from '@/components/ui/StatusIndicator'
+import { isKnownModel } from '@/lib/modelValidation'
 import type { Agent } from '@/types'
 
 interface AgentListRowProps {
@@ -46,7 +48,10 @@ export function AgentListRow({ agent }: AgentListRowProps) {
             </div>
 
             {/* Model badge */}
-            <span className="hidden shrink-0 items-center rounded-md border border-border bg-surface-elevated px-2 py-0.5 text-xs font-medium text-gray-400 sm:inline-flex">
+            <span className="hidden shrink-0 items-center gap-1.5 rounded-md border border-border bg-surface-elevated px-2 py-0.5 text-xs font-medium text-gray-400 sm:inline-flex">
+                {!isKnownModel(agent.model) && (
+                    <AlertTriangle className="h-3 w-3 text-yellow-400" />
+                )}
                 {modelShort}
             </span>
 
