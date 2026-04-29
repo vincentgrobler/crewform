@@ -1,0 +1,44 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CrewForm — Docker Compose: Research Crew Edition
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Extends the base docker-compose.yml with a pre-configured Research Crew:
+#   🔍 Researcher → searches knowledge base + web
+#   📊 Analyst    → extracts key insights and patterns
+#   ✍️ Writer     → produces publication-ready articles
+#
+# Usage:
+#   cp .env.example .env   # edit with your API keys
+#   docker compose -f docker-compose.yml -f docker-compose.research-crew.yml up -d
+#
+# After startup, open http://localhost:3000 — the Research Crew pipeline
+# is ready to use. Just create a task with any topic!
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  # Seed the Research Crew after migrations complete
+  seed-research-crew:
+    image: postgres:15-alpine
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:-crewform}
+      PGUSER: ${POSTGRES_USER:-crewform}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - ./docker/seed-research-crew.sql:/seed.sql:ro
+    entrypoint: ["sh", "-c", "echo '  ▸ Seeding Research Crew...' && psql -f /seed.sql -v ON_ERROR_STOP=1"]
+
+  # Ensure frontend and task-runner start after seeding
+  frontend:
+    depends_on:
+      seed-research-crew:
+        condition: service_completed_successfully
+
+  task-runner:
+    depends_on:
+      seed-research-crew:
+        condition: service_completed_successfully
