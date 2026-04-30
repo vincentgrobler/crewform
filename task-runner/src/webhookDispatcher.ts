@@ -3,6 +3,7 @@
 
 import { supabase } from './supabase';
 import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -10,7 +11,7 @@ interface OutputRoute {
     id: string;
     workspace_id: string;
     name: string;
-    destination_type: 'http' | 'slack' | 'discord' | 'telegram' | 'teams' | 'asana' | 'trello' | 'notion' | 'github';
+    destination_type: 'http' | 'slack' | 'discord' | 'telegram' | 'teams' | 'asana' | 'trello' | 'notion' | 'github' | 'email' | 'smtp';
     config: Record<string, unknown>;
     events: string[];
     is_active: boolean;
@@ -382,6 +383,10 @@ async function deliver(
             return deliverNotion(route, payload);
         case 'github':
             return deliverGitHubIssue(route, payload);
+        case 'email':
+            return deliverEmail(route, payload);
+        case 'smtp':
+            return deliverSmtp(route, payload);
         default:
             throw new Error(`Unknown destination type: ${route.destination_type}`);
     }
@@ -1295,6 +1300,169 @@ async function deliverGitHubIssue(
     }
 
     return { ok: resp.ok, statusCode: resp.status };
+}
+
+// ── Email (Resend) ─────────────────────────────────────────────────────────
+
+/**
+ * Deliver a webhook payload via Resend (managed email API).
+ *
+ * Config fields:
+ * - to: Comma-separated recipient email addresses
+ * - subject: Optional subject template (supports {{title}}, {{status}} placeholders)
+ *
+ * Uses RESEND_API_KEY and RESEND_FROM_ADDRESS env vars.
+ */
+async function deliverEmail(
+    route: OutputRoute,
+    payload: WebhookPayload,
+): Promise<{ ok: boolean; statusCode: number }> {
+    const apiKey = process.env.RESEND_API_KEY;
+    const fromAddress = process.env.RESEND_FROM_ADDRESS ?? 'CrewForm <noreply@crewform.tech>';
+    const to = route.config.to as string;
+    const subjectTemplate = (route.config.subject as string) ?? '{{status}} {{title}}';
+
+    if (!apiKey) throw new Error('RESEND_API_KEY environment variable is not set');
+    if (!to) throw new Error('Email destination requires "to" addresses');
+
+    const recipients = to.split(',').map(e => e.trim()).filter(Boolean);
+    const emoji = payload.status === 'completed' ? '✅' : '❌';
+
+    const subject = `${emoji} ${subjectTemplate
+        .replace(/\{\{title\}\}/g, payload.task_title)
+        .replace(/\{\{status\}\}/g, payload.status)
+        .replace(/\{\{agent\}\}/g, payload.agent_name)
+    }`.substring(0, 200);
+
+    const html = buildEmailHtml(payload);
+
+    const resend = new Resend(apiKey);
+    const { error: sendErr } = await resend.emails.send({
+        from: fromAddress,
+        to: recipients,
+        subject,
+        html,
+    });
+
+    if (sendErr) {
+        console.error(`[Email] Resend error: ${sendErr.message}`);
+        return { ok: false, statusCode: 400 };
+    }
+
+    return { ok: true, statusCode: 200 };
+}
+
+// ── SMTP ─────────────────────────────────────────────────────────────────
+
+/**
+ * Deliver a webhook payload via raw SMTP (nodemailer).
+ * Ideal for self-hosted users with their own mail server.
+ *
+ * Config fields:
+ * - host: SMTP server hostname (e.g. smtp.gmail.com)
+ * - port: SMTP port (587 for TLS, 465 for SSL, 25 for plain)
+ * - user: SMTP username
+ * - pass: SMTP password
+ * - from: Sender address (e.g. "CrewForm <noreply@example.com>")
+ * - to: Comma-separated recipient email addresses
+ * - subject: Optional subject template (supports {{title}}, {{status}} placeholders)
+ * - tls: "true" or "false" (default: true)
+ */
+async function deliverSmtp(
+    route: OutputRoute,
+    payload: WebhookPayload,
+): Promise<{ ok: boolean; statusCode: number }> {
+    const host = route.config.host as string;
+    const port = parseInt((route.config.port as string) ?? '587', 10);
+    const user = route.config.user as string;
+    const pass = route.config.pass as string;
+    const from = route.config.from as string;
+    const to = route.config.to as string;
+    const subjectTemplate = (route.config.subject as string) ?? '{{status}} {{title}}';
+    const useTls = (route.config.tls as string) !== 'false';
+
+    if (!host || !from || !to) {
+        throw new Error('SMTP destination requires host, from, and to');
+    }
+
+    const recipients = to.split(',').map(e => e.trim()).filter(Boolean);
+    const emoji = payload.status === 'completed' ? '✅' : '❌';
+
+    const subject = `${emoji} ${subjectTemplate
+        .replace(/\{\{title\}\}/g, payload.task_title)
+        .replace(/\{\{status\}\}/g, payload.status)
+        .replace(/\{\{agent\}\}/g, payload.agent_name)
+    }`.substring(0, 200);
+
+    const html = buildEmailHtml(payload);
+
+    const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: user ? { user, pass } : undefined,
+        tls: useTls ? { rejectUnauthorized: false } : undefined,
+    });
+
+    try {
+        await transporter.sendMail({
+            from,
+            to: recipients.join(', '),
+            subject,
+            html,
+        });
+        return { ok: true, statusCode: 200 };
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[SMTP] Send error: ${msg}`);
+        return { ok: false, statusCode: 500 };
+    }
+}
+
+// ── Shared email HTML builder ───────────────────────────────────────────────
+
+function buildEmailHtml(payload: WebhookPayload): string {
+    const emoji = payload.status === 'completed' ? '✅' : '❌';
+    const statusColor = payload.status === 'completed' ? '#22c55e' : '#ef4444';
+    const isTeamRun = !!payload.team_run_id;
+    const output = payload.result_full || payload.error || 'No output';
+    const truncated = output.length > 50000
+        ? `${output.substring(0, 50000)}\n\n... truncated (${output.length} chars)`
+        : output;
+
+    return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 640px; margin: 0 auto; color: #1a1a2e;">
+        <div style="background: ${statusColor}; color: white; padding: 16px 24px; border-radius: 8px 8px 0 0;">
+            <h1 style="margin: 0; font-size: 18px;">${emoji} ${escapeHtml(payload.task_title)}</h1>
+        </div>
+        <div style="border: 1px solid #e5e7eb; border-top: none; padding: 24px; border-radius: 0 0 8px 8px;">
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 14px;">
+                <tr>
+                    <td style="padding: 6px 12px 6px 0; color: #6b7280; font-weight: 600;">${isTeamRun ? 'Team' : 'Agent'}</td>
+                    <td style="padding: 6px 0;">${escapeHtml(payload.agent_name)}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 12px 6px 0; color: #6b7280; font-weight: 600;">Status</td>
+                    <td style="padding: 6px 0;"><span style="color: ${statusColor}; font-weight: 600;">${payload.status}</span></td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 12px 6px 0; color: #6b7280; font-weight: 600;">Event</td>
+                    <td style="padding: 6px 0;"><code style="background: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-size: 13px;">${payload.event}</code></td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 12px 6px 0; color: #6b7280; font-weight: 600;">Time</td>
+                    <td style="padding: 6px 0;">${new Date(payload.timestamp).toLocaleString()}</td>
+                </tr>
+            </table>
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;" />
+            <div style="background: #f9fafb; border-radius: 8px; padding: 16px; white-space: pre-wrap; font-size: 13px; line-height: 1.6; overflow-x: auto; max-height: 600px; overflow-y: auto;">
+${escapeHtml(truncated)}
+            </div>
+            <p style="color: #9ca3af; font-size: 11px; margin-top: 16px; text-align: center;">
+                Sent by <a href="https://crewform.tech" style="color: #6366f1;">CrewForm</a>
+            </p>
+        </div>
+    </div>`;
 }
 
 // ─── Logging ────────────────────────────────────────────────────────────────
