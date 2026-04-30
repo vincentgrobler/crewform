@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import {
     Globe, MessageSquare, Send, Hash, Plus, Trash2, Power, PowerOff,
-    CheckCircle2, XCircle, ChevronDown, ChevronUp, Loader2, Zap, CheckSquare, Pencil, Columns3, BookOpen, Mail, Server,
+    CheckCircle2, XCircle, ChevronDown, ChevronUp, Loader2, Zap, CheckSquare, Pencil, Columns3, BookOpen, Mail, Server, Layers,
 } from 'lucide-react'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useWebhooks, useCreateWebhook, useUpdateWebhook, useDeleteWebhook, useWebhookLogs } from '@/hooks/useWebhooks'
@@ -23,7 +23,7 @@ function GitHubIcon({ className }: { className?: string }) {
     )
 }
 
-type DestinationType = 'http' | 'slack' | 'discord' | 'telegram' | 'teams' | 'asana' | 'trello' | 'notion' | 'github' | 'email' | 'smtp'
+type DestinationType = 'http' | 'slack' | 'discord' | 'telegram' | 'teams' | 'asana' | 'trello' | 'notion' | 'github' | 'email' | 'smtp' | 'linear'
 
 const DESTINATION_META: Record<DestinationType, { label: string; icon: typeof Globe; color: string; bgColor: string }> = {
     http: { label: 'HTTP Webhook', icon: Globe, color: 'text-blue-400', bgColor: 'bg-blue-500/10' },
@@ -37,6 +37,7 @@ const DESTINATION_META: Record<DestinationType, { label: string; icon: typeof Gl
     github: { label: 'GitHub Issues', icon: GitHubIcon as unknown as typeof Globe, color: 'text-gray-200', bgColor: 'bg-gray-600/10' },
     email: { label: 'Email (Resend)', icon: Mail, color: 'text-amber-400', bgColor: 'bg-amber-500/10' },
     smtp: { label: 'SMTP Email', icon: Server, color: 'text-orange-400', bgColor: 'bg-orange-500/10' },
+    linear: { label: 'Linear', icon: Layers, color: 'text-violet-300', bgColor: 'bg-violet-500/10' },
 }
 
 const EVENT_OPTIONS = [
@@ -730,6 +731,56 @@ function DestinationConfigFields({
                             className="h-4 w-4 rounded border-border bg-surface-raised text-brand-primary focus:ring-brand-primary"
                         />
                         <label htmlFor="smtp-tls" className="text-sm text-gray-400">Use TLS</label>
+                    </div>
+                </div>
+            )
+
+        case 'linear':
+            return (
+                <div className="space-y-3">
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-400">API Key</label>
+                        <input
+                            type="password"
+                            value={config.api_key ?? ''}
+                            onChange={(e) => updateField('api_key', e.target.value)}
+                            placeholder="lin_api_xxxxxxxxxxxx"
+                            className={inputClass}
+                        />
+                        <p className="mt-1 text-xs text-gray-600">
+                            Create one at{' '}
+                            <a href="https://linear.app/settings/api" target="_blank" rel="noopener noreferrer" className="text-violet-300 hover:underline">
+                                linear.app/settings/api
+                            </a>
+                        </p>
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-400">Team ID</label>
+                        <input
+                            type="text"
+                            value={config.team_id ?? ''}
+                            onChange={(e) => updateField('team_id', e.target.value)}
+                            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                            className={inputClass}
+                        />
+                        <p className="mt-1 text-xs text-gray-600">
+                            Find it in team settings or use the Linear API to list teams.
+                        </p>
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-400">
+                            Labels <span className="text-gray-600">(optional, comma-separated)</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={config.labels ?? ''}
+                            onChange={(e) => updateField('labels', e.target.value)}
+                            placeholder="crewform, ai-output"
+                            className={inputClass}
+                        />
+                        <p className="mt-1 text-xs text-gray-600">
+                            Label names are matched against existing labels in your team.
+                        </p>
                     </div>
                 </div>
             )
