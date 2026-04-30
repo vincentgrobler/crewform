@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import {
     Globe, MessageSquare, Send, Hash, Plus, Trash2, Power, PowerOff,
-    CheckCircle2, XCircle, ChevronDown, ChevronUp, Loader2, Zap, CheckSquare, Pencil, Columns3,
+    CheckCircle2, XCircle, ChevronDown, ChevronUp, Loader2, Zap, CheckSquare, Pencil, Columns3, BookOpen,
 } from 'lucide-react'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useWebhooks, useCreateWebhook, useUpdateWebhook, useDeleteWebhook, useWebhookLogs } from '@/hooks/useWebhooks'
@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-type DestinationType = 'http' | 'slack' | 'discord' | 'telegram' | 'teams' | 'asana' | 'trello'
+type DestinationType = 'http' | 'slack' | 'discord' | 'telegram' | 'teams' | 'asana' | 'trello' | 'notion'
 
 const DESTINATION_META: Record<DestinationType, { label: string; icon: typeof Globe; color: string; bgColor: string }> = {
     http: { label: 'HTTP Webhook', icon: Globe, color: 'text-blue-400', bgColor: 'bg-blue-500/10' },
@@ -24,6 +24,7 @@ const DESTINATION_META: Record<DestinationType, { label: string; icon: typeof Gl
     teams: { label: 'Teams', icon: MessageSquare, color: 'text-violet-400', bgColor: 'bg-violet-500/10' },
     asana: { label: 'Asana', icon: CheckSquare, color: 'text-rose-400', bgColor: 'bg-rose-500/10' },
     trello: { label: 'Trello', icon: Columns3, color: 'text-teal-400', bgColor: 'bg-teal-500/10' },
+    notion: { label: 'Notion', icon: BookOpen, color: 'text-gray-300', bgColor: 'bg-gray-500/10' },
 }
 
 const EVENT_OPTIONS = [
@@ -169,7 +170,7 @@ function CreateWebhookForm({
             {/* Destination Type */}
             <div>
                 <label className="mb-2 block text-sm font-medium text-gray-400">Destination</label>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {(Object.keys(DESTINATION_META) as DestinationType[]).map((type) => {
                         const meta = DESTINATION_META[type]
                         const Icon = meta.icon
@@ -481,6 +482,44 @@ function DestinationConfigFields({
                         />
                         <p className="mt-1 text-xs text-gray-600">
                             If set, completed cards are automatically moved to this list for review.
+                        </p>
+                    </div>
+                </div>
+            )
+
+        case 'notion':
+            return (
+                <div className="space-y-3">
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-400">Integration Token</label>
+                        <input
+                            type="password"
+                            value={config.api_key ?? ''}
+                            onChange={(e) => updateField('api_key', e.target.value)}
+                            placeholder="secret_xxx..."
+                            className={inputClass}
+                        />
+                        <p className="mt-1 text-xs text-gray-600">
+                            Create an internal integration at{' '}
+                            <a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener noreferrer" className="text-gray-300 hover:underline">
+                                notion.so/my-integrations
+                            </a>
+                            {' '}and copy the secret.
+                        </p>
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-400">Database ID</label>
+                        <input
+                            type="text"
+                            value={config.database_id ?? ''}
+                            onChange={(e) => updateField('database_id', e.target.value)}
+                            placeholder="abc123def456..."
+                            className={inputClass}
+                        />
+                        <p className="mt-1 text-xs text-gray-600">
+                            Open the database as a full page, then copy the ID from the URL: notion.so/<strong>DATABASE_ID</strong>?v=...
+                            <br />
+                            <span className="text-yellow-400/70">Tip:</span> Add a &quot;Name&quot; (title), &quot;Status&quot; (select), and &quot;Agent&quot; (text) property to your database for best results.
                         </p>
                     </div>
                 </div>
