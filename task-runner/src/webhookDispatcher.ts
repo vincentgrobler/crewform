@@ -10,7 +10,7 @@ interface OutputRoute {
     id: string;
     workspace_id: string;
     name: string;
-    destination_type: 'http' | 'slack' | 'discord' | 'telegram' | 'teams' | 'asana' | 'trello' | 'notion';
+    destination_type: 'http' | 'slack' | 'discord' | 'telegram' | 'teams' | 'asana' | 'trello' | 'notion' | 'github';
     config: Record<string, unknown>;
     events: string[];
     is_active: boolean;
@@ -380,6 +380,8 @@ async function deliver(
             return deliverTrello(route, payload);
         case 'notion':
             return deliverNotion(route, payload);
+        case 'github':
+            return deliverGitHubIssue(route, payload);
         default:
             throw new Error(`Unknown destination type: ${route.destination_type}`);
     }
@@ -1198,6 +1200,101 @@ function buildNotionBlocks(text: string): Record<string, unknown>[] {
 
     // Notion API limits children to 100 blocks per request
     return blocks.slice(0, 100);
+}
+
+// ── GitHub Issues ───────────────────────────────────────────────────────────
+
+/**
+ * Deliver a webhook payload to GitHub by creating an issue.
+ *
+ * Config fields:
+ * - pat: GitHub Personal Access Token (fine-grained or classic)
+ * - owner: Repository owner (user or org)
+ * - repo: Repository name
+ * - labels: Comma-separated label names (optional, e.g. "crewform,ai-output")
+ *
+ * Creates an issue with:
+ * - Title: task title with status emoji
+ * - Body: metadata header + full result as markdown
+ * - Labels: user-configured labels + auto "crewform" label
+ */
+async function deliverGitHubIssue(
+    route: OutputRoute,
+    payload: WebhookPayload,
+): Promise<{ ok: boolean; statusCode: number }> {
+    const pat = route.config.pat as string;
+    const owner = route.config.owner as string;
+    const repo = route.config.repo as string;
+    const labelsCsv = (route.config.labels as string) ?? '';
+
+    if (!pat || !owner || !repo) {
+        throw new Error('GitHub Issues integration requires pat, owner, and repo');
+    }
+
+    const emoji = payload.status === 'completed' ? '✅' : '❌';
+    const output = payload.result_full || payload.error || 'No output';
+
+    // Build labels array
+    const labels: string[] = ['crewform'];
+    if (labelsCsv.trim()) {
+        for (const label of labelsCsv.split(',')) {
+            const trimmed = label.trim();
+            if (trimmed && !labels.includes(trimmed)) labels.push(trimmed);
+        }
+    }
+    // Auto-add status label
+    if (payload.status === 'failed') labels.push('bug');
+
+    // Build issue body
+    const isTeamRun = !!payload.team_run_id;
+    const body = [
+        `## ${emoji} ${isTeamRun ? 'Team Run' : 'Task'} ${payload.status}`,
+        '',
+        `| Field | Value |`,
+        `|-------|-------|`,
+        `| **${isTeamRun ? 'Team' : 'Agent'}** | ${payload.agent_name} |`,
+        `| **Status** | ${payload.status} |`,
+        `| **Event** | \`${payload.event}\` |`,
+        `| **Timestamp** | ${payload.timestamp} |`,
+        '',
+        '---',
+        '',
+        '### Output',
+        '',
+        output.length > 60000
+            ? `${output.substring(0, 60000)}\n\n> _Output truncated (${output.length} chars)_`
+            : output,
+        '',
+        '---',
+        '_Created by [CrewForm](https://crewform.tech) webhook integration_',
+    ].join('\n');
+
+    const resp = await fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues`,
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${pat}`,
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28',
+                'User-Agent': 'CrewForm-Webhook/1.0',
+            },
+            body: JSON.stringify({
+                title: `${emoji} ${payload.task_title}`.substring(0, 256),
+                body,
+                labels,
+            }),
+            signal: AbortSignal.timeout(15000),
+        },
+    );
+
+    if (!resp.ok) {
+        const errBody = await resp.text().catch(() => '');
+        console.error(`[GitHub] API error ${resp.status}: ${errBody.substring(0, 500)}`);
+    }
+
+    return { ok: resp.ok, statusCode: resp.status };
 }
 
 // ─── Logging ────────────────────────────────────────────────────────────────
