@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import {
     Globe, MessageSquare, Send, Hash, Plus, Trash2, Power, PowerOff,
-    CheckCircle2, XCircle, ChevronDown, ChevronUp, Loader2, Zap, CheckSquare, Pencil, Columns3, BookOpen,
+    CheckCircle2, XCircle, ChevronDown, ChevronUp, Loader2, Zap, CheckSquare, Pencil, Columns3, BookOpen, Mail, Server,
 } from 'lucide-react'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useWebhooks, useCreateWebhook, useUpdateWebhook, useDeleteWebhook, useWebhookLogs } from '@/hooks/useWebhooks'
@@ -23,7 +23,7 @@ function GitHubIcon({ className }: { className?: string }) {
     )
 }
 
-type DestinationType = 'http' | 'slack' | 'discord' | 'telegram' | 'teams' | 'asana' | 'trello' | 'notion' | 'github'
+type DestinationType = 'http' | 'slack' | 'discord' | 'telegram' | 'teams' | 'asana' | 'trello' | 'notion' | 'github' | 'email' | 'smtp'
 
 const DESTINATION_META: Record<DestinationType, { label: string; icon: typeof Globe; color: string; bgColor: string }> = {
     http: { label: 'HTTP Webhook', icon: Globe, color: 'text-blue-400', bgColor: 'bg-blue-500/10' },
@@ -35,6 +35,8 @@ const DESTINATION_META: Record<DestinationType, { label: string; icon: typeof Gl
     trello: { label: 'Trello', icon: Columns3, color: 'text-teal-400', bgColor: 'bg-teal-500/10' },
     notion: { label: 'Notion', icon: BookOpen, color: 'text-gray-300', bgColor: 'bg-gray-500/10' },
     github: { label: 'GitHub Issues', icon: GitHubIcon as unknown as typeof Globe, color: 'text-gray-200', bgColor: 'bg-gray-600/10' },
+    email: { label: 'Email (Resend)', icon: Mail, color: 'text-amber-400', bgColor: 'bg-amber-500/10' },
+    smtp: { label: 'SMTP Email', icon: Server, color: 'text-orange-400', bgColor: 'bg-orange-500/10' },
 }
 
 const EVENT_OPTIONS = [
@@ -594,6 +596,140 @@ function DestinationConfigFields({
                         <p className="mt-1 text-xs text-gray-600">
                             A &quot;crewform&quot; label is always added automatically. Failed tasks also get &quot;bug&quot;.
                         </p>
+                    </div>
+                </div>
+            )
+
+        case 'email':
+            return (
+                <div className="space-y-3">
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-400">To Email(s)</label>
+                        <input
+                            type="text"
+                            value={config.to ?? ''}
+                            onChange={(e) => updateField('to', e.target.value)}
+                            placeholder="team@company.com, alerts@company.com"
+                            className={inputClass}
+                        />
+                        <p className="mt-1 text-xs text-gray-600">
+                            Comma-separated list of recipient email addresses.
+                        </p>
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-400">
+                            Subject Template <span className="text-gray-600">(optional)</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={config.subject ?? ''}
+                            onChange={(e) => updateField('subject', e.target.value)}
+                            placeholder="{{status}} {{title}}"
+                            className={inputClass}
+                        />
+                        <p className="mt-1 text-xs text-gray-600">
+                            Use <code className="text-amber-400/70">{'{{title}}'}</code>, <code className="text-amber-400/70">{'{{status}}'}</code>, <code className="text-amber-400/70">{'{{agent}}'}</code> as placeholders.
+                            Uses your <strong>RESEND_API_KEY</strong> env var.
+                        </p>
+                    </div>
+                </div>
+            )
+
+        case 'smtp':
+            return (
+                <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="col-span-2">
+                            <label className="mb-1 block text-sm font-medium text-gray-400">SMTP Host</label>
+                            <input
+                                type="text"
+                                value={config.host ?? ''}
+                                onChange={(e) => updateField('host', e.target.value)}
+                                placeholder="smtp.gmail.com"
+                                className={inputClass}
+                            />
+                        </div>
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-400">Port</label>
+                            <input
+                                type="text"
+                                value={config.port ?? '587'}
+                                onChange={(e) => updateField('port', e.target.value)}
+                                placeholder="587"
+                                className={inputClass}
+                            />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-400">
+                                Username <span className="text-gray-600">(optional)</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={config.user ?? ''}
+                                onChange={(e) => updateField('user', e.target.value)}
+                                placeholder="user@gmail.com"
+                                className={inputClass}
+                            />
+                        </div>
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-400">
+                                Password <span className="text-gray-600">(optional)</span>
+                            </label>
+                            <input
+                                type="password"
+                                value={config.pass ?? ''}
+                                onChange={(e) => updateField('pass', e.target.value)}
+                                placeholder="App password"
+                                className={inputClass}
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-400">From Address</label>
+                        <input
+                            type="text"
+                            value={config.from ?? ''}
+                            onChange={(e) => updateField('from', e.target.value)}
+                            placeholder='CrewForm <noreply@example.com>'
+                            className={inputClass}
+                        />
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-400">To Email(s)</label>
+                        <input
+                            type="text"
+                            value={config.to ?? ''}
+                            onChange={(e) => updateField('to', e.target.value)}
+                            placeholder="team@company.com, alerts@company.com"
+                            className={inputClass}
+                        />
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-400">
+                            Subject Template <span className="text-gray-600">(optional)</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={config.subject ?? ''}
+                            onChange={(e) => updateField('subject', e.target.value)}
+                            placeholder="{{status}} {{title}}"
+                            className={inputClass}
+                        />
+                        <p className="mt-1 text-xs text-gray-600">
+                            Use <code className="text-orange-400/70">{'{{title}}'}</code>, <code className="text-orange-400/70">{'{{status}}'}</code>, <code className="text-orange-400/70">{'{{agent}}'}</code> as placeholders.
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            id="smtp-tls"
+                            checked={(config.tls ?? 'true') !== 'false'}
+                            onChange={(e) => updateField('tls', e.target.checked ? 'true' : 'false')}
+                            className="h-4 w-4 rounded border-border bg-surface-raised text-brand-primary focus:ring-brand-primary"
+                        />
+                        <label htmlFor="smtp-tls" className="text-sm text-gray-400">Use TLS</label>
                     </div>
                 </div>
             )

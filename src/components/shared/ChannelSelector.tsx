@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 CrewForm
 
-import { Globe, MessageSquare, Hash, Send, Users, CheckSquare, Radio, Columns3, BookOpen } from 'lucide-react'
+import { Globe, MessageSquare, Hash, Send, Users, CheckSquare, Radio, Columns3, BookOpen, Mail, Server } from 'lucide-react'
 import { useOutputRoutes } from '@/hooks/useChannels'
 import { cn } from '@/lib/utils'
 
@@ -24,6 +24,8 @@ const DESTINATION_ICONS: Record<string, typeof Globe> = {
     trello: Columns3,
     notion: BookOpen,
     github: GitHubIcon as unknown as typeof Globe,
+    email: Mail,
+    smtp: Server,
 }
 
 const DESTINATION_COLORS: Record<string, { text: string; bg: string }> = {
@@ -36,6 +38,8 @@ const DESTINATION_COLORS: Record<string, { text: string; bg: string }> = {
     trello: { text: 'text-teal-400', bg: 'bg-teal-500/10' },
     notion: { text: 'text-gray-300', bg: 'bg-gray-400/10' },
     github: { text: 'text-gray-200', bg: 'bg-gray-600/10' },
+    email: { text: 'text-amber-400', bg: 'bg-amber-500/10' },
+    smtp: { text: 'text-orange-400', bg: 'bg-orange-500/10' },
 }
 
 interface OutputRouteSelectorProps {
