@@ -10,7 +10,7 @@ interface OutputRoute {
     id: string;
     workspace_id: string;
     name: string;
-    destination_type: 'http' | 'slack' | 'discord' | 'telegram' | 'teams' | 'asana' | 'trello';
+    destination_type: 'http' | 'slack' | 'discord' | 'telegram' | 'teams' | 'asana' | 'trello' | 'notion';
     config: Record<string, unknown>;
     events: string[];
     is_active: boolean;
@@ -378,6 +378,8 @@ async function deliver(
             return deliverAsana(route, payload);
         case 'trello':
             return deliverTrello(route, payload);
+        case 'notion':
+            return deliverNotion(route, payload);
         default:
             throw new Error(`Unknown destination type: ${route.destination_type}`);
     }
@@ -1020,6 +1022,182 @@ async function deliverTrello(
     );
 
     return { ok: resp.ok, statusCode: resp.status };
+}
+
+// ── Notion ──────────────────────────────────────────────────────────────────
+
+/**
+ * Deliver a webhook payload to Notion by creating a page in a database.
+ *
+ * Config fields:
+ * - api_key: Notion Internal Integration Token (secret_xxx)
+ * - database_id: Target database ID (32 hex chars, optionally with dashes)
+ *
+ * Creates a page with:
+ * - Title property: task title with status emoji
+ * - Status property (select): completed / failed / started
+ * - Agent property (rich_text): agent name
+ * - Page body: full result as paragraph blocks
+ */
+async function deliverNotion(
+    route: OutputRoute,
+    payload: WebhookPayload,
+): Promise<{ ok: boolean; statusCode: number }> {
+    const apiKey = route.config.api_key as string;
+    const databaseId = route.config.database_id as string;
+
+    if (!apiKey || !databaseId) {
+        throw new Error('Notion integration requires api_key and database_id');
+    }
+
+    const emoji = payload.status === 'completed' ? '✅' : '❌';
+    const output = payload.result_full || payload.error || 'No output';
+
+    // Build page content blocks from the result (Notion max block size is 2000 chars)
+    const contentBlocks = buildNotionBlocks(output);
+
+    // Properties — we use common property names that most Notion databases will have.
+    // Unknown properties are silently ignored by the API.
+    const properties: Record<string, unknown> = {
+        Name: {
+            title: [
+                {
+                    text: {
+                        content: `${emoji} ${payload.task_title}`.substring(0, 2000),
+                    },
+                },
+            ],
+        },
+    };
+
+    // Optional select property for status
+    properties.Status = {
+        select: { name: payload.status === 'completed' ? 'Done' : payload.status === 'failed' ? 'Failed' : 'In Progress' },
+    };
+
+    // Optional rich_text property for agent
+    properties.Agent = {
+        rich_text: [
+            {
+                text: {
+                    content: payload.agent_name.substring(0, 2000),
+                },
+            },
+        ],
+    };
+
+    // Optional rich_text property for event type
+    properties.Event = {
+        rich_text: [
+            {
+                text: {
+                    content: payload.event,
+                },
+            },
+        ],
+    };
+
+    const body = {
+        parent: {
+            type: 'database_id',
+            database_id: databaseId,
+        },
+        properties,
+        children: contentBlocks,
+    };
+
+    const resp = await fetch('https://api.notion.com/v1/pages', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+            'Notion-Version': '2022-06-28',
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(15000),
+    });
+
+    if (!resp.ok) {
+        const errBody = await resp.text().catch(() => '');
+        console.error(`[Notion] API error ${resp.status}: ${errBody.substring(0, 500)}`);
+    }
+
+    return { ok: resp.ok, statusCode: resp.status };
+}
+
+/**
+ * Convert a text result into Notion block children.
+ * Splits by paragraphs, respects the 2000-char limit per text block,
+ * and preserves markdown headings as Notion heading blocks.
+ */
+function buildNotionBlocks(text: string): Record<string, unknown>[] {
+    const blocks: Record<string, unknown>[] = [];
+    const lines = text.split('\n');
+    let currentParagraph = '';
+
+    function flushParagraph() {
+        if (!currentParagraph.trim()) return;
+        const content = currentParagraph.trim();
+        for (let i = 0; i < content.length; i += 2000) {
+            blocks.push({
+                object: 'block',
+                type: 'paragraph',
+                paragraph: {
+                    rich_text: [
+                        {
+                            type: 'text',
+                            text: { content: content.substring(i, i + 2000) },
+                        },
+                    ],
+                },
+            });
+        }
+        currentParagraph = '';
+    }
+
+    for (const line of lines) {
+        const h1Match = /^#\s+(.+)$/.exec(line);
+        const h2Match = /^##\s+(.+)$/.exec(line);
+        const h3Match = /^###\s+(.+)$/.exec(line);
+
+        if (h1Match) {
+            flushParagraph();
+            blocks.push({
+                object: 'block',
+                type: 'heading_1',
+                heading_1: {
+                    rich_text: [{ type: 'text', text: { content: h1Match[1].substring(0, 2000) } }],
+                },
+            });
+        } else if (h2Match) {
+            flushParagraph();
+            blocks.push({
+                object: 'block',
+                type: 'heading_2',
+                heading_2: {
+                    rich_text: [{ type: 'text', text: { content: h2Match[1].substring(0, 2000) } }],
+                },
+            });
+        } else if (h3Match) {
+            flushParagraph();
+            blocks.push({
+                object: 'block',
+                type: 'heading_3',
+                heading_3: {
+                    rich_text: [{ type: 'text', text: { content: h3Match[1].substring(0, 2000) } }],
+                },
+            });
+        } else if (line.trim() === '') {
+            flushParagraph();
+        } else {
+            currentParagraph += (currentParagraph ? '\n' : '') + line;
+        }
+    }
+
+    flushParagraph();
+
+    // Notion API limits children to 100 blocks per request
+    return blocks.slice(0, 100);
 }
 
 // ─── Logging ────────────────────────────────────────────────────────────────

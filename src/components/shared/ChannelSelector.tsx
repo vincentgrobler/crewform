@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 CrewForm
 
-import { Globe, MessageSquare, Hash, Send, Users, CheckSquare, Radio, Columns3 } from 'lucide-react'
+import { Globe, MessageSquare, Hash, Send, Users, CheckSquare, Radio, Columns3, BookOpen } from 'lucide-react'
 import { useOutputRoutes } from '@/hooks/useChannels'
 import { cn } from '@/lib/utils'
 
@@ -13,6 +13,7 @@ const DESTINATION_ICONS: Record<string, typeof Globe> = {
     teams: Users,
     asana: CheckSquare,
     trello: Columns3,
+    notion: BookOpen,
 }
 
 const DESTINATION_COLORS: Record<string, { text: string; bg: string }> = {
@@ -23,6 +24,7 @@ const DESTINATION_COLORS: Record<string, { text: string; bg: string }> = {
     teams: { text: 'text-blue-400', bg: 'bg-blue-500/10' },
     asana: { text: 'text-rose-400', bg: 'bg-rose-500/10' },
     trello: { text: 'text-teal-400', bg: 'bg-teal-500/10' },
+    notion: { text: 'text-gray-300', bg: 'bg-gray-400/10' },
 }
 
 interface OutputRouteSelectorProps {
