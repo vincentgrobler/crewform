@@ -11,7 +11,7 @@ interface OutputRoute {
     id: string;
     workspace_id: string;
     name: string;
-    destination_type: 'http' | 'slack' | 'discord' | 'telegram' | 'teams' | 'asana' | 'trello' | 'notion' | 'github' | 'email' | 'smtp';
+    destination_type: 'http' | 'slack' | 'discord' | 'telegram' | 'teams' | 'asana' | 'trello' | 'notion' | 'github' | 'email' | 'smtp' | 'linear';
     config: Record<string, unknown>;
     events: string[];
     is_active: boolean;
@@ -387,6 +387,8 @@ async function deliver(
             return deliverEmail(route, payload);
         case 'smtp':
             return deliverSmtp(route, payload);
+        case 'linear':
+            return deliverLinear(route, payload);
         default:
             throw new Error(`Unknown destination type: ${route.destination_type}`);
     }
@@ -1463,6 +1465,130 @@ ${escapeHtml(truncated)}
             </p>
         </div>
     </div>`;
+}
+
+// ── Linear ──────────────────────────────────────────────────────────────────
+
+/**
+ * Deliver a webhook payload to Linear by creating an issue via GraphQL.
+ *
+ * Config fields:
+ * - api_key: Linear API key (personal or workspace)
+ * - team_id: Linear team UUID to create the issue in
+ * - labels: Comma-separated label names (optional)
+ *
+ * Creates an issue with:
+ * - Title: task title with status emoji
+ * - Description: metadata + full result as markdown
+ * - Labels: matched by name against existing team labels
+ */
+async function deliverLinear(
+    route: OutputRoute,
+    payload: WebhookPayload,
+): Promise<{ ok: boolean; statusCode: number }> {
+    const apiKey = route.config.api_key as string;
+    const teamId = route.config.team_id as string;
+    const labelsCsv = (route.config.labels as string) ?? '';
+
+    if (!apiKey || !teamId) {
+        throw new Error('Linear integration requires api_key and team_id');
+    }
+
+    const emoji = payload.status === 'completed' ? '✅' : '❌';
+    const output = payload.result_full || payload.error || 'No output';
+    const isTeamRun = !!payload.team_run_id;
+
+    const title = `${emoji} ${payload.task_title}`.substring(0, 256);
+
+    const description = [
+        `## ${emoji} ${isTeamRun ? 'Team Run' : 'Task'} ${payload.status}`,
+        '',
+        `| Field | Value |`,
+        `|-------|-------|`,
+        `| **${isTeamRun ? 'Team' : 'Agent'}** | ${payload.agent_name} |`,
+        `| **Status** | ${payload.status} |`,
+        `| **Event** | \`${payload.event}\` |`,
+        `| **Timestamp** | ${payload.timestamp} |`,
+        '',
+        '---',
+        '',
+        output.length > 60000
+            ? `${output.substring(0, 60000)}\n\n> _Output truncated (${output.length} chars)_`
+            : output,
+        '',
+        '---',
+        '_Created by [CrewForm](https://crewform.tech)_',
+    ].join('\n');
+
+    // Resolve label IDs by name if labels are specified
+    let labelIds: string[] | undefined;
+    if (labelsCsv.trim()) {
+        const labelNames = labelsCsv.split(',').map(l => l.trim().toLowerCase()).filter(Boolean);
+        try {
+            const labelsResp = await fetch('https://api.linear.app/graphql', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': apiKey,
+                },
+                body: JSON.stringify({
+                    query: `query { issueLabels(filter: { team: { id: { eq: "${teamId}" } } }) { nodes { id name } } }`,
+                }),
+                signal: AbortSignal.timeout(10000),
+            });
+            if (labelsResp.ok) {
+                const labelsData = await labelsResp.json() as { data?: { issueLabels?: { nodes?: { id: string; name: string }[] } } };
+                const allLabels = labelsData.data?.issueLabels?.nodes ?? [];
+                labelIds = allLabels
+                    .filter(l => labelNames.includes(l.name.toLowerCase()))
+                    .map(l => l.id);
+            }
+        } catch {
+            // Label resolution failure is non-fatal — create issue without labels
+            console.warn('[Linear] Failed to resolve labels, creating issue without them');
+        }
+    }
+
+    const mutation = `mutation IssueCreate($input: IssueCreateInput!) {
+        issueCreate(input: $input) {
+            success
+            issue { id identifier url }
+        }
+    }`;
+
+    const variables: Record<string, unknown> = {
+        input: {
+            teamId,
+            title,
+            description,
+            ...(labelIds && labelIds.length > 0 ? { labelIds } : {}),
+        },
+    };
+
+    const resp = await fetch('https://api.linear.app/graphql', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': apiKey,
+        },
+        body: JSON.stringify({ query: mutation, variables }),
+        signal: AbortSignal.timeout(15000),
+    });
+
+    if (!resp.ok) {
+        const errBody = await resp.text().catch(() => '');
+        console.error(`[Linear] API error ${resp.status}: ${errBody.substring(0, 500)}`);
+        return { ok: false, statusCode: resp.status };
+    }
+
+    const result = await resp.json() as { data?: { issueCreate?: { success: boolean } }; errors?: { message: string }[] };
+    if (result.errors?.length) {
+        console.error(`[Linear] GraphQL errors: ${result.errors.map(e => e.message).join(', ')}`);
+        return { ok: false, statusCode: 422 };
+    }
+
+    const success = result.data?.issueCreate?.success ?? false;
+    return { ok: success, statusCode: success ? 200 : 422 };
 }
 
 // ─── Logging ────────────────────────────────────────────────────────────────
